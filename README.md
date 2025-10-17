@@ -214,7 +214,7 @@ This platform is for informational and educational purposes only. It does not co
 
 **Saad Kadri**
 - Portfolio: [[Saad Kadri](https://saadkadri.dev/)]
-- LinkedIn: [LinkedIn]((https://www.linkedin.com/in/saad-kadri-58b8bb205/))
+- LinkedIn: [[LinkedIn](https://www.linkedin.com/in/saad-kadri-58b8bb205/)]
 - Email: er.saadk16@gmail.com
 
 ## ⭐ Show Your Support
@@ -224,5 +224,6 @@ If you find this project useful, please give it a star! It helps others discover
 ---
 
 **Built with ❤️ by Saad Kadri | MS Computer Science @ UT Arlington**
+
 
 
