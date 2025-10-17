@@ -227,8 +227,8 @@ This platform is for informational and educational purposes only. It does not co
 ## 👨‍💻 Author
 
 **Saad Kadri**
-- Portfolio: [your-portfolio-url]
-- LinkedIn: [linkedin.com/in/yourprofile](https://linkedin.com/in/yourprofile)
+- Portfolio: [[your-portfolio-url](https://saadkadri.dev/)]
+- LinkedIn: [linkedin.com/in/yourprofile]([https://linkedin.com/in/yourprofile](https://www.linkedin.com/in/saad-kadri-58b8bb205/))
 - Email: er.saadk16@gmail.com
 
 ## ⭐ Show Your Support
@@ -238,3 +238,4 @@ If you find this project useful, please give it a star! It helps others discover
 ---
 
 **Built with ❤️ by Saad Kadri | MS Computer Science @ UT Arlington**
+
