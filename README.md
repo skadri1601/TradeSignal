@@ -186,20 +186,6 @@ cd frontend
 npm test
 ```
 
-## 📈 Roadmap
-
-- [x] SEC Form 4 scraper
-- [x] FastAPI backend with REST API
-- [x] React dashboard
-- [x] Real-time WebSocket updates
-- [ ] Congressional trade tracking
-- [ ] AI-powered insights (GPT-4o)
-- [ ] Email/webhook alerts
-- [ ] Mobile app (React Native)
-- [ ] Machine learning predictions
-- [ ] Options flow tracking
-- [ ] International market support
-
 ## 🤝 Contributing
 
 Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details.
@@ -227,8 +213,8 @@ This platform is for informational and educational purposes only. It does not co
 ## 👨‍💻 Author
 
 **Saad Kadri**
-- Portfolio: [[your-portfolio-url](https://saadkadri.dev/)]
-- LinkedIn: [linkedin.com/in/yourprofile]([https://linkedin.com/in/yourprofile](https://www.linkedin.com/in/saad-kadri-58b8bb205/))
+- Portfolio: [[Saad Kadri](https://saadkadri.dev/)]
+- LinkedIn: [LinkedIn]((https://www.linkedin.com/in/saad-kadri-58b8bb205/))
 - Email: er.saadk16@gmail.com
 
 ## ⭐ Show Your Support
@@ -238,4 +224,5 @@ If you find this project useful, please give it a star! It helps others discover
 ---
 
 **Built with ❤️ by Saad Kadri | MS Computer Science @ UT Arlington**
+
 
