@@ -113,11 +113,44 @@ cd trade-signal
 
 **2. Set up environment variables**
 ```bash
+# Copy the example
 cp .env.example .env
-# Edit .env with your configuration
+
+# Edit .env and add minimum required values:
 ```
 
-**3. Backend Setup**
+Minimum required configuration:
+```env
+# Database (use Docker or Supabase)
+DATABASE_URL=postgresql://tradesignal:tradesignal_dev@localhost:5432/tradesignal
+
+# SEC EDGAR (REQUIRED - use your info)
+SEC_USER_AGENT=Saad Kadri er.saadk16@gmail.com
+
+# Security
+JWT_SECRET=your-random-secret-key-change-this
+JWT_ALGORITHM=HS256
+
+# Features (disable AI for now)
+ENABLE_AI_INSIGHTS=false
+ENABLE_WEBHOOKS=false
+
+# Application
+ENVIRONMENT=development
+DEBUG=true
+LOG_LEVEL=INFO
+```
+
+**3. Start PostgreSQL Database**
+```bash
+# Start only PostgreSQL from docker-compose
+docker-compose up postgres -d
+
+# Verify it's running
+docker ps
+```
+
+**4. Backend Setup**
 ```bash
 cd backend
 python -m venv venv
@@ -126,14 +159,14 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-**4. Frontend Setup**
+**5. Frontend Setup**
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-**5. Initialize Database**
+**6. Initialize Database**
 ```bash
 # Run migrations (details in docs/DEPLOYMENT.md)
 ```
@@ -186,6 +219,20 @@ cd frontend
 npm test
 ```
 
+## 📈 Roadmap
+
+- [x] SEC Form 4 scraper
+- [x] FastAPI backend with REST API
+- [x] React dashboard
+- [x] Real-time WebSocket updates
+- [ ] Congressional trade tracking
+- [ ] AI-powered insights (GPT-4o)
+- [ ] Email/webhook alerts
+- [ ] Mobile app (React Native)
+- [ ] Machine learning predictions
+- [ ] Options flow tracking
+- [ ] International market support
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details.
@@ -213,8 +260,8 @@ This platform is for informational and educational purposes only. It does not co
 ## 👨‍💻 Author
 
 **Saad Kadri**
-- Portfolio: [[Saad Kadri](https://saadkadri.dev/)]
-- LinkedIn: [[LinkedIn](https://www.linkedin.com/in/saad-kadri-58b8bb205/)]
+- Portfolio: [your-portfolio-url]
+- LinkedIn: [linkedin.com/in/yourprofile](https://linkedin.com/in/yourprofile)
 - Email: er.saadk16@gmail.com
 
 ## ⭐ Show Your Support
@@ -224,6 +271,3 @@ If you find this project useful, please give it a star! It helps others discover
 ---
 
 **Built with ❤️ by Saad Kadri | MS Computer Science @ UT Arlington**
-
-
-
