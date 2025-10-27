@@ -7,15 +7,14 @@ Handles request/response validation and serialization.
 from __future__ import annotations
 
 from datetime import datetime, date
-from typing import Optional, TYPE_CHECKING
+from typing import Optional
 from decimal import Decimal
 from pydantic import BaseModel, Field, field_validator
 
 from app.models.trade import TransactionType
 
-if TYPE_CHECKING:
-    from app.schemas.company import CompanyRead
-    from app.schemas.insider import InsiderRead
+from app.schemas.company import CompanyRead
+from app.schemas.insider import InsiderRead
 
 
 class TradeBase(BaseModel):
@@ -104,12 +103,16 @@ class TradeRead(TradeBase):
 
 
 class TradeWithDetails(TradeRead):
-    """Trade schema with nested company and insider data."""
-    company: Optional[CompanyRead] = Field(None, description="Company details")
-    insider: Optional[InsiderRead] = Field(None, description="Insider details")
-    current_stock_price: Optional[float] = Field(None, description="Current stock price")
-    price_change_percent: Optional[float] = Field(None, description="Price change since trade")
-    profit_loss: Optional[float] = Field(None, description="Profit/loss amount")
+    """Trade schema with nested company and insider data.
+
+    Use PEP 604 union types (X | None) to avoid runtime evaluation issues
+    with Optional[...] under Pydantic's forward-ref handling.
+    """
+    company: "CompanyRead | None" = Field(None, description="Company details")
+    insider: "InsiderRead | None" = Field(None, description="Insider details")
+    current_stock_price: float | None = Field(None, description="Current stock price")
+    price_change_percent: float | None = Field(None, description="Price change since trade")
+    profit_loss: float | None = Field(None, description="Profit/loss amount")
 
 
 class TradeFilter(BaseModel):

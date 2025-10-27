@@ -13,7 +13,14 @@ from sqlalchemy import select, func, and_, or_, desc
 from sqlalchemy.orm import selectinload
 
 from app.models import Trade, Company, Insider
-from app.schemas.trade import TradeCreate, TradeUpdate, TradeFilter, TradeStats
+from app.schemas.trade import (
+    TradeCreate,
+    TradeUpdate,
+    TradeFilter,
+    TradeStats,
+    TradeWithDetails,
+)
+from app.services.trade_event_manager import trade_event_manager
 
 logger = logging.getLogger(__name__)
 
@@ -193,7 +200,20 @@ class TradeService:
         db.add(trade)
         await db.commit()
         await db.refresh(trade)
+        # Ensure relationships are loaded for broadcasting
+        await db.refresh(trade, attribute_names=["company", "insider"])
+
         logger.info(f"Created trade: ID {trade.id}, {trade.transaction_type} {trade.shares} shares")
+
+        try:
+            trade_payload = TradeWithDetails.model_validate(trade).model_dump(mode="json")
+            await trade_event_manager.broadcast({
+                "type": "trade_created",
+                "trade": trade_payload,
+            })
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.warning("Failed to broadcast trade creation: %s", exc)
+
         return trade
 
     @staticmethod
@@ -227,7 +247,19 @@ class TradeService:
 
         await db.commit()
         await db.refresh(trade)
+        await db.refresh(trade, attribute_names=["company", "insider"])
+
         logger.info(f"Updated trade: ID {trade.id}")
+
+        try:
+            trade_payload = TradeWithDetails.model_validate(trade).model_dump(mode="json")
+            await trade_event_manager.broadcast({
+                "type": "trade_updated",
+                "trade": trade_payload,
+            })
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.warning("Failed to broadcast trade update: %s", exc)
+
         return trade
 
     @staticmethod

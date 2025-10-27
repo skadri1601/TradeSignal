@@ -5,11 +5,11 @@ REST API routes for trade operations.
 """
 
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.services import TradeService
+from app.services import TradeService, trade_event_manager
 from app.schemas.trade import (
     TradeRead,
     TradeCreate,
@@ -23,7 +23,22 @@ from app.schemas.common import PaginationParams, SortParams, PaginatedResponse
 router = APIRouter()
 
 
-@router.get("/", response_model=PaginatedResponse[TradeRead])
+@router.websocket("/stream")
+async def trade_stream(websocket: WebSocket):
+    """WebSocket endpoint streaming trade events in real time."""
+    await trade_event_manager.connect(websocket)
+    await websocket.send_json({"type": "connection_ack"})
+
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        await trade_event_manager.disconnect(websocket)
+    except Exception:  # pragma: no cover - defensive cleanup
+        await trade_event_manager.disconnect(websocket)
+
+
+@router.get("/", response_model=PaginatedResponse[TradeWithDetails])
 async def get_trades(
     pagination: PaginationParams = Depends(),
     sort: SortParams = Depends(),
@@ -60,14 +75,14 @@ async def get_trades(
     )
 
     return PaginatedResponse.create(
-        items=[TradeRead.model_validate(trade) for trade in trades],
+        items=[TradeWithDetails.model_validate(trade) for trade in trades],
         total=total,
         page=pagination.page,
         limit=pagination.limit
     )
 
 
-@router.get("/recent", response_model=List[TradeRead])
+@router.get("/recent", response_model=List[TradeWithDetails])
 async def get_recent_trades(
     days: int = Query(7, ge=1, le=90, description="Number of days to look back"),
     limit: int = Query(100, ge=1, le=500, description="Maximum number of trades"),
@@ -83,7 +98,7 @@ async def get_recent_trades(
     Returns trades from the last N days, sorted by transaction date (newest first).
     """
     trades = await TradeService.get_recent(db=db, days=days, limit=limit)
-    return [TradeRead.model_validate(trade) for trade in trades]
+    return [TradeWithDetails.model_validate(trade) for trade in trades]
 
 
 @router.get("/stats", response_model=TradeStats)
@@ -106,7 +121,7 @@ async def get_trade_statistics(
     return stats
 
 
-@router.get("/{trade_id}", response_model=TradeRead)
+@router.get("/{trade_id}", response_model=TradeWithDetails)
 async def get_trade(
     trade_id: int,
     db: AsyncSession = Depends(get_db)
@@ -124,7 +139,7 @@ async def get_trade(
             detail=f"Trade with ID {trade_id} not found"
         )
 
-    return TradeRead.model_validate(trade)
+    return TradeWithDetails.model_validate(trade)
 
 
 @router.post("/", response_model=TradeRead, status_code=status.HTTP_201_CREATED)

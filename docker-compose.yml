@@ -33,6 +33,7 @@ services:
       - ENVIRONMENT=development
       - DEBUG=true
       - ENABLE_AI_INSIGHTS=false
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:5174,http://localhost:5175
     dns:
       - 8.8.8.8
       - 8.8.4.4

@@ -17,7 +17,7 @@ from app.schemas.company import (
     CompanyWithStats,
     CompanySearch,
 )
-from app.schemas.trade import TradeRead, TradeFilter
+from app.schemas.trade import TradeRead, TradeFilter, TradeWithDetails
 from app.schemas.common import PaginationParams, SortParams, PaginatedResponse
 
 router = APIRouter()
@@ -113,7 +113,7 @@ async def get_company_by_ticker(
     return company_stats
 
 
-@router.get("/{ticker}/trades", response_model=PaginatedResponse[TradeRead])
+@router.get("/{ticker}/trades", response_model=PaginatedResponse[TradeWithDetails])
 async def get_company_trades(
     ticker: str,
     pagination: PaginationParams = Depends(),
@@ -153,7 +153,7 @@ async def get_company_trades(
     )
 
     return PaginatedResponse.create(
-        items=[TradeRead.model_validate(trade) for trade in trades],
+        items=[TradeWithDetails.model_validate(trade) for trade in trades],
         total=total,
         page=pagination.page,
         limit=pagination.limit
