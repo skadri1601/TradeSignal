@@ -260,7 +260,6 @@ This platform is for informational and educational purposes only. It does not co
 ## 👨‍💻 Author
 
 **Saad Kadri**
-- Portfolio: [your-portfolio-url]
 - LinkedIn: [linkedin.com/in/yourprofile](https://linkedin.com/in/yourprofile)
 - Email: er.saadk16@gmail.com
 

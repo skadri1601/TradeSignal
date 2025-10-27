@@ -281,13 +281,25 @@ async def health_check() -> dict[str, Any]:
     return response
 
 
-# API v1 Router (placeholder for future routes)
-# TODO: Add API v1 routes here
-# Example:
-# from app.api.v1 import trades, companies, insiders
-# app.include_router(trades.router, prefix=settings.api_v1_prefix, tags=["Trades"])
-# app.include_router(companies.router, prefix=settings.api_v1_prefix, tags=["Companies"])
-# app.include_router(insiders.router, prefix=settings.api_v1_prefix, tags=["Insiders"])
+# API v1 Routers
+from app.routers import trades, companies, insiders
+
+# Include all routers with API v1 prefix
+app.include_router(
+    trades.router,
+    prefix=f"{settings.api_v1_prefix}/trades",
+    tags=["Trades"]
+)
+app.include_router(
+    companies.router,
+    prefix=f"{settings.api_v1_prefix}/companies",
+    tags=["Companies"]
+)
+app.include_router(
+    insiders.router,
+    prefix=f"{settings.api_v1_prefix}/insiders",
+    tags=["Insiders"]
+)
 
 
 if __name__ == "__main__":
