@@ -16,7 +16,7 @@ from app.schemas.insider import (
     InsiderUpdate,
     InsiderWithCompany,
 )
-from app.schemas.trade import TradeRead, TradeFilter
+from app.schemas.trade import TradeRead, TradeFilter, TradeWithDetails
 from app.schemas.common import PaginationParams, SortParams, PaginatedResponse
 
 router = APIRouter()
@@ -108,7 +108,7 @@ async def get_insider(
     return InsiderRead.model_validate(insider)
 
 
-@router.get("/{insider_id}/trades", response_model=PaginatedResponse[TradeRead])
+@router.get("/{insider_id}/trades", response_model=PaginatedResponse[TradeWithDetails])
 async def get_insider_trades(
     insider_id: int,
     pagination: PaginationParams = Depends(),
@@ -148,7 +148,7 @@ async def get_insider_trades(
     )
 
     return PaginatedResponse.create(
-        items=[TradeRead.model_validate(trade) for trade in trades],
+        items=[TradeWithDetails.model_validate(trade) for trade in trades],
         total=total,
         page=pagination.page,
         limit=pagination.limit

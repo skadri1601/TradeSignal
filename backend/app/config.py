@@ -109,7 +109,7 @@ class Settings(BaseSettings):
 
     # CORS Configuration
     cors_origins: str = Field(
-        default="http://localhost:3000,http://localhost:5173",
+        default="http://localhost:3000,http://localhost:5173,http://localhost:5174,http://localhost:5175",
         description="Comma-separated list of allowed CORS origins",
         alias="CORS_ORIGINS"
     )

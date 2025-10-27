@@ -70,6 +70,43 @@ class SECClient:
 
             self._last_request_time = asyncio.get_event_loop().time()
 
+    async def lookup_cik_by_ticker(self, ticker: str) -> Optional[str]:
+        """
+        Look up CIK for a ticker symbol using SEC company tickers JSON.
+
+        Args:
+            ticker: Stock ticker symbol
+
+        Returns:
+            CIK string or None if not found
+        """
+        await self._rate_limit()
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                # Use SEC's company tickers JSON file
+                url = "https://www.sec.gov/files/company_tickers.json"
+                logger.info(f"Looking up CIK for ticker: {ticker}")
+                response = await client.get(url, headers=self.headers)
+                response.raise_for_status()
+
+                data = response.json()
+                ticker_upper = ticker.upper()
+
+                # Search for ticker in the JSON data
+                for item in data.values():
+                    if item.get("ticker", "").upper() == ticker_upper:
+                        cik = str(item.get("cik_str", "")).zfill(10)  # Pad with zeros
+                        logger.info(f"Found CIK {cik} for ticker {ticker}")
+                        return cik
+
+                logger.warning(f"No CIK found for ticker: {ticker}")
+                return None
+
+        except Exception as e:
+            logger.error(f"CIK lookup failed for {ticker}: {e}")
+            return None
+
     async def fetch_recent_form4_filings(
         self,
         cik: Optional[str] = None,
@@ -91,6 +128,12 @@ class SECClient:
         """
         if not cik and not ticker:
             raise ValueError("Must provide either CIK or ticker")
+
+        # If ticker provided without CIK, look up the CIK first
+        if ticker and not cik:
+            cik = await self.lookup_cik_by_ticker(ticker)
+            if not cik:
+                logger.warning(f"Could not find CIK for ticker {ticker}, search may return no results")
 
         params = {
             "action": "getcompany",
