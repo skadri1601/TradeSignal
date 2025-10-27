@@ -81,3 +81,13 @@ secrets/
 # Development
 .vscode/settings.json
 .idea/workspace.xml
+
+
+# Local documentation (keep local, don't commit)
+SETUP.md
+KNOWN_ISSUES.md
+.env.example
+COMMANDS.md
+PHASE1_COMPLETE.md
+PROJECT_STRATEGY.md
+TODO.md
