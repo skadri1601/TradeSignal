@@ -26,6 +26,12 @@ yarn-error.log*
 dist/
 dist-ssr/
 *.local
+.npm/
+.yarn/
+
+# TypeScript
+*.tsbuildinfo
+.tsbuildinfo
 
 # Environment
 .env
@@ -82,12 +88,50 @@ secrets/
 .vscode/settings.json
 .idea/workspace.xml
 
+# Claude Code settings (local configuration)
+.claude/settings.local.json
+.claude/settings.json
+.claude/*.local.*
 
-# Local documentation (keep local, don't commit)
-SETUP.md
-KNOWN_ISSUES.md
-.env.example
-COMMANDS.md
-PHASE1_COMPLETE.md
-PROJECT_STRATEGY.md
-TODO.md
+# Test coverage
+coverage/
+.nyc_output/
+*.cover
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb
+
+# Data files (don't commit large datasets)
+*.csv
+*.xlsx
+*.parquet
+data/raw/
+data/processed/
+!tests/**/*.csv
+
+# Compiled files
+*.pyc
+*.pyo
+*.class
+
+# OS generated files
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+$RECYCLE.BIN/
+
+# Editor backups
+*.bak
+*.tmp
+*~
+.*.swp
+.*.swo
+
+# Local dev files
+scratch/
+playground/
+experiments/

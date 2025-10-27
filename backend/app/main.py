@@ -282,7 +282,7 @@ async def health_check() -> dict[str, Any]:
 
 
 # API v1 Routers
-from app.routers import trades, companies, insiders
+from app.routers import trades, companies, insiders, scraper
 
 # Include all routers with API v1 prefix
 app.include_router(
@@ -299,6 +299,11 @@ app.include_router(
     insiders.router,
     prefix=f"{settings.api_v1_prefix}/insiders",
     tags=["Insiders"]
+)
+app.include_router(
+    scraper.router,
+    prefix=f"{settings.api_v1_prefix}/scraper",
+    tags=["Scraper"]
 )
 
 

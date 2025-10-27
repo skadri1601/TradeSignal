@@ -183,10 +183,10 @@ Access:
 
 ## 📖 Documentation
 
-- [API Documentation](docs/API.md)
-- [Architecture Overview](docs/ARCHITECTURE.md)
-- [Deployment Guide](docs/DEPLOYMENT.md)
-- [Contributing Guide](CONTRIBUTING.md)
+- [Backend Documentation](backend/README.md) - API endpoints, setup, database schema
+- [Frontend Documentation](frontend/README.md) - React components, state management, deployment
+- [Project Status](PROJECT_STATUS.md) - Development progress, phase completion, test results
+- Interactive API Docs: http://localhost:8000/docs (when backend is running)
 
 ## 🔑 Environment Variables
 ```env
@@ -221,13 +221,35 @@ npm test
 
 ## 📈 Roadmap
 
-- [x] SEC Form 4 scraper
+### ✅ Phase 1: Backend Core (COMPLETED)
 - [x] FastAPI backend with REST API
-- [x] React dashboard
-- [x] Real-time WebSocket updates
+- [x] PostgreSQL database with SQLAlchemy ORM
+- [x] Database models (Companies, Insiders, Trades)
+- [x] 21 API endpoints fully tested
+- [x] Docker containerization
+- [x] Seed data for testing
+
+### ✅ Phase 2: SEC Scraper (COMPLETED)
+- [x] SEC EDGAR API client with rate limiting
+- [x] Form 4 XML parser (insider trades)
+- [x] Real-time scraper service
+- [x] Auto-create companies and insiders
+- [x] Scraper API endpoints
+- [x] Successfully tested with AAPL, TSLA
+
+### 🚧 Phase 3: Frontend Dashboard (IN PROGRESS)
+- [ ] React dashboard with TypeScript
+- [ ] Tailwind CSS styling
+- [ ] Trade listing and filtering
+- [ ] Company/insider profiles
+- [ ] Real-time updates (WebSocket)
+- [ ] Charts and analytics
+
+### 📋 Future Phases
 - [ ] Congressional trade tracking
 - [ ] AI-powered insights (GPT-4o)
 - [ ] Email/webhook alerts
+- [ ] Scheduled auto-scraping
 - [ ] Mobile app (React Native)
 - [ ] Machine learning predictions
 - [ ] Options flow tracking

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15-alpine
@@ -28,9 +26,16 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://tradesignal:tradesignal_dev@postgres:5432/tradesignal
+      - DATABASE_URL=postgresql+asyncpg://tradesignal:tradesignal_dev@postgres:5432/tradesignal
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - JWT_SECRET=${JWT_SECRET:-dev-secret-key}
+      - SEC_USER_AGENT=Saad Kadri er.saadk16@gmail.com
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - ENABLE_AI_INSIGHTS=false
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     depends_on:
       postgres:
         condition: service_healthy

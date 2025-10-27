@@ -300,10 +300,15 @@ class TradeService:
         largest_trade = float(sums[3]) if sums[3] else None
 
         # Most active company
+        company_query = select(Trade)
+        if filters:
+            company_query = TradeService._apply_filters(company_query, filters)
+
         most_active_company_result = await db.execute(
             select(Company.ticker, func.count(Trade.id).label("trade_count"))
-            .select_from(query.subquery())
+            .select_from(Trade)
             .join(Company, Company.id == Trade.company_id)
+            .where(Trade.id.in_(select(company_query.subquery().c.id)))
             .group_by(Company.ticker)
             .order_by(desc("trade_count"))
             .limit(1)
@@ -312,10 +317,15 @@ class TradeService:
         most_active_company = most_active_company_row[0] if most_active_company_row else None
 
         # Most active insider
+        insider_query = select(Trade)
+        if filters:
+            insider_query = TradeService._apply_filters(insider_query, filters)
+
         most_active_insider_result = await db.execute(
             select(Insider.name, func.count(Trade.id).label("trade_count"))
-            .select_from(query.subquery())
+            .select_from(Trade)
             .join(Insider, Insider.id == Trade.insider_id)
+            .where(Trade.id.in_(select(insider_query.subquery().c.id)))
             .group_by(Insider.name)
             .order_by(desc("trade_count"))
             .limit(1)
