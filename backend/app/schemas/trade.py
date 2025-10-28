@@ -137,6 +137,8 @@ class TradeStats(BaseModel):
     total_sells: int = Field(0, description="Total sell transactions")
     total_shares_traded: float = Field(0.0, description="Total shares traded")
     total_value: float = Field(0.0, description="Total dollar value")
+    total_buy_value: float = Field(0.0, description="Total dollar value of buys")
+    total_sell_value: float = Field(0.0, description="Total dollar value of sells")
     average_trade_size: float = Field(0.0, description="Average trade size")
     largest_trade: Optional[float] = Field(None, description="Largest single trade")
     most_active_company: Optional[str] = Field(None, description="Most traded company ticker")

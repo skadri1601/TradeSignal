@@ -331,6 +331,18 @@ class TradeService:
         average_trade_size = float(sums[2]) if sums[2] else 0.0
         largest_trade = float(sums[3]) if sums[3] else None
 
+        # Total buy value
+        buy_value_result = await db.execute(
+            select(func.sum(Trade.total_value)).select_from(buy_query.subquery())
+        )
+        total_buy_value = float(buy_value_result.scalar_one() or 0.0)
+
+        # Total sell value
+        sell_value_result = await db.execute(
+            select(func.sum(Trade.total_value)).select_from(sell_query.subquery())
+        )
+        total_sell_value = float(sell_value_result.scalar_one() or 0.0)
+
         # Most active company
         company_query = select(Trade)
         if filters:
@@ -371,6 +383,8 @@ class TradeService:
             total_sells=total_sells,
             total_shares_traded=total_shares_traded,
             total_value=total_value,
+            total_buy_value=total_buy_value,
+            total_sell_value=total_sell_value,
             average_trade_size=average_trade_size,
             largest_trade=largest_trade,
             most_active_company=most_active_company,
