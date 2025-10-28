@@ -11,10 +11,15 @@ import type { Trade } from '../types';
 export default function Dashboard() {
   const queryClient = useQueryClient();
 
-  // Fetch trade stats
+  // Calculate date 7 days ago
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const dateFrom = sevenDaysAgo.toISOString().split('T')[0];
+
+  // Fetch trade stats (last 7 days)
   const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ['tradeStats'],
-    queryFn: () => tradesApi.getTradeStats(),
+    queryKey: ['tradeStats', 'last7days'],
+    queryFn: () => tradesApi.getTradeStats({ transaction_date_from: dateFrom }),
   });
 
   // Fetch recent trades
@@ -59,7 +64,7 @@ export default function Dashboard() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="mt-2 text-gray-600">Overview of insider trading activity</p>
+        <p className="mt-2 text-gray-600">Insider trading activity - Last 7 Days</p>
       </div>
 
       {/* Stats Cards */}
@@ -68,7 +73,7 @@ export default function Dashboard() {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Trades</p>
+              <p className="text-sm font-medium text-gray-600">Total Trades (7d)</p>
               <p className="text-2xl font-bold text-gray-900">
                 {formatNumber(stats?.total_trades || 0)}
               </p>
@@ -83,12 +88,12 @@ export default function Dashboard() {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Buy Trades</p>
+              <p className="text-sm font-medium text-gray-600">Buy Volume (7d)</p>
               <p className="text-2xl font-bold text-green-600">
-                {formatNumber(stats?.total_buys || 0)}
+                {formatCurrency(stats?.total_buy_value || 0)}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                {((stats?.total_buys || 0) / (stats?.total_trades || 1) * 100).toFixed(1)}% of total
+                {formatNumber(stats?.total_buys || 0)} trades
               </p>
             </div>
             <div className="p-3 bg-green-100 rounded-lg">
@@ -101,12 +106,12 @@ export default function Dashboard() {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Sell Trades</p>
+              <p className="text-sm font-medium text-gray-600">Sell Volume (7d)</p>
               <p className="text-2xl font-bold text-red-600">
-                {formatNumber(stats?.total_sells || 0)}
+                {formatCurrency(stats?.total_sell_value || 0)}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                {((stats?.total_sells || 0) / (stats?.total_trades || 1) * 100).toFixed(1)}% of total
+                {formatNumber(stats?.total_sells || 0)} trades
               </p>
             </div>
             <div className="p-3 bg-red-100 rounded-lg">
@@ -115,16 +120,16 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Total Value */}
+        {/* Most Active */}
         <div className="card">
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0 pr-2">
-              <p className="text-sm font-medium text-gray-600">Total Value</p>
+              <p className="text-sm font-medium text-gray-600">Most Active</p>
               <p className="text-2xl font-bold text-gray-900 break-words">
-                {formatCurrency(stats?.total_value || 0)}
+                {stats?.most_active_company || 'N/A'}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                Avg: {formatCurrency(stats?.average_trade_size || 0)}
+                Avg trade: {formatCurrency(stats?.average_trade_size || 0)}
               </p>
             </div>
             <div className="p-3 bg-purple-100 rounded-lg flex-shrink-0">

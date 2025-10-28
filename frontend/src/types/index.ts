@@ -73,6 +73,8 @@ export interface TradeStats {
   total_sells: number;
   total_shares_traded: number;
   total_value: number;
+  total_buy_value: number;
+  total_sell_value: number;
   average_trade_size: number;
   largest_trade: number | null;
   most_active_company: string | null;

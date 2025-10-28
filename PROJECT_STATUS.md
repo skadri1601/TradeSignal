@@ -254,23 +254,261 @@ curl "http://localhost:8000/api/v1/trades/?limit=10"
 
 ---
 
-## 📝 Next Steps
+## 🔜 Phase 4: Scheduled Auto-Scraping (NOT STARTED)
 
-### Immediate (Phase 3 - Frontend)
-1. Set up React project with TypeScript + Vite
-2. Configure Tailwind CSS
-3. Create API client service (fetch wrapper)
-4. Build Dashboard page (trade feed)
-5. Build Trades List page (table with filters)
-6. Build Company Detail page
-7. Build Insider Detail page
+### Planned Features
+1. **APScheduler Integration**
+   - Background job scheduler for FastAPI
+   - Non-blocking async job execution
+   - Persistent job store (SQLite or PostgreSQL)
 
-### Future Phases
-- **Phase 4:** Scheduled auto-scraping (APScheduler)
-- **Phase 5:** Email/webhook alerts
-- **Phase 6:** AI-powered insights (OpenAI GPT-4o)
-- **Phase 7:** Congressional trade tracking
-- **Phase 8:** Mobile app (React Native)
+2. **Automated Scraping Jobs**
+   - Daily scraping schedule (e.g., every 4 hours during market hours)
+   - Scrape all 25 tracked companies automatically
+   - Incremental updates (only fetch new filings since last scrape)
+   - Rate-limited execution (SEC: 10 requests/second)
+
+3. **Job Management API**
+   - `GET /api/v1/jobs/status` - View all scheduled jobs
+   - `POST /api/v1/jobs/scrape/{ticker}` - Manually trigger scrape
+   - `GET /api/v1/jobs/history` - View scraping history/logs
+   - `POST /api/v1/jobs/pause` - Pause auto-scraping
+   - `POST /api/v1/jobs/resume` - Resume auto-scraping
+
+4. **Smart Scraping Logic**
+   - Track last scrape timestamp per company
+   - Skip companies scraped within last 2 hours
+   - Prioritize companies with recent trading activity
+   - Retry failed scrapes with exponential backoff
+
+5. **Monitoring & Alerts**
+   - Log scraping metrics (filings found, trades created, errors)
+   - Database table for scrape history
+   - Email notifications on critical failures
+   - Prometheus metrics endpoint (optional)
+
+### Technical Requirements
+- **APScheduler** (async scheduler)
+- **Celery** (alternative: distributed task queue)
+- **Redis** (optional: job queue backend)
+- **Logging:** Structured logs with timestamps
+- **Error Handling:** Graceful failure recovery
+
+### Success Criteria
+- ✅ System scrapes all companies every 4-6 hours automatically
+- ✅ No manual intervention required
+- ✅ New trades appear in dashboard within 6 hours of SEC filing
+- ✅ Failed scrapes retry without crashing system
+- ✅ Admin can view/manage jobs via API
+
+---
+
+## 🔜 Phase 5: Notifications & Alerts (NOT STARTED)
+
+### Planned Features
+1. **Alert System Architecture**
+   - User-defined alert rules
+   - Real-time notifications via WebSocket
+   - Email notifications (SendGrid/SMTP)
+   - Webhook support for integrations (Slack, Discord, Zapier)
+
+2. **Alert Types**
+   - **Large Trade Alert:** Trades > $10M, $50M, $100M thresholds
+   - **Insider Buy Alert:** CEO/CFO purchases (bullish signal)
+   - **Unusual Volume Alert:** 3x average trading activity
+   - **Cluster Alert:** Multiple insiders trading same stock within 48 hours
+   - **Company-Specific Alert:** Track favorite tickers (e.g., NVDA, TSLA)
+
+3. **Alert Management API**
+   - `POST /api/v1/alerts/create` - Create alert rule
+   - `GET /api/v1/alerts/` - List user's alerts
+   - `PATCH /api/v1/alerts/{id}` - Update alert settings
+   - `DELETE /api/v1/alerts/{id}` - Delete alert
+   - `GET /api/v1/alerts/history` - View triggered alerts
+
+4. **Notification Channels**
+   - **Email:** HTML templates with trade details
+   - **SMS:** Twilio integration (optional)
+   - **Push Notifications:** Web push API
+   - **Webhooks:** POST to user-defined URLs
+
+5. **User Preferences**
+   - Alert frequency limits (max 5/day, digest mode)
+   - Quiet hours (no alerts 10pm-8am)
+   - Channel preferences per alert type
+   - Test notification button
+
+### Technical Requirements
+- **SendGrid** or **AWS SES** (email)
+- **Twilio** (SMS, optional)
+- **Background workers** (Celery/APScheduler)
+- **Template engine** (Jinja2 for email HTML)
+- **User authentication** (JWT tokens)
+
+### Success Criteria
+- ✅ Users receive email within 1 hour of matching trade
+- ✅ Email contains trade details, SEC link, company info
+- ✅ Users can customize alert thresholds
+- ✅ System handles 1000+ alerts/day without delays
+- ✅ Webhooks successfully trigger Slack/Discord messages
+
+---
+
+## 🔜 Phase 6: AI-Powered Insights (NOT STARTED)
+
+### Planned Features
+1. **GPT-4 Trade Analysis**
+   - Analyze insider trading patterns per company
+   - Generate natural language summaries
+   - Identify bullish/bearish signals
+   - Compare trades to historical patterns
+
+2. **Automated Insights**
+   - **Daily Digest:** "Top 5 Insider Trades Today" with AI commentary
+   - **Company Analysis:** "NVDA had 12 insider sells totaling $45M - what does this mean?"
+   - **Sentiment Analysis:** Bullish/Neutral/Bearish classification
+   - **Anomaly Detection:** Flag unusual trading patterns
+
+3. **AI Features**
+   - `GET /api/v1/ai/analyze/{ticker}` - Analyze company's recent insider activity
+   - `GET /api/v1/ai/summary/daily` - Daily AI-generated summary
+   - `POST /api/v1/ai/ask` - Ask questions about trades (chatbot)
+   - `GET /api/v1/ai/signals` - Get AI-generated trading signals
+
+4. **Natural Language Queries**
+   - "Show me all CEO purchases over $1M in the last month"
+   - "Which companies have the most insider buying?"
+   - "Explain why NVDA insiders are selling"
+
+5. **Predictive Models**
+   - Correlation between insider trades and stock price movement
+   - Predict likelihood of significant price change
+   - Risk scoring for companies with heavy insider selling
+
+### Technical Requirements
+- **OpenAI API** (GPT-4o or GPT-4-turbo)
+- **LangChain** (optional: AI orchestration)
+- **Vector Database** (Pinecone/Weaviate for embeddings)
+- **Prompt Engineering:** Few-shot examples for accurate analysis
+- **Cost Management:** Cache AI responses, rate limiting
+
+### Success Criteria
+- ✅ AI generates accurate, insightful trade summaries
+- ✅ Sentiment analysis matches expert opinions >80% accuracy
+- ✅ Daily digest email includes AI-written analysis
+- ✅ Chatbot answers trade questions correctly
+- ✅ API costs stay under $50/month for 1000 users
+
+---
+
+## 🔜 Phase 7: Congressional Trading Tracker (NOT STARTED)
+
+### Planned Features
+1. **House/Senate Stock Disclosure Scraper**
+   - Scrape https://house-stock-watcher.data.gov/ (House)
+   - Scrape https://efdsearch.senate.gov/ (Senate)
+   - Parse PDF disclosures (45-day delay)
+
+2. **Congressional Trade Features**
+   - Track all Congress members' stock trades
+   - Compare congressional trades to insider trades
+   - Identify stocks popular with both insiders and politicians
+   - Track committee members trading relevant stocks (e.g., tech committee trading tech stocks)
+
+3. **Conflict of Interest Detection**
+   - Flag trades before major legislation votes
+   - Track trades in regulated industries
+   - Highlight unusual timing patterns
+
+4. **API Endpoints**
+   - `GET /api/v1/congress/trades` - List congressional trades
+   - `GET /api/v1/congress/members` - List Congress members
+   - `GET /api/v1/congress/member/{id}` - Member's trading history
+   - `GET /api/v1/congress/conflicts` - Potential conflicts of interest
+
+5. **UI Enhancements**
+   - New "Congressional Trades" page
+   - Side-by-side comparison: Insider vs Congressional trades
+   - Filter by party, state, committee
+
+### Technical Requirements
+- **PDF parsing** (PyPDF2, pdfplumber)
+- **Selenium** (for JavaScript-heavy sites)
+- **Data normalization** (different formats per chamber)
+- **Political data API** (optional: member info)
+
+### Success Criteria
+- ✅ System tracks both House and Senate trades
+- ✅ Congressional data updates within 48 hours of disclosure
+- ✅ Users can compare politician vs insider trades for same stock
+- ✅ Conflict-of-interest flags are accurate
+- ✅ Dashboard shows "Politicians vs Insiders" comparison
+
+---
+
+## 🔜 Phase 8: Mobile App (NOT STARTED)
+
+### Planned Features
+1. **React Native App**
+   - iOS and Android support
+   - Native navigation (React Navigation)
+   - Push notifications for alerts
+   - Offline mode (cache recent trades)
+
+2. **Mobile-Optimized Features**
+   - Swipeable trade cards
+   - Pull-to-refresh
+   - Infinite scroll for trade lists
+   - Biometric authentication (Touch ID/Face ID)
+
+3. **Key Screens**
+   - Dashboard (recent trades, stats)
+   - Trade Feed (scrollable list)
+   - Company Detail (chart + trade history)
+   - Insider Detail (insider's trading activity)
+   - Alerts (manage notifications)
+   - Settings (preferences, theme)
+
+4. **Push Notifications**
+   - Firebase Cloud Messaging (FCM)
+   - Apple Push Notification Service (APNs)
+   - Trigger on large trades, custom alerts
+
+5. **Performance Optimization**
+   - React Native performance best practices
+   - Image optimization
+   - Lazy loading
+   - Background data sync
+
+### Technical Requirements
+- **React Native** (Expo or bare workflow)
+- **TypeScript**
+- **Firebase** (push notifications, analytics)
+- **AsyncStorage** (offline cache)
+- **App Store + Google Play** accounts
+
+### Success Criteria
+- ✅ App launches in <2 seconds
+- ✅ Real-time trade updates via WebSocket
+- ✅ Push notifications delivered within 5 minutes
+- ✅ Offline mode shows cached data
+- ✅ 4.5+ star rating on app stores
+- ✅ Published to iOS App Store and Google Play Store
+
+---
+
+## 📝 Summary: All Planned Phases
+
+| Phase | Status | Description | Key Tech |
+|-------|--------|-------------|----------|
+| **Phase 1** | ✅ COMPLETED | Backend Core (FastAPI, PostgreSQL, API) | FastAPI, SQLAlchemy, Pydantic |
+| **Phase 2** | ✅ COMPLETED | SEC Scraper (Form 4 parsing, live data) | lxml, httpx, SEC EDGAR API |
+| **Phase 3** | ✅ COMPLETED | Frontend Dashboard (React, filters, WebSocket) | React 18, TypeScript, Tailwind |
+| **Phase 4** | ⏳ NOT STARTED | Scheduled Auto-Scraping | APScheduler, Celery, Redis |
+| **Phase 5** | ⏳ NOT STARTED | Notifications & Alerts | SendGrid, Webhooks, Email |
+| **Phase 6** | ⏳ NOT STARTED | AI-Powered Insights | OpenAI GPT-4o, LangChain |
+| **Phase 7** | ⏳ NOT STARTED | Congressional Trading Tracker | PDF parsing, Senate/House APIs |
+| **Phase 8** | ⏳ NOT STARTED | Mobile App (iOS/Android) | React Native, Firebase |
 
 ---
 

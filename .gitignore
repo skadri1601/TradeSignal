@@ -88,10 +88,6 @@ secrets/
 .vscode/settings.json
 .idea/workspace.xml
 
-# Claude Code settings (local configuration)
-.claude/settings.local.json
-.claude/settings.json
-.claude/*.local.*
 
 # Test coverage
 coverage/
@@ -135,3 +131,6 @@ $RECYCLE.BIN/
 scratch/
 playground/
 experiments/
+
+#Readme files
+PROJECT_STATUS.md
