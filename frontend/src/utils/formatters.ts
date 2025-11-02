@@ -73,9 +73,11 @@ export const formatPercentage = (value: number): string => {
   return `${value.toFixed(2)}%`;
 };
 
-// Shorten large numbers (e.g., 1.5M, 2.3B)
+// Shorten large numbers (e.g., 1.5M, 2.3B, 1.2T)
 export const formatCompactNumber = (value: number): string => {
-  if (value >= 1_000_000_000) {
+  if (value >= 1_000_000_000_000) {
+    return `${(value / 1_000_000_000_000).toFixed(1)}T`;
+  } else if (value >= 1_000_000_000) {
     return `${(value / 1_000_000_000).toFixed(1)}B`;
   } else if (value >= 1_000_000) {
     return `${(value / 1_000_000).toFixed(1)}M`;
@@ -83,4 +85,21 @@ export const formatCompactNumber = (value: number): string => {
     return `${(value / 1_000).toFixed(1)}K`;
   }
   return value.toString();
+};
+
+// Format currency with short format for large numbers
+export const formatCurrencyCompact = (value: string | number | null): string => {
+  if (value === null || value === undefined) return 'N/A';
+
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+
+  if (isNaN(num)) return 'N/A';
+
+  // For large numbers (> 1 million), use compact format
+  if (num >= 1_000_000) {
+    return '$' + formatCompactNumber(num);
+  }
+
+  // For smaller numbers, use standard currency format
+  return formatCurrency(num);
 };

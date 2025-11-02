@@ -172,11 +172,12 @@ class Trade(Base):
 
     @property
     def is_significant(self) -> bool:
-        """Check if trade is significant (>$100k)."""
+        """Check if trade is significant (exceeds configured threshold)."""
+        from app.config import settings
         if self.total_value:
-            return float(self.total_value) > 100000
+            return float(self.total_value) > settings.significant_trade_threshold
         elif self.calculated_total_value:
-            return float(self.calculated_total_value) > 100000
+            return float(self.calculated_total_value) > settings.significant_trade_threshold
         return False
 
     @property

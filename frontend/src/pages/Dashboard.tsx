@@ -1,10 +1,12 @@
 import { useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { tradesApi } from '../api/trades';
-import { TrendingUp, TrendingDown, Building2 } from 'lucide-react';
-import { formatCurrency, formatNumber } from '../utils/formatters';
+import { TrendingUp, TrendingDown, Building2, ArrowRight } from 'lucide-react';
+import { formatCurrency, formatNumber, formatCurrencyCompact } from '../utils/formatters';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import TradeList from '../components/trades/TradeList';
+import TradePieChart from '../components/trades/TradePieChart';
 import useTradeStream from '../hooks/useTradeStream';
 import type { Trade } from '../types';
 
@@ -88,12 +90,12 @@ export default function Dashboard() {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Buy Volume (7d)</p>
+              <p className="text-sm font-medium text-gray-600">Buy Trades (7d)</p>
               <p className="text-2xl font-bold text-green-600">
-                {formatCurrency(stats?.total_buy_value || 0)}
+                {formatNumber(stats?.total_buys || 0)}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                {formatNumber(stats?.total_buys || 0)} trades
+                {((stats?.total_buys || 0) / (stats?.total_trades || 1) * 100).toFixed(1)}% of total
               </p>
             </div>
             <div className="p-3 bg-green-100 rounded-lg">
@@ -106,12 +108,12 @@ export default function Dashboard() {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Sell Volume (7d)</p>
+              <p className="text-sm font-medium text-gray-600">Sell Trades (7d)</p>
               <p className="text-2xl font-bold text-red-600">
-                {formatCurrency(stats?.total_sell_value || 0)}
+                {formatNumber(stats?.total_sells || 0)}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                {formatNumber(stats?.total_sells || 0)} trades
+                {((stats?.total_sells || 0) / (stats?.total_trades || 1) * 100).toFixed(1)}% of total
               </p>
             </div>
             <div className="p-3 bg-red-100 rounded-lg">
@@ -129,7 +131,7 @@ export default function Dashboard() {
                 {stats?.most_active_company || 'N/A'}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                Avg trade: {formatCurrency(stats?.average_trade_size || 0)}
+                Avg trade: {formatCurrencyCompact(stats?.average_trade_size || 0)}
               </p>
             </div>
             <div className="p-3 bg-purple-100 rounded-lg flex-shrink-0">
@@ -139,15 +141,56 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Trade Distribution Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Buy vs Sell Count */}
+        <div className="card">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            Buy vs Sell (Trade Count)
+          </h2>
+          <TradePieChart stats={stats} mode="count" />
+        </div>
+
+        {/* Buy vs Sell Volume */}
+        <div className="card">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            Buy vs Sell (Dollar Volume)
+          </h2>
+          <TradePieChart stats={stats} mode="value" />
+        </div>
+      </div>
+
       {/* Recent Trades */}
       <div className="card">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Trades (Last 7 Days)</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-gray-900">Recent Trades</h2>
+          <Link
+            to="/trades"
+            className="flex items-center text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+          >
+            View All
+            <ArrowRight className="ml-1 h-4 w-4" />
+          </Link>
+        </div>
         {tradesLoading ? (
           <div className="flex items-center justify-center h-32">
             <LoadingSpinner />
           </div>
         ) : (
-          <TradeList trades={recentTrades || []} />
+          <>
+            <TradeList trades={(recentTrades || []).slice(0, 5)} />
+            {(recentTrades || []).length > 5 && (
+              <div className="mt-4 text-center">
+                <Link
+                  to="/trades"
+                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                >
+                  View all {(recentTrades || []).length} trades
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

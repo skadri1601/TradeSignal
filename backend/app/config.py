@@ -66,6 +66,45 @@ class Settings(BaseSettings):
         alias="SEC_USER_AGENT"
     )
 
+    # Scheduler Configuration
+    scheduler_enabled: bool = Field(
+        default=True,
+        description="Enable automated scheduled scraping",
+        alias="SCHEDULER_ENABLED"
+    )
+    scraper_schedule_hours: str = Field(
+        default="3,9,15,21",
+        description="Comma-separated hours (0-23) when scraper runs (default: 3am, 9am, 3pm, 9pm)",
+        alias="SCRAPER_SCHEDULE_HOURS"
+    )
+    scraper_cooldown_hours: int = Field(
+        default=4,
+        description="Minimum hours between scrapes for same company",
+        alias="SCRAPER_COOLDOWN_HOURS"
+    )
+    scraper_days_back: int = Field(
+        default=7,
+        description="How many days back to scrape",
+        alias="SCRAPER_DAYS_BACK"
+    )
+    scraper_max_filings: int = Field(
+        default=5,
+        description="Maximum filings to process per scrape",
+        alias="SCRAPER_MAX_FILINGS"
+    )
+    scraper_timezone: str = Field(
+        default="US/Eastern",
+        description="Timezone for scheduler (e.g., US/Eastern, UTC)",
+        alias="SCRAPER_TIMEZONE"
+    )
+
+    # Trade Configuration
+    significant_trade_threshold: float = Field(
+        default=100000.0,
+        description="Minimum dollar value for a trade to be considered 'significant'",
+        alias="SIGNIFICANT_TRADE_THRESHOLD"
+    )
+
     # Feature Flags
     enable_ai_insights: bool = Field(
         default=False,

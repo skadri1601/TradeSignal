@@ -3,9 +3,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { tradesApi } from '../api/trades';
 import TradeList from '../components/trades/TradeList';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import CompanyAutocomplete from '../components/common/CompanyAutocomplete';
 import TradeValueSparkline from '../components/trades/TradeValueSparkline';
 import type { PaginatedResponse, Trade, TradeFilters, TradeStats } from '../types';
-import { formatCurrency, formatNumber } from '../utils/formatters';
+import { formatCurrency, formatNumber, formatCurrencyCompact } from '../utils/formatters';
 import useTradeStream from '../hooks/useTradeStream';
 
 export default function TradesPage() {
@@ -150,13 +151,10 @@ export default function TradesPage() {
               <label htmlFor="ticker" className="text-sm font-medium text-gray-700">
                 Ticker
               </label>
-              <input
-                id="ticker"
-                name="ticker"
+              <CompanyAutocomplete
                 value={filterForm.ticker}
-                onChange={handleFilterInputChange}
-                placeholder="e.g. AAPL"
-                className="input"
+                onChange={(ticker) => setFilterForm(prev => ({ ...prev, ticker }))}
+                placeholder="Search ticker (e.g., AAPL)"
               />
             </div>
 
@@ -239,6 +237,88 @@ export default function TradesPage() {
             </div>
           </div>
 
+          {/* Date Range Presets */}
+          <div className="flex flex-wrap gap-2">
+            <span className="text-sm font-medium text-gray-700 self-center">Quick Select:</span>
+            <button
+              type="button"
+              onClick={() => {
+                const end = new Date();
+                const start = new Date();
+                start.setDate(start.getDate() - 7);
+                setFilterForm(prev => ({
+                  ...prev,
+                  startDate: start.toISOString().split('T')[0],
+                  endDate: end.toISOString().split('T')[0],
+                }));
+              }}
+              className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+            >
+              Last 7 Days
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const end = new Date();
+                const start = new Date();
+                start.setDate(start.getDate() - 30);
+                setFilterForm(prev => ({
+                  ...prev,
+                  startDate: start.toISOString().split('T')[0],
+                  endDate: end.toISOString().split('T')[0],
+                }));
+              }}
+              className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+            >
+              Last 30 Days
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const end = new Date();
+                const start = new Date();
+                start.setDate(start.getDate() - 90);
+                setFilterForm(prev => ({
+                  ...prev,
+                  startDate: start.toISOString().split('T')[0],
+                  endDate: end.toISOString().split('T')[0],
+                }));
+              }}
+              className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+            >
+              Last 90 Days
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const end = new Date();
+                const start = new Date();
+                start.setFullYear(start.getFullYear() - 1);
+                setFilterForm(prev => ({
+                  ...prev,
+                  startDate: start.toISOString().split('T')[0],
+                  endDate: end.toISOString().split('T')[0],
+                }));
+              }}
+              className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+            >
+              Last Year
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFilterForm(prev => ({
+                  ...prev,
+                  startDate: '',
+                  endDate: '',
+                }));
+              }}
+              className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              Clear Dates
+            </button>
+          </div>
+
           {validationError && (
             <p className="text-sm text-red-600">{validationError}</p>
           )}
@@ -294,11 +374,11 @@ export default function TradesPage() {
                 </p>
               </div>
               <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                <p className="text-sm text-gray-600">Total Value</p>
+                <p className="text-sm text-gray-600">Total Volume</p>
                 <p className="mt-1 text-2xl font-semibold text-gray-900">
-                  {formatCurrency(stats?.total_value ?? 0)}
+                  {formatCurrencyCompact(stats?.total_value ?? 0)}
                 </p>
-                <p className="text-xs text-gray-500">Avg trade {formatCurrency(stats?.average_trade_size ?? 0)}</p>
+                <p className="text-xs text-gray-500">Avg trade {formatCurrencyCompact(stats?.average_trade_size ?? 0)}</p>
               </div>
             </div>
           </div>
