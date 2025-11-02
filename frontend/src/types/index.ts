@@ -116,3 +116,48 @@ export interface APIError {
   timestamp: string;
   path: string;
 }
+
+export type AlertType = "large_trade" | "company_watch" | "insider_role" | "volume_spike";
+export type NotificationChannel = "webhook" | "email" | "push";
+
+export interface Alert {
+  id: number;
+  name: string;
+  alert_type: AlertType;
+  ticker: string | null;
+  min_value: number | null;
+  max_value: number | null;
+  transaction_type: "BUY" | "SELL" | null;
+  insider_roles: string[];
+  notification_channels: NotificationChannel[];
+  webhook_url: string | null;
+  email: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AlertHistory {
+  id: number;
+  alert_id: number;
+  trade_id: number;
+  notification_channel: NotificationChannel;
+  notification_status: "sent" | "failed" | "retrying";
+  error_message: string | null;
+  created_at: string;
+}
+
+export interface AlertStats {
+  total_alerts: number;
+  active_alerts: number;
+  inactive_alerts: number;
+  total_notifications_sent: number;
+  notifications_last_24h: number;
+  failed_notifications_last_24h: number;
+}
+
+export interface AlertFilters {
+  is_active?: boolean;
+  page?: number;
+  limit?: number;
+}

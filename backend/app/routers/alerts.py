@@ -70,15 +70,12 @@ async def list_alerts(
     skip = (page - 1) * limit
     alerts, total = await service.get_alerts(skip=skip, limit=limit, is_active=is_active)
 
-    return {
-        "items": alerts,
-        "total": total,
-        "page": page,
-        "limit": limit,
-        "pages": (total + limit - 1) // limit if total > 0 else 0,
-        "has_next": (page * limit) < total,
-        "has_prev": page > 1,
-    }
+    return PaginatedResponse.create(
+        items=alerts,
+        total=total,
+        page=page,
+        limit=limit
+    )
 
 
 @router.get("/{alert_id}", response_model=AlertResponse)
@@ -216,15 +213,12 @@ async def list_alert_history(
         limit=limit
     )
 
-    return {
-        "items": history,
-        "total": total,
-        "page": page,
-        "limit": limit,
-        "pages": (total + limit - 1) // limit if total > 0 else 0,
-        "has_next": (page * limit) < total,
-        "has_prev": page > 1,
-    }
+    return PaginatedResponse.create(
+        items=history,
+        total=total,
+        page=page,
+        limit=limit
+    )
 
 
 @router.get("/stats/", response_model=AlertStatsResponse)

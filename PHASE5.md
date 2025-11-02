@@ -7,6 +7,8 @@
 
 ---
 
+there's a alert page, but no alrts are found and an 3 tabs called- all, active, inactive and an buttton for crate alert which doesn't click on. also keep the amounts round off like $3.6M or $500B like round off instead off showing whole value and in the dashboard only 10 trades were shown earlier what happened to that? Also there was an auto dilter for default days like- 7 days, 30 days, 60 days and 90 days what happened to that? Also when I typed stock name a list was showing in the filter, but now it's not there- what happened to that?
+
 ## 🎯 Phase Overview
 
 Implement a comprehensive alert and notification system that allows users to receive real-time notifications when significant insider trades occur. Start with webhooks (Slack/Discord) for immediate value, then add email notifications, and optionally add browser push notifications.
