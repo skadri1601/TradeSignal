@@ -66,6 +66,38 @@ class Settings(BaseSettings):
         alias="SEC_USER_AGENT"
     )
 
+    # Alert & Notification Configuration
+    alerts_enabled: bool = Field(
+        default=True,
+        description="Enable alert system",
+        alias="ALERTS_ENABLED"
+    )
+    alert_check_interval_minutes: int = Field(
+        default=5,
+        description="How often to check for alert triggers (minutes)",
+        alias="ALERT_CHECK_INTERVAL_MINUTES"
+    )
+    max_alerts_per_user: int = Field(
+        default=50,
+        description="Maximum alerts per user",
+        alias="MAX_ALERTS_PER_USER"
+    )
+    alert_cooldown_minutes: int = Field(
+        default=60,
+        description="Minimum minutes between notifications for same alert/trade combo",
+        alias="ALERT_COOLDOWN_MINUTES"
+    )
+    webhook_timeout_seconds: int = Field(
+        default=10,
+        description="Webhook request timeout",
+        alias="WEBHOOK_TIMEOUT_SECONDS"
+    )
+    webhook_retry_count: int = Field(
+        default=3,
+        description="Number of webhook retry attempts",
+        alias="WEBHOOK_RETRY_COUNT"
+    )
+
     # Feature Flags
     enable_ai_insights: bool = Field(
         default=False,
