@@ -21,6 +21,7 @@ from app.schemas.trade import (
     TradeWithDetails,
 )
 from app.services.trade_event_manager import trade_event_manager
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -147,7 +148,7 @@ class TradeService:
             query = query.where(Trade.derivative_transaction == True)
 
         if filters.significant_only:
-            query = query.where(Trade.total_value > 100000)
+            query = query.where(Trade.total_value > settings.significant_trade_threshold)
 
         return query
 
@@ -316,13 +317,15 @@ class TradeService:
         total_sells = total_sells_result.scalar_one()
 
         # Sum of shares and value
+        # Use subquery columns to avoid cartesian product
+        subq = query.subquery()
         sums_result = await db.execute(
             select(
-                func.sum(Trade.shares),
-                func.sum(Trade.total_value),
-                func.avg(Trade.total_value),
-                func.max(Trade.total_value)
-            ).select_from(query.subquery())
+                func.sum(subq.c.shares),
+                func.sum(subq.c.total_value),
+                func.avg(subq.c.total_value),
+                func.max(subq.c.total_value)
+            )
         )
         sums = sums_result.one()
 
@@ -332,14 +335,16 @@ class TradeService:
         largest_trade = float(sums[3]) if sums[3] else None
 
         # Total buy value
+        buy_subq = buy_query.subquery()
         buy_value_result = await db.execute(
-            select(func.sum(Trade.total_value)).select_from(buy_query.subquery())
+            select(func.sum(buy_subq.c.total_value))
         )
         total_buy_value = float(buy_value_result.scalar_one() or 0.0)
 
         # Total sell value
+        sell_subq = sell_query.subquery()
         sell_value_result = await db.execute(
-            select(func.sum(Trade.total_value)).select_from(sell_query.subquery())
+            select(func.sum(sell_subq.c.total_value))
         )
         total_sell_value = float(sell_value_result.scalar_one() or 0.0)
 

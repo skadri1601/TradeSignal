@@ -1,0 +1,145 @@
+import { useState, useEffect, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { companiesApi } from '../../api/companies';
+import { Search, X } from 'lucide-react';
+import type { Company } from '../../types';
+
+interface CompanyAutocompleteProps {
+  value: string;
+  onChange: (ticker: string) => void;
+  placeholder?: string;
+}
+
+export default function CompanyAutocomplete({
+  value,
+  onChange,
+  placeholder = 'Search by ticker (e.g., AAPL)...',
+}: CompanyAutocompleteProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState(value);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const { data: companiesData, isLoading, error } = useQuery({
+    queryKey: ['companies', 'all'],
+    queryFn: () => companiesApi.getCompanies({ limit: 100 }),
+  });
+
+  // Debug logging
+  useEffect(() => {
+    console.log('[CompanyAutocomplete] Query State:', {
+      isLoading,
+      hasData: !!companiesData,
+      itemsCount: companiesData?.items?.length || 0,
+      error: error?.message || null,
+    });
+  }, [isLoading, companiesData, error]);
+
+  const companies = companiesData?.items || [];
+
+  const filteredCompanies = companies.filter((company) => {
+    const search = searchTerm.toLowerCase();
+    return (
+      company.ticker.toLowerCase().includes(search) ||
+      company.name.toLowerCase().includes(search)
+    );
+  }).slice(0, 10); // Limit to top 10 results
+
+  // Sync searchTerm with value prop (e.g., when parent resets)
+  useEffect(() => {
+    setSearchTerm(value);
+  }, [value]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSelect = (company: Company) => {
+    setSearchTerm(company.ticker);
+    onChange(company.ticker);
+    setIsOpen(false);
+  };
+
+  const handleClear = () => {
+    setSearchTerm('');
+    onChange('');
+    setIsOpen(false);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setSearchTerm(newValue);
+    setIsOpen(newValue.length > 0);
+
+    // If user clears the input, clear the filter
+    if (newValue === '') {
+      onChange('');
+    }
+  };
+
+  return (
+    <div className="relative" ref={wrapperRef}>
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Search className="h-4 w-4 text-gray-400" />
+        </div>
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={handleInputChange}
+          onFocus={() => searchTerm.length > 0 && setIsOpen(true)}
+          placeholder={placeholder}
+          className="input pl-10 pr-10"
+          autoComplete="off"
+        />
+        {searchTerm && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Dropdown */}
+      {isOpen && (
+        <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+          {isLoading ? (
+            <div className="px-4 py-3 text-sm text-gray-500">Loading companies...</div>
+          ) : filteredCompanies.length > 0 ? (
+            <ul className="py-1">
+              {filteredCompanies.map((company) => (
+                <li key={company.id}>
+                  <button
+                    type="button"
+                    onClick={() => handleSelect(company)}
+                    className="w-full text-left px-4 py-2 hover:bg-blue-50 transition-colors focus:outline-none focus:bg-blue-50"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="font-semibold text-blue-600">{company.ticker}</span>
+                        <span className="ml-2 text-sm text-gray-600">{company.name}</span>
+                      </div>
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="px-4 py-3 text-sm text-gray-500">
+              No companies found for "{searchTerm}"
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
