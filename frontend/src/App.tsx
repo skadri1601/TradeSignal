@@ -5,6 +5,7 @@ import TradesPage from './pages/TradesPage';
 import AboutPage from './pages/AboutPage';
 import CompanyPage from './pages/CompanyPage';
 import InsiderPage from './pages/InsiderPage';
+import AlertsPage from './pages/AlertsPage';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
         <Route path="/about" element={<AboutPage />} />
         <Route path="/companies/:ticker" element={<CompanyPage />} />
         <Route path="/insiders/:id" element={<InsiderPage />} />
+        <Route path="/alerts" element={<AlertsPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>

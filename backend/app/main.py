@@ -318,9 +318,9 @@ app.include_router(
     tags=["Scraper"]
 )
 app.include_router(
-    scheduler.router,
-    prefix=f"{settings.api_v1_prefix}/scheduler",
-    tags=["Scheduler"]
+    alerts.router,
+    prefix=f"{settings.api_v1_prefix}",
+    tags=["Alerts"]
 )
 
 

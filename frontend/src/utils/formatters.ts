@@ -8,6 +8,10 @@ export const formatCurrency = (value: string | number | null): string => {
 
   if (isNaN(num)) return 'N/A';
 
+  if (num >= 10000) {
+    return '$' + formatCompactNumber(num);
+  }
+
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -80,7 +84,7 @@ export const formatCompactNumber = (value: number): string => {
   } else if (value >= 1_000_000_000) {
     return `${(value / 1_000_000_000).toFixed(1)}B`;
   } else if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(1)}M`;
+    return `${(value / 1_000_000).toFixed(2)}M`;
   } else if (value >= 1_000) {
     return `${(value / 1_000).toFixed(1)}K`;
   }

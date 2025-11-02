@@ -66,43 +66,36 @@ class Settings(BaseSettings):
         alias="SEC_USER_AGENT"
     )
 
-    # Scheduler Configuration
-    scheduler_enabled: bool = Field(
+    # Alert & Notification Configuration
+    alerts_enabled: bool = Field(
         default=True,
-        description="Enable automated scheduled scraping",
-        alias="SCHEDULER_ENABLED"
+        description="Enable alert system",
+        alias="ALERTS_ENABLED"
     )
-    scraper_schedule_hours: str = Field(
-        default="3,9,15,21",
-        description="Comma-separated hours (0-23) when scraper runs (default: 3am, 9am, 3pm, 9pm)",
-        alias="SCRAPER_SCHEDULE_HOURS"
-    )
-    scraper_cooldown_hours: int = Field(
-        default=4,
-        description="Minimum hours between scrapes for same company",
-        alias="SCRAPER_COOLDOWN_HOURS"
-    )
-    scraper_days_back: int = Field(
-        default=7,
-        description="How many days back to scrape",
-        alias="SCRAPER_DAYS_BACK"
-    )
-    scraper_max_filings: int = Field(
+    alert_check_interval_minutes: int = Field(
         default=5,
-        description="Maximum filings to process per scrape",
-        alias="SCRAPER_MAX_FILINGS"
+        description="How often to check for alert triggers (minutes)",
+        alias="ALERT_CHECK_INTERVAL_MINUTES"
     )
-    scraper_timezone: str = Field(
-        default="US/Eastern",
-        description="Timezone for scheduler (e.g., US/Eastern, UTC)",
-        alias="SCRAPER_TIMEZONE"
+    max_alerts_per_user: int = Field(
+        default=50,
+        description="Maximum alerts per user",
+        alias="MAX_ALERTS_PER_USER"
     )
-
-    # Trade Configuration
-    significant_trade_threshold: float = Field(
-        default=100000.0,
-        description="Minimum dollar value for a trade to be considered 'significant'",
-        alias="SIGNIFICANT_TRADE_THRESHOLD"
+    alert_cooldown_minutes: int = Field(
+        default=60,
+        description="Minimum minutes between notifications for same alert/trade combo",
+        alias="ALERT_COOLDOWN_MINUTES"
+    )
+    webhook_timeout_seconds: int = Field(
+        default=10,
+        description="Webhook request timeout",
+        alias="WEBHOOK_TIMEOUT_SECONDS"
+    )
+    webhook_retry_count: int = Field(
+        default=3,
+        description="Number of webhook retry attempts",
+        alias="WEBHOOK_RETRY_COUNT"
     )
 
     # Feature Flags
