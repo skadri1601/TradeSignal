@@ -4,7 +4,13 @@ import { Company, PaginatedResponse, CompanyFilters, CompanyStats, Trade } from 
 export const companiesApi = {
   // Get all companies
   getCompanies: async (filters?: CompanyFilters): Promise<PaginatedResponse<Company>> => {
+    console.log('[companiesApi] Fetching companies with filters:', filters);
     const response = await apiClient.get('/api/v1/companies/', { params: filters });
+    console.log('[companiesApi] Response:', {
+      status: response.status,
+      itemsCount: response.data?.items?.length || 0,
+      total: response.data?.total || 0,
+    });
     return response.data;
   },
 

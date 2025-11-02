@@ -6,9 +6,11 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  CartesianGrid,
+  Dot,
 } from 'recharts';
 import type { Trade } from '../../types';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatCurrencyCompact, formatDate } from '../../utils/formatters';
 
 interface TradeValueSparklineProps {
   trades: Trade[];
@@ -65,18 +67,60 @@ export default function TradeValueSparkline({ trades }: TradeValueSparklineProps
     );
   }
 
+  const CustomDot = (props: any) => {
+    const { cx, cy, payload } = props;
+    return (
+      <Dot
+        cx={cx}
+        cy={cy}
+        r={4}
+        fill="#3B82F6"
+        stroke="#fff"
+        strokeWidth={2}
+      />
+    );
+  };
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+          <p className="text-sm font-semibold text-gray-700 mb-1">{formatDate(label)}</p>
+          <p className="text-lg font-bold text-blue-600">{formatCurrency(payload[0].value)}</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
-    <div className="h-48">
+    <div className="h-64">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-          <XAxis dataKey="date" tick={{ fontSize: 12 }} tickFormatter={(value) => value.slice(5)} interval="preserveEnd" />
-          <YAxis hide domain={['auto', 'auto']} />
-          <Tooltip
-            cursor={{ stroke: '#CBD5F5' }}
-            formatter={(value: number) => formatCurrency(value)}
-            labelFormatter={(label: string) => label}
+        <LineChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <XAxis
+            dataKey="date"
+            tick={{ fontSize: 12 }}
+            tickFormatter={(value) => {
+              const date = new Date(value);
+              return `${date.getMonth() + 1}/${date.getDate()}`;
+            }}
+            interval="preserveStartEnd"
           />
-          <Line type="monotone" dataKey="total" stroke="#3B82F6" strokeWidth={2} dot={false} />
+          <YAxis
+            tick={{ fontSize: 12 }}
+            tickFormatter={(value) => formatCurrencyCompact(value)}
+            width={80}
+          />
+          <Tooltip content={<CustomTooltip />} />
+          <Line
+            type="monotone"
+            dataKey="total"
+            stroke="#3B82F6"
+            strokeWidth={3}
+            dot={<CustomDot />}
+            activeDot={{ r: 6 }}
+          />
         </LineChart>
       </ResponsiveContainer>
     </div>

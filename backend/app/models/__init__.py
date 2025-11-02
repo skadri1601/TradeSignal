@@ -10,6 +10,8 @@ from app.models.insider import Insider
 from app.models.trade import Trade, TransactionType, TransactionCode
 from app.models.alert import Alert
 from app.models.alert_history import AlertHistory
+from app.models.scrape_job import ScrapeJob
+from app.models.scrape_history import ScrapeHistory
 
 __all__ = [
     "Company",
@@ -19,4 +21,6 @@ __all__ = [
     "TransactionCode",
     "Alert",
     "AlertHistory",
+    "ScrapeJob",
+    "ScrapeHistory",
 ]

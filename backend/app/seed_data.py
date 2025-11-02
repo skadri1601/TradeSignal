@@ -1,10 +1,14 @@
 """
 Seed database with sample data for testing.
 
+⚠️ WARNING: This script is for DEVELOPMENT/TESTING ONLY!
+⚠️ DO NOT run this in production - it will create dummy data!
+
 Run this script to populate the database with test companies, insiders, and trades.
 """
 
 import asyncio
+import sys
 from datetime import date, timedelta
 from decimal import Decimal
 import logging
@@ -15,6 +19,7 @@ from app.services import CompanyService, InsiderService, TradeService
 from app.schemas.company import CompanyCreate
 from app.schemas.insider import InsiderCreate
 from app.schemas.trade import TradeCreate
+from app.config import settings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -275,4 +280,36 @@ async def seed_database():
 
 if __name__ == "__main__":
     """Run seeding script."""
+
+    # ⚠️ PRODUCTION SAFETY CHECK
+    if settings.is_production:
+        logger.error("=" * 80)
+        logger.error("❌ BLOCKED: Cannot run seed_data.py in PRODUCTION environment!")
+        logger.error("=" * 80)
+        logger.error("This script creates dummy/test data and should NEVER be run in production.")
+        logger.error("Current environment: %s", settings.environment)
+        logger.error("To run this script, set ENVIRONMENT=development in your .env file")
+        logger.error("=" * 80)
+        sys.exit(1)
+
+    # ⚠️ CONFIRMATION PROMPT
+    logger.warning("=" * 80)
+    logger.warning("⚠️  WARNING: This will create DUMMY DATA in your database!")
+    logger.warning("=" * 80)
+    logger.warning("Environment: %s", settings.environment)
+    logger.warning("Database: %s", settings.database_url.split('@')[-1] if '@' in settings.database_url else settings.database_url)
+    logger.warning("")
+    logger.warning("This script will create:")
+    logger.warning("  - Sample companies (AAPL, TSLA, MSFT, NVDA, GOOGL)")
+    logger.warning("  - Sample insiders with fictional data")
+    logger.warning("  - Sample trades with programmatically generated values")
+    logger.warning("")
+
+    response = input("Type 'yes' to continue or 'no' to cancel: ").strip().lower()
+
+    if response != 'yes':
+        logger.info("Seeding cancelled by user.")
+        sys.exit(0)
+
+    logger.info("Starting database seeding...")
     asyncio.run(seed_database())

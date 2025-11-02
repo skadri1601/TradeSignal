@@ -51,6 +51,18 @@ async def lifespan(app: FastAPI):
         db_connected = await db_manager.check_connection()
         if db_connected:
             logger.info(" Database connection established")
+
+            # Create database tables (if they don't exist)
+            try:
+                from app.database import Base
+                from app.models import ScrapeJob, ScrapeHistory  # Import to register with metadata
+
+                engine = db_manager.get_engine()
+                async with engine.begin() as conn:
+                    await conn.run_sync(Base.metadata.create_all)
+                logger.info(" Database tables created/verified")
+            except Exception as e:
+                logger.warning(f" Failed to create tables: {e}")
         else:
             logger.warning(" Database connection failed (app will start anyway)")
 
@@ -282,7 +294,7 @@ async def health_check() -> dict[str, Any]:
 
 
 # API v1 Routers
-from app.routers import trades, companies, insiders, scraper, alerts
+from app.routers import trades, companies, insiders, scraper, scheduler
 
 # Include all routers with API v1 prefix
 app.include_router(

@@ -45,4 +45,6 @@ export const DATE_RANGES = [
 ];
 
 // Significant trade threshold (in USD)
+// NOTE: This value matches backend default (SIGNIFICANT_TRADE_THRESHOLD env var)
+// Backend can override via environment variable
 export const SIGNIFICANT_TRADE_THRESHOLD = 100_000;
