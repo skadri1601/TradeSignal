@@ -66,6 +66,18 @@ class Settings(BaseSettings):
         alias="SEC_USER_AGENT"
     )
 
+    scraper_timezone: str = Field(
+        default="UTC",
+        description="Timezone for the scraper",
+        alias="SCRAPER_TIMEZONE"
+    )
+
+    significant_trade_threshold: int = Field(
+        default=100000,
+        description="Threshold for significant trades in USD",
+        alias="SIGNIFICANT_TRADE_THRESHOLD"
+    )
+
     # Alert & Notification Configuration
     alerts_enabled: bool = Field(
         default=True,
