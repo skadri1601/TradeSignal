@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.services import CompanyService, TradeService
+from app.services.company_enrichment_service import CompanyEnrichmentService
 from app.schemas.company import (
     CompanyRead,
     CompanyCreate,
@@ -100,6 +101,9 @@ async def get_company_by_ticker(
     - Total trades
     - Total insiders
     - Recent buy/sell counts (last 30 days)
+
+    **Auto-enrichment**: If company details are missing (description, sector, industry),
+    they will be automatically fetched from SEC EDGAR on first view.
     """
     company = await CompanyService.get_by_ticker(db=db, ticker=ticker)
 
@@ -108,6 +112,11 @@ async def get_company_by_ticker(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Company with ticker '{ticker}' not found"
         )
+
+    # Auto-enrich company data if missing details
+    enrichment_service = CompanyEnrichmentService(db)
+    if not company.description or not company.sector:
+        await enrichment_service.enrich_company(company.id)
 
     company_stats = await CompanyService.get_with_stats(db=db, company_id=company.id)
     return company_stats

@@ -12,6 +12,7 @@ import sys
 from datetime import date, timedelta
 from decimal import Decimal
 import logging
+import platform
 
 from app.database import db_manager
 from app.models import Company, Insider, Trade
@@ -280,6 +281,10 @@ async def seed_database():
 
 if __name__ == "__main__":
     """Run seeding script."""
+    
+    # Fix for Windows async event loop
+    if platform.system() == 'Windows':
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
     # ⚠️ PRODUCTION SAFETY CHECK
     if settings.is_production:

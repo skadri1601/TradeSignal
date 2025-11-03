@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.services import InsiderService, TradeService
+from app.services.company_enrichment_service import CompanyEnrichmentService
 from app.schemas.insider import (
     InsiderRead,
     InsiderCreate,
@@ -96,6 +97,9 @@ async def get_insider(
     - insider_id: Insider ID
 
     Returns insider details including associated company.
+
+    **Auto-enrichment**: If insider details are missing (title, email),
+    they will be automatically fetched from SEC EDGAR on first view.
     """
     insider = await InsiderService.get_by_id(db=db, insider_id=insider_id)
 
@@ -104,6 +108,11 @@ async def get_insider(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Insider with ID {insider_id} not found"
         )
+
+    # Auto-enrich insider data if missing details
+    enrichment_service = CompanyEnrichmentService(db)
+    if not insider.title:
+        await enrichment_service.enrich_insider(insider_id)
 
     return InsiderRead.model_validate(insider)
 

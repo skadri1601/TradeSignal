@@ -1,4 +1,4 @@
-import { Building2, TrendingUp, Filter, Zap, Database, Shield } from 'lucide-react';
+import { Building2, TrendingUp, Filter, Zap, Database, Shield, Bell, Mail, Webhook } from 'lucide-react';
 
 export default function AboutPage() {
   return (
@@ -41,7 +41,7 @@ export default function AboutPage() {
               <h3 className="text-lg font-semibold text-gray-900">Live SEC Data</h3>
             </div>
             <p className="text-gray-600">
-              7,939+ real insider trades from SEC Form 4 filings across 25 companies.
+              7,600+ real insider trades from SEC Form 4 filings across 151 companies.
               No dummy data - all transactions are authentic and verified.
             </p>
           </div>
@@ -69,8 +69,8 @@ export default function AboutPage() {
               <h3 className="text-lg font-semibold text-gray-900">Real-Time Updates</h3>
             </div>
             <p className="text-gray-600">
-              WebSocket-powered live updates. See new insider trades instantly without
-              refreshing the page.
+              WebSocket-powered live updates. See new insider trades and alert notifications
+              instantly without refreshing the page.
             </p>
           </div>
 
@@ -98,7 +98,7 @@ export default function AboutPage() {
             </div>
             <p className="text-gray-600">
               Detailed company information with all insider trading history. Track
-              activity across 25 major tech and growth companies.
+              activity across 151 major companies including NASDAQ-100, Dow Jones 30, and top tech stocks.
             </p>
           </div>
 
@@ -114,6 +114,95 @@ export default function AboutPage() {
               Every trade links directly to the official SEC Form 4 filing. Verify
               any transaction with a single click.
             </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Multi-Channel Alerts */}
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">Multi-Channel Alert System</h2>
+        <p className="text-gray-600 mb-6">
+          Create custom alerts for insider trading activity and receive notifications through
+          your preferred channels. Get notified instantly when trades match your criteria.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* In-App Notifications */}
+          <div className="card">
+            <div className="flex items-center mb-3">
+              <div className="p-2 bg-emerald-100 rounded-lg mr-3">
+                <Bell className="h-6 w-6 text-emerald-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">In-App Toasts</h3>
+            </div>
+            <p className="text-gray-600 text-sm">
+              Real-time toast notifications inside the app via WebSocket. No setup required -
+              works automatically when you're using TradeSignal.
+            </p>
+          </div>
+
+          {/* Browser Push */}
+          <div className="card">
+            <div className="flex items-center mb-3">
+              <div className="p-2 bg-blue-100 rounded-lg mr-3">
+                <Bell className="h-6 w-6 text-blue-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Browser Push</h3>
+            </div>
+            <p className="text-gray-600 text-sm">
+              System-level browser notifications that work even when the app is closed.
+              One-click opt-in for desktop and mobile alerts.
+            </p>
+          </div>
+
+          {/* Email Alerts */}
+          <div className="card">
+            <div className="flex items-center mb-3">
+              <div className="p-2 bg-orange-100 rounded-lg mr-3">
+                <Mail className="h-6 w-6 text-orange-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Email Alerts</h3>
+            </div>
+            <p className="text-gray-600 text-sm">
+              Professional email notifications via SendGrid with detailed trade information
+              and direct links to view more details.
+            </p>
+          </div>
+
+          {/* Webhooks */}
+          <div className="card">
+            <div className="flex items-center mb-3">
+              <div className="p-2 bg-purple-100 rounded-lg mr-3">
+                <Webhook className="h-6 w-6 text-purple-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Webhooks</h3>
+            </div>
+            <p className="text-gray-600 text-sm">
+              Send alerts to Discord, Slack, or any custom webhook endpoint. Perfect for
+              teams and automated workflows.
+            </p>
+          </div>
+        </div>
+
+        {/* Alert Types */}
+        <div className="mt-6 card bg-gradient-to-r from-emerald-50 to-blue-50 border-emerald-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Customizable Alert Criteria</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div className="flex items-start">
+              <span className="text-emerald-600 mr-2">✓</span>
+              <span className="text-gray-700"><strong>Large Trades:</strong> Alert when trades exceed a specific dollar value</span>
+            </div>
+            <div className="flex items-start">
+              <span className="text-emerald-600 mr-2">✓</span>
+              <span className="text-gray-700"><strong>Company Watch:</strong> Monitor all trading activity for specific tickers</span>
+            </div>
+            <div className="flex items-start">
+              <span className="text-emerald-600 mr-2">✓</span>
+              <span className="text-gray-700"><strong>Insider Roles:</strong> Track trades by CEOs, CFOs, Directors, and more</span>
+            </div>
+            <div className="flex items-start">
+              <span className="text-emerald-600 mr-2">✓</span>
+              <span className="text-gray-700"><strong>Buy/Sell Filter:</strong> Only get notified for purchases or sales</span>
+            </div>
           </div>
         </div>
       </div>
@@ -171,19 +260,19 @@ export default function AboutPage() {
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           <div>
-            <p className="text-3xl font-bold text-blue-600">7,939</p>
+            <p className="text-3xl font-bold text-blue-600">7,662</p>
             <p className="text-sm text-gray-600 mt-1">Total Trades</p>
           </div>
           <div>
-            <p className="text-3xl font-bold text-green-600">25</p>
+            <p className="text-3xl font-bold text-green-600">151</p>
             <p className="text-sm text-gray-600 mt-1">Companies</p>
           </div>
           <div>
-            <p className="text-3xl font-bold text-purple-600">327</p>
+            <p className="text-3xl font-bold text-purple-600">594</p>
             <p className="text-sm text-gray-600 mt-1">Insiders</p>
           </div>
           <div>
-            <p className="text-3xl font-bold text-red-600">$167T</p>
+            <p className="text-3xl font-bold text-red-600">$24.2B</p>
             <p className="text-sm text-gray-600 mt-1">Total Value</p>
           </div>
         </div>

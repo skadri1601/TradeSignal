@@ -12,6 +12,7 @@ from app.models.alert import Alert
 from app.models.alert_history import AlertHistory
 from app.models.scrape_job import ScrapeJob
 from app.models.scrape_history import ScrapeHistory
+from app.models.push_subscription import PushSubscription
 
 __all__ = [
     "Company",
@@ -23,4 +24,5 @@ __all__ = [
     "AlertHistory",
     "ScrapeJob",
     "ScrapeHistory",
+    "PushSubscription",
 ]

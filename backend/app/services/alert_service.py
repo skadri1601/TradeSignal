@@ -156,6 +156,7 @@ class AlertService:
             return
 
         company_name = company.name
+        company_ticker = company.ticker
         insider_name = insider.name
 
         # Check each alert
@@ -170,7 +171,7 @@ class AlertService:
 
                 # Trigger notifications
                 await self._trigger_alert_notifications(
-                    alert, trade, company_name, insider_name
+                    alert, trade, company_name, insider_name, company_ticker
                 )
 
     async def _matches_alert(self, trade: Trade, alert: Alert) -> bool:
@@ -179,8 +180,13 @@ class AlertService:
 
         Returns True if the trade should trigger this alert.
         """
+        # Get company to check ticker
+        company = await self.db.get(Company, trade.company_id)
+        if not company:
+            return False
+
         # Check ticker filter
-        if alert.ticker and alert.ticker.upper() != trade.ticker.upper():
+        if alert.ticker and alert.ticker.upper() != company.ticker.upper():
             return False
 
         # Check transaction type filter
@@ -239,7 +245,8 @@ class AlertService:
         alert: Alert,
         trade: Trade,
         company_name: str,
-        insider_name: str
+        insider_name: str,
+        company_ticker: str = None
     ) -> None:
         """
         Send notifications for a matched alert via all configured channels.
@@ -248,8 +255,31 @@ class AlertService:
         """
         logger.info(
             f"Alert triggered: {alert.name} (id={alert.id}) for trade {trade.id} "
-            f"({trade.ticker})"
+            f"({company_ticker})"
         )
+
+        # Send in-app notification via WebSocket to all connected clients
+        try:
+            from app.routers.alerts import alert_manager
+
+            # Format message for in-app notification
+            action = "buys" if trade.transaction_type == "BUY" else "sells"
+            value_formatted = f"${trade.total_value:,.0f}" if trade.total_value else "N/A"
+
+            await alert_manager.broadcast({
+                "id": f"alert_{alert.id}_{trade.id}_{datetime.now().timestamp()}",
+                "title": f"🔔 {alert.name}",
+                "message": f"{insider_name} {action} {value_formatted} of {company_ticker}",
+                "kind": "success",
+                "duration": 8000,
+                "meta": {
+                    "alert_id": alert.id,
+                    "trade_id": trade.id,
+                    "link": f"/alerts"
+                }
+            })
+        except Exception as e:
+            logger.error(f"Failed to send in-app notification: {e}")
 
         # Send notifications for each configured channel
         for channel in alert.notification_channels:
@@ -272,13 +302,60 @@ class AlertService:
                 )
                 self.db.add(history)
 
-            elif channel == "email":
-                # TODO: Phase 5B - Email notifications
-                logger.info(f"Email notifications not yet implemented (alert={alert.name})")
+            elif channel == "email" and alert.email:
+                success, error = await self.notification_service.send_email_notification(
+                    alert,
+                    trade,
+                    company_name,
+                    insider_name
+                )
+
+                # Log to alert_history
+                history = AlertHistory(
+                    alert_id=alert.id,
+                    trade_id=trade.id,
+                    notification_channel="email",
+                    notification_status="sent" if success else "failed",
+                    error_message=error
+                )
+                self.db.add(history)
 
             elif channel == "push":
-                # TODO: Phase 5C - Push notifications
-                logger.info(f"Push notifications not yet implemented (alert={alert.name})")
+                # Send push notifications to all active subscriptions
+                from app.services.push_subscription_service import PushSubscriptionService
+
+                push_service = PushSubscriptionService(self.db)
+                subscriptions = await push_service.get_active_subscriptions()
+
+                if not subscriptions:
+                    logger.warning(f"No active push subscriptions for alert {alert.name}")
+                    continue
+
+                for subscription in subscriptions:
+                    success, error = await self.notification_service.send_push_notification(
+                        subscription,
+                        alert,
+                        trade,
+                        company_name,
+                        insider_name
+                    )
+
+                    # Log to alert_history
+                    history = AlertHistory(
+                        alert_id=alert.id,
+                        trade_id=trade.id,
+                        notification_channel="push",
+                        notification_status="sent" if success else "failed",
+                        error_message=error
+                    )
+                    self.db.add(history)
+
+                    # Deactivate expired subscriptions (410 Gone)
+                    if error and "410" in error:
+                        await push_service.mark_subscription_inactive(subscription.id)
+                        logger.info(f"Deactivated expired push subscription {subscription.id}")
+                    elif success:
+                        await push_service.update_last_notified(subscription.id)
 
         await self.db.commit()
 
@@ -286,19 +363,64 @@ class AlertService:
         """
         Send a test notification for an alert.
 
+        Sends test notifications via ALL configured channels.
         Returns (success, error_message).
         """
         alert = await self.get_alert(alert_id)
         if not alert:
             return False, "Alert not found"
 
+        sent_any = False
+        errors = []
+
+        # Send webhook test if configured
         if "webhook" in alert.notification_channels and alert.webhook_url:
-            return await self.notification_service.send_test_notification(
+            success, error = await self.notification_service.send_test_notification(
                 alert.webhook_url,
                 alert.name
             )
+            if success:
+                sent_any = True
+            elif error:
+                errors.append(f"Webhook: {error}")
 
-        return False, "No webhook configured for this alert"
+        # Send email test if configured
+        if "email" in alert.notification_channels and alert.email:
+            success, error = await self.notification_service.send_test_email_notification(
+                alert.email,
+                alert.name
+            )
+            if success:
+                sent_any = True
+            elif error:
+                errors.append(f"Email: {error}")
+
+        # Send push test if configured
+        if "push" in alert.notification_channels:
+            from app.services.push_subscription_service import PushSubscriptionService
+
+            push_service = PushSubscriptionService(self.db)
+            subscriptions = await push_service.get_active_subscriptions()
+
+            if subscriptions:
+                for subscription in subscriptions:
+                    success, error = await self.notification_service.send_test_push_notification(
+                        subscription,
+                        alert.name
+                    )
+                    if success:
+                        sent_any = True
+                    elif error:
+                        errors.append(f"Push: {error}")
+            else:
+                errors.append("Push: No active subscriptions")
+
+        if not sent_any:
+            if errors:
+                return False, "; ".join(errors)
+            return False, "No notification channels configured for this alert"
+
+        return True, None
 
     async def get_alert_history(
         self,

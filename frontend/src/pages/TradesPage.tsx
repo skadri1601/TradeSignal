@@ -6,7 +6,7 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import CompanyAutocomplete from '../components/common/CompanyAutocomplete';
 import TradeValueSparkline from '../components/trades/TradeValueSparkline';
 import type { PaginatedResponse, Trade, TradeFilters, TradeStats } from '../types';
-import { formatCurrency, formatNumber, formatCurrencyCompact } from '../utils/formatters';
+import { formatNumber, formatCurrencyCompact } from '../utils/formatters';
 import useTradeStream from '../hooks/useTradeStream';
 
 export default function TradesPage() {
@@ -354,11 +354,17 @@ export default function TradesPage() {
             {statsFetching && (
               <div className="mb-3 text-xs text-blue-600">Refreshing summary...</div>
             )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
               <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
                 <p className="text-sm text-gray-600">Total Trades</p>
                 <p className="mt-1 text-2xl font-semibold text-gray-900">
                   {formatNumber(stats?.total_trades ?? 0)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <p className="text-sm text-gray-600">Companies</p>
+                <p className="mt-1 text-2xl font-semibold text-blue-600">
+                  151
                 </p>
               </div>
               <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
@@ -374,11 +380,18 @@ export default function TradesPage() {
                 </p>
               </div>
               <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                <p className="text-sm text-gray-600">Total Volume</p>
-                <p className="mt-1 text-2xl font-semibold text-gray-900">
-                  {formatCurrencyCompact(stats?.total_value ?? 0)}
+                <p className="text-sm text-gray-600">Buy Volume</p>
+                <p className="mt-1 text-2xl font-semibold text-green-600">
+                  {formatCurrencyCompact(stats?.total_buy_value ?? 0)}
                 </p>
-                <p className="text-xs text-gray-500">Avg trade {formatCurrencyCompact(stats?.average_trade_size ?? 0)}</p>
+                <p className="text-xs text-gray-500">Total purchased</p>
+              </div>
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <p className="text-sm text-gray-600">Sell Volume</p>
+                <p className="mt-1 text-2xl font-semibold text-red-600">
+                  {formatCurrencyCompact(stats?.total_sell_value ?? 0)}
+                </p>
+                <p className="text-xs text-gray-500">Total sold</p>
               </div>
             </div>
           </div>
@@ -386,15 +399,20 @@ export default function TradesPage() {
       </div>
 
       {/* Value Trend */}
-      <div className="card">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-gray-900">Trade Value Trend (current page)</h2>
-          {isFetching && !isLoading && (
-            <span className="text-xs text-blue-600">Updating...</span>
-          )}
+      {tradesForChart.length > 0 && (
+        <div className="card">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-gray-900">Trade Value Trend</h2>
+            {isFetching && !isLoading && (
+              <span className="text-xs text-blue-600">Updating...</span>
+            )}
+          </div>
+          <TradeValueSparkline trades={tradesForChart} />
+          <p className="text-xs text-gray-500 mt-2 text-center">
+            Showing trend for {tradesForChart.length} trades on current page
+          </p>
         </div>
-        <TradeValueSparkline trades={tradesForChart} />
-      </div>
+      )}
 
       {/* Trades Table */}
       <div className="card">

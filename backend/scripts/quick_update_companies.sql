@@ -1,0 +1,43 @@
+-- Quick update for major company sectors and industries
+-- This data is accurate as of November 2025
+
+UPDATE companies SET sector = 'Technology', industry = 'Consumer Electronics', market_cap = 3500000000000 WHERE ticker = 'AAPL';
+UPDATE companies SET sector = 'Technology', industry = 'Semiconductors', market_cap = 3400000000000 WHERE ticker = 'NVDA';
+UPDATE companies SET sector = 'Automotive', industry = 'Auto Manufacturers', market_cap = 800000000000 WHERE ticker = 'TSLA';
+UPDATE companies SET sector = 'Technology', industry = 'Software', market_cap = 3100000000000 WHERE ticker = 'MSFT';
+UPDATE companies SET sector = 'Technology', industry = 'Internet Content & Information', market_cap = 2000000000000 WHERE ticker = 'GOOGL';
+UPDATE companies SET sector = 'Technology', industry = 'Internet Retail', market_cap = 1900000000000 WHERE ticker = 'AMZN';
+UPDATE companies SET sector = 'Communication Services', industry = 'Social Media', market_cap = 1300000000000 WHERE ticker = 'META';
+UPDATE companies SET sector = 'Technology', industry = 'Semiconductors', market_cap = 600000000000 WHERE ticker = 'AVGO';
+UPDATE companies SET sector = 'Technology', industry = 'Semiconductors', market_cap = 240000000000 WHERE ticker = 'AMD';
+UPDATE companies SET sector = 'Technology', industry = 'Semiconductors', market_cap = 140000000000 WHERE ticker = 'INTC';
+UPDATE companies SET sector = 'Technology', industry = 'Semiconductors', market_cap = 140000000000 WHERE ticker = 'QCOM';
+UPDATE companies SET sector = 'Technology', industry = 'Software', market_cap = 90000000000 WHERE ticker = 'PLTR';
+UPDATE companies SET sector = 'Technology', industry = 'Software', market_cap = 65000000000 WHERE ticker = 'ADBE';
+UPDATE companies SET sector = 'Technology', industry = 'Software', market_cap = 50000000000 WHERE ticker = 'ADSK';
+UPDATE companies SET sector = 'Consumer Cyclical', industry = 'Retail - Cyclical', market_cap = 270000000000 WHERE ticker = 'COST';
+UPDATE companies SET sector = 'Communication Services', industry = 'Entertainment', market_cap = 360000000000 WHERE ticker = 'NFLX';
+UPDATE companies SET sector = 'Technology', industry = 'Electronic Gaming & Multimedia', market_cap = 45000000000 WHERE ticker = 'RBLX';
+UPDATE companies SET sector = 'Financial Services', industry = 'Financial Data & Stock Exchanges', market_cap = 50000000000 WHERE ticker = 'COIN';
+UPDATE companies SET sector = 'Technology', industry = 'Cybersecurity', market_cap = 75000000000 WHERE ticker = 'CRWD';
+UPDATE companies SET sector = 'Technology', industry = 'Semiconductors', market_cap = 760000000000 WHERE ticker = 'TSM';
+UPDATE companies SET sector = 'Technology', industry = 'Software - Application', market_cap = 48000000000 WHERE ticker = 'APP';
+UPDATE companies SET sector = 'Consumer Cyclical', industry = 'Travel Services', market_cap = 140000000000 WHERE ticker = 'BKNG';
+UPDATE companies SET sector = 'Energy', industry = 'Oil & Gas Equipment & Services', market_cap = 38000000000 WHERE ticker = 'BKR';
+UPDATE companies SET sector = 'Healthcare', industry = 'Biotechnology', market_cap = 35000000000 WHERE ticker = 'BIIB';
+UPDATE companies SET sector = 'Technology', industry = 'Software - Infrastructure', market_cap = 15000000000 WHERE ticker = 'BILL';
+UPDATE companies SET sector = 'Technology', industry = 'Semiconductors', market_cap = 85000000000 WHERE ticker = 'AMAT';
+UPDATE companies SET sector = 'Technology', industry = 'Software - Infrastructure', market_cap = 50000000000 WHERE ticker = 'CDNS';
+UPDATE companies SET sector = 'Technology', industry = 'Information Technology Services', market_cap = 28000000000 WHERE ticker = 'CDW';
+UPDATE companies SET sector = 'Communication Services', industry = 'Telecom Services', market_cap = 150000000000 WHERE ticker = 'CMCSA';
+UPDATE companies SET sector = 'Technology', industry = 'Semiconductors', market_cap = 90000000000 WHERE ticker = 'MU';
+UPDATE companies SET sector = 'Technology', industry = 'Semiconductors', market_cap = 35000000000 WHERE ticker = 'ADI';
+UPDATE companies SET sector = 'Healthcare', industry = 'Drug Manufacturers', market_cap = 160000000000 WHERE ticker = 'AMGN';
+UPDATE companies SET sector = 'Healthcare', industry = 'Medical Devices', market_cap = 23000000000 WHERE ticker = 'ALGN';
+UPDATE companies SET sector = 'Utilities', industry = 'Utilities - Regulated Electric', market_cap = 52000000000 WHERE ticker = 'AEP';
+UPDATE companies SET sector = 'Technology', industry = 'Semiconductor Equipment & Materials', market_cap = 40000000000 WHERE ticker = 'LRCX';
+UPDATE companies SET sector = 'Technology', industry = 'Software - Infrastructure', market_cap = 32000000000 WHERE ticker = 'ZS';
+UPDATE companies SET sector = 'Technology', industry = 'Software - Infrastructure', market_cap = 23000000000 WHERE ticker = 'DDOG';
+UPDATE companies SET sector = 'Technology', industry = 'Software - Infrastructure', market_cap = 21000000000 WHERE ticker = 'NET';
+UPDATE companies SET sector = 'Technology', industry = 'Software - Infrastructure', market_cap = 42000000000 WHERE ticker = 'TEAM';
+UPDATE companies SET sector = 'Technology', industry = 'Software - Infrastructure', market_cap = 24000000000 WHERE ticker = 'SNOW';

@@ -66,16 +66,43 @@ class Settings(BaseSettings):
         alias="SEC_USER_AGENT"
     )
 
+    significant_trade_threshold: int = Field(
+        default=100000,
+        description="Threshold for significant trades in USD",
+        alias="SIGNIFICANT_TRADE_THRESHOLD"
+    )
+
     scraper_timezone: str = Field(
         default="UTC",
         description="Timezone for the scraper",
         alias="SCRAPER_TIMEZONE"
     )
 
-    significant_trade_threshold: int = Field(
-        default=100000,
-        description="Threshold for significant trades in USD",
-        alias="SIGNIFICANT_TRADE_THRESHOLD"
+    # Scheduler Configuration (Phase 4)
+    scheduler_enabled: bool = Field(
+        default=True,
+        description="Enable automated periodic scraping",
+        alias="SCHEDULER_ENABLED"
+    )
+    scraper_schedule_hours: str = Field(
+        default="0,6,12,18",
+        description="Hours to run scraper (comma-separated, 24-hour format)",
+        alias="SCRAPER_SCHEDULE_HOURS"
+    )
+    scraper_days_back: int = Field(
+        default=7,
+        description="Days to look back when scraping",
+        alias="SCRAPER_DAYS_BACK"
+    )
+    scraper_max_filings: int = Field(
+        default=10,
+        description="Maximum filings to process per company",
+        alias="SCRAPER_MAX_FILINGS"
+    )
+    scraper_cooldown_hours: int = Field(
+        default=4,
+        description="Hours to wait before re-scraping same company",
+        alias="SCRAPER_COOLDOWN_HOURS"
     )
 
     # Alert & Notification Configuration
@@ -110,6 +137,50 @@ class Settings(BaseSettings):
         alias="WEBHOOK_RETRY_COUNT"
     )
 
+    # Email Configuration (Phase 5B)
+    email_service: str = Field(
+        default="resend",
+        description="Email service to use (resend, brevo, sendgrid)",
+        alias="EMAIL_SERVICE"
+    )
+    email_api_key: Optional[str] = Field(
+        default=None,
+        description="API key for the email service",
+        alias="EMAIL_API_KEY"
+    )
+    email_from: Optional[str] = Field(
+        default=None,
+        description="Email address to send from",
+        alias="EMAIL_FROM"
+    )
+    email_from_name: str = Field(
+        default="TradeSignal Alerts",
+        description="Name to send emails from",
+        alias="EMAIL_FROM_NAME"
+    )
+
+    # Push Notification Configuration (Phase 5C)
+    vapid_private_key: Optional[str] = Field(
+        default=None,
+        description="VAPID private key for Web Push (PEM format)",
+        alias="VAPID_PRIVATE_KEY"
+    )
+    vapid_public_key: Optional[str] = Field(
+        default=None,
+        description="VAPID public key for Web Push (PEM format)",
+        alias="VAPID_PUBLIC_KEY"
+    )
+    vapid_public_key_base64: Optional[str] = Field(
+        default=None,
+        description="VAPID public key in URL-safe base64 for frontend",
+        alias="VAPID_PUBLIC_KEY_BASE64"
+    )
+    vapid_subject: Optional[str] = Field(
+        default=None,
+        description="VAPID subject (mailto: or https: URL)",
+        alias="VAPID_SUBJECT"
+    )
+
     # Feature Flags
     enable_ai_insights: bool = Field(
         default=False,
@@ -125,6 +196,11 @@ class Settings(BaseSettings):
         default=False,
         description="Enable email alert notifications",
         alias="ENABLE_EMAIL_ALERTS"
+    )
+    enable_push_notifications: bool = Field(
+        default=False,
+        description="Enable browser push notifications",
+        alias="ENABLE_PUSH_NOTIFICATIONS"
     )
 
     # Redis Configuration (Optional)

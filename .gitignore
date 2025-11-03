@@ -38,6 +38,7 @@ dist-ssr/
 .env.local
 .env.*.local
 backend/.env
+.env.example
 
 # IDE
 .vscode/
@@ -132,12 +133,28 @@ scratch/
 playground/
 experiments/
 
-#Readme files
+# Documentation (keep only essential docs)
 PROJECT_STATUS.md
-PHASE4.md
-PHASE5.md
-PHASE6.md
-PHASE7.md
-PHASE8.md
+PHASE*.md
+phase*.md
 port.md
-PHASE5.md
+*_COMPLETE.md
+IMPLEMENTATION*.md
+SETUP*.md
+
+# Claude Code settings (local)
+.claude/
+
+# Temporary database/test files
+.tmp_*.py
+backend/test_*.py
+backend/seed_db.py
+backend/test_*.py
+backend/*_test.py
+
+# One-time scripts (already executed)
+backend/generate_*.py
+backend/scripts/add_*.py
+
+# Temporary analysis files
+backend/scripts/analyze_*.py

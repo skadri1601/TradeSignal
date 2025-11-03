@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { alertsApi } from "../../api/alerts";
 import { Alert, AlertType, NotificationChannel } from "../../types";
+import { usePushNotifications } from "../../hooks/usePushNotifications";
+import { Bell, BellOff } from "lucide-react";
 
 interface CreateAlertModalProps {
   isOpen: boolean;
@@ -13,6 +15,7 @@ export default function CreateAlertModal({
   onClose,
 }: CreateAlertModalProps) {
   const queryClient = useQueryClient();
+  const { supported, subscribed, loading, subscribe } = usePushNotifications();
   const [name, setName] = useState("");
   const [alertType, setAlertType] = useState<AlertType>("large_trade");
   const [ticker, setTicker] = useState("");
@@ -24,6 +27,7 @@ export default function CreateAlertModal({
     NotificationChannel[]
   >([]);
   const [webhookUrl, setWebhookUrl] = useState("");
+  const [email, setEmail] = useState("");
 
   const mutation = useMutation({
     mutationFn: (newAlert: Partial<Alert>) => alertsApi.createAlert(newAlert),
@@ -43,6 +47,7 @@ export default function CreateAlertModal({
       transaction_type: transactionType || null,
       notification_channels: notificationChannels,
       webhook_url: webhookUrl || null,
+      email: email || null,
       is_active: true,
     };
     mutation.mutate(newAlert);
@@ -120,8 +125,8 @@ export default function CreateAlertModal({
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Notification Channels</label>
-            <div className="flex space-x-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Notification Channels</label>
+            <div className="flex flex-col space-y-2">
               <label className="flex items-center">
                 <input
                   type="checkbox"
@@ -134,10 +139,51 @@ export default function CreateAlertModal({
               <label className="flex items-center">
                 <input
                   type="checkbox"
-                  disabled
+                  checked={notificationChannels.includes("email")}
+                  onChange={() => handleChannelChange("email")}
                   className="mr-2"
                 />
-                Email (soon)
+                Email
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={notificationChannels.includes("push")}
+                  onChange={async (e) => {
+                    if (e.target.checked) {
+                      if (!subscribed) {
+                        try {
+                          await subscribe();
+                        } catch (error) {
+                          console.error('Failed to enable push:', error);
+                          return;
+                        }
+                      }
+                      handleChannelChange("push");
+                    } else {
+                      handleChannelChange("push");
+                    }
+                  }}
+                  disabled={!supported || loading}
+                  className="mr-2"
+                />
+                <div className="flex items-center gap-2">
+                  {notificationChannels.includes("push") ? (
+                    <Bell className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <BellOff className="h-4 w-4 text-gray-400" />
+                  )}
+                  <span>Browser Push</span>
+                  {!supported && (
+                    <span className="text-xs text-gray-500">(Not supported)</span>
+                  )}
+                  {supported && !subscribed && (
+                    <span className="text-xs text-blue-600">(Click to enable)</span>
+                  )}
+                  {loading && (
+                    <span className="text-xs text-gray-600">Loading...</span>
+                  )}
+                </div>
               </label>
             </div>
           </div>
@@ -148,6 +194,18 @@ export default function CreateAlertModal({
                 type="url"
                 value={webhookUrl}
                 onChange={(e) => setWebhookUrl(e.target.value)}
+                className="input"
+                required
+              />
+            </div>
+          )}
+          {notificationChannels.includes("email") && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Email Address</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="input"
                 required
               />

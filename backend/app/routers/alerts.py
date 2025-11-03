@@ -6,7 +6,10 @@ and viewing alert history.
 """
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+import json
+import asyncio
+from typing import Set
+from fastapi import APIRouter, Depends, HTTPException, Query, status, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -25,6 +28,36 @@ from app.schemas.common import PaginatedResponse
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
+
+# WebSocket connection manager for real-time alerts
+class AlertConnectionManager:
+    def __init__(self):
+        self.active_connections: Set[WebSocket] = set()
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.add(websocket)
+        logger.info(f"Alert WebSocket connected. Total connections: {len(self.active_connections)}")
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.discard(websocket)
+        logger.info(f"Alert WebSocket disconnected. Total connections: {len(self.active_connections)}")
+
+    async def broadcast(self, message: dict):
+        """Broadcast alert notification to all connected clients."""
+        disconnected = set()
+        for connection in self.active_connections:
+            try:
+                await connection.send_json(message)
+            except Exception as e:
+                logger.error(f"Failed to send to WebSocket: {e}")
+                disconnected.add(connection)
+
+        # Clean up disconnected clients
+        for conn in disconnected:
+            self.disconnect(conn)
+
+alert_manager = AlertConnectionManager()
 
 
 @router.post("/", response_model=AlertResponse, status_code=status.HTTP_201_CREATED)
@@ -234,3 +267,48 @@ async def get_alert_stats(
     service = AlertService(db)
     stats = await service.get_alert_stats()
     return stats
+
+
+@router.websocket("/stream")
+async def alert_stream(websocket: WebSocket):
+    """
+    WebSocket endpoint for real-time alert notifications.
+
+    Clients connect to this endpoint to receive in-app notifications
+    when alerts are triggered.
+
+    Expected message format from server:
+    {
+        "id": "unique-id",
+        "title": "Alert Title",
+        "message": "Alert message content",
+        "kind": "info|success|warning|error",
+        "duration": 6000,
+        "meta": {
+            "alert_id": 123,
+            "trade_id": 456,
+            "link": "/alerts/123"
+        }
+    }
+    """
+    await alert_manager.connect(websocket)
+
+    try:
+        # Keep connection alive and handle incoming messages
+        # Notifications will only be sent when alerts are triggered
+        while True:
+            try:
+                data = await websocket.receive_text()
+                # Handle ping/pong for keepalive
+                if data:
+                    msg = json.loads(data)
+                    if msg.get("type") == "ping":
+                        await websocket.send_json({"type": "pong", "t": msg.get("t")})
+            except WebSocketDisconnect:
+                break
+            except Exception as e:
+                logger.error(f"Error in WebSocket: {e}")
+                break
+
+    finally:
+        alert_manager.disconnect(websocket)
