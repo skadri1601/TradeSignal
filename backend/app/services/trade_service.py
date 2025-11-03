@@ -206,6 +206,17 @@ class TradeService:
 
         logger.info(f"Created trade: ID {trade.id}, {trade.transaction_type} {trade.shares} shares")
 
+        # Real-time alert checking
+        if settings.alerts_enabled:
+            try:
+                from app.services.alert_service import AlertService
+                alert_service = AlertService(db)
+                await alert_service.check_trade_against_alerts(trade)
+                logger.info(f"Checked trade {trade.id} against active alerts")
+            except Exception as exc:
+                logger.error(f"Failed to check alerts for trade {trade.id}: {exc}")
+
+        # WebSocket broadcast for frontend
         try:
             trade_payload = TradeWithDetails.model_validate(trade).model_dump(mode="json")
             await trade_event_manager.broadcast({
@@ -252,6 +263,17 @@ class TradeService:
 
         logger.info(f"Updated trade: ID {trade.id}")
 
+        # Real-time alert checking (in case update changes trade value/type)
+        if settings.alerts_enabled:
+            try:
+                from app.services.alert_service import AlertService
+                alert_service = AlertService(db)
+                await alert_service.check_trade_against_alerts(trade)
+                logger.info(f"Checked updated trade {trade.id} against active alerts")
+            except Exception as exc:
+                logger.error(f"Failed to check alerts for updated trade {trade.id}: {exc}")
+
+        # WebSocket broadcast for frontend
         try:
             trade_payload = TradeWithDetails.model_validate(trade).model_dump(mode="json")
             await trade_event_manager.broadcast({
@@ -330,7 +352,6 @@ class TradeService:
         sums = sums_result.one()
 
         total_shares_traded = float(sums[0]) if sums[0] else 0.0
-        total_value = float(sums[1]) if sums[1] else 0.0
         average_trade_size = float(sums[2]) if sums[2] else 0.0
         largest_trade = float(sums[3]) if sums[3] else None
 
@@ -347,6 +368,9 @@ class TradeService:
             select(func.sum(sell_subq.c.total_value))
         )
         total_sell_value = float(sell_value_result.scalar_one() or 0.0)
+
+        # Net volume = BUY value - SELL value (positive = net buying, negative = net selling)
+        total_value = total_buy_value - total_sell_value
 
         # Most active company
         company_query = select(Trade)

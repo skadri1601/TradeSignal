@@ -55,6 +55,13 @@ class InsiderRead(InsiderBase):
         """Pydantic config."""
         from_attributes = True
 
+    @classmethod
+    def model_validate(cls, obj):
+        """Custom validation to handle computed properties."""
+        if hasattr(obj, 'to_dict'):
+            return super().model_validate(obj.to_dict())
+        return super().model_validate(obj)
+
 
 class InsiderWithCompany(InsiderRead):
     """Insider schema with nested company data."""

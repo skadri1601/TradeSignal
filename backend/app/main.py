@@ -5,6 +5,10 @@ FastAPI application with async database support, CORS, health checks,
 comprehensive logging, and error handling.
 """
 
+from dotenv import load_dotenv
+load_dotenv()
+
+
 import logging
 import time
 from datetime import datetime
@@ -19,6 +23,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import settings
 from app.database import db_manager
+
+
 
 # Configure logging
 logging.basicConfig(
@@ -70,6 +76,15 @@ async def lifespan(app: FastAPI):
         logger.info(f"AI Insights: {'Enabled' if settings.enable_ai_insights else 'Disabled'}")
         logger.info(f"Webhooks: {'Enabled' if settings.enable_webhooks else 'Disabled'}")
         logger.info(f"Email Alerts: {'Enabled' if settings.enable_email_alerts else 'Disabled'}")
+        logger.info(f"Push Notifications: {'Enabled' if settings.enable_push_notifications else 'Disabled'}")
+
+        # Start scheduler if enabled
+        if settings.scheduler_enabled:
+            from app.services.scheduler_service import scheduler_service
+            await scheduler_service.start()
+            logger.info(" Scheduler started - automated scraping enabled")
+        else:
+            logger.info(" Scheduler disabled (SCHEDULER_ENABLED=false)")
 
         logger.info("Application startup complete")
         logger.info("=" * 80)
@@ -243,6 +258,7 @@ async def root() -> dict[str, Any]:
             "ai_insights": settings.enable_ai_insights,
             "webhooks": settings.enable_webhooks,
             "email_alerts": settings.enable_email_alerts,
+            "push_notifications": settings.enable_push_notifications,
         },
     }
 
@@ -294,7 +310,7 @@ async def health_check() -> dict[str, Any]:
 
 
 # API v1 Routers
-from app.routers import trades, companies, insiders, scraper, scheduler
+from app.routers import trades, companies, insiders, scraper, scheduler, alerts, push
 
 # Include all routers with API v1 prefix
 app.include_router(
@@ -321,6 +337,16 @@ app.include_router(
     alerts.router,
     prefix=f"{settings.api_v1_prefix}",
     tags=["Alerts"]
+)
+app.include_router(
+    scheduler.router,
+    prefix=f"{settings.api_v1_prefix}/scheduler",
+    tags=["Scheduler"]
+)
+app.include_router(
+    push.router,
+    prefix=f"{settings.api_v1_prefix}",
+    tags=["Push Notifications"]
 )
 
 

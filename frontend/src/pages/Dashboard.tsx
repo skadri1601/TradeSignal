@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { tradesApi } from '../api/trades';
 import { TrendingUp, TrendingDown, Building2, ArrowRight } from 'lucide-react';
-import { formatCurrency, formatNumber, formatCurrencyCompact } from '../utils/formatters';
+import { formatNumber, formatCurrencyCompact } from '../utils/formatters';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import TradeList from '../components/trades/TradeList';
 import TradePieChart from '../components/trades/TradePieChart';

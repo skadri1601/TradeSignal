@@ -36,6 +36,9 @@ export default function TradePieChart({ stats, mode }: TradePieChartProps) {
     return chartData.reduce((sum, item) => sum + item.value, 0);
   }, [chartData]);
 
+  // Always use bar chart for consistency - looks more professional
+  const useBarChart = true;
+
   const formatValue = (value: number) => {
     if (mode === 'count') {
       return formatNumber(value);
@@ -52,6 +55,9 @@ export default function TradePieChart({ stats, mode }: TradePieChartProps) {
     outerRadius,
     percent,
   }: any) => {
+    // Don't show label if slice is too small (< 5%)
+    if (percent < 0.05) return null;
+
     const RADIAN = Math.PI / 180;
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
@@ -97,6 +103,43 @@ export default function TradePieChart({ stats, mode }: TradePieChartProps) {
     );
   }
 
+  // Use bar chart for consistent, professional look
+  if (useBarChart) {
+    return (
+      <div className="flex flex-col gap-3 p-4">
+        {chartData.map((item, index) => {
+          const percent = ((item.value / total) * 100).toFixed(1);
+          return (
+            <div key={index} className="flex items-center justify-between p-4 rounded-lg border border-gray-200 bg-gradient-to-r from-white to-gray-50 hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-3 min-w-[140px]">
+                <div
+                  className="w-4 h-4 rounded-full shadow-sm"
+                  style={{ backgroundColor: item.color }}
+                />
+                <span className="text-sm font-semibold text-gray-800">{item.name}</span>
+              </div>
+              <div className="flex items-center gap-6 flex-1">
+                <div className="flex-1 bg-gray-200 rounded-full h-3 max-w-md shadow-inner">
+                  <div
+                    className="h-3 rounded-full transition-all duration-500 shadow-sm"
+                    style={{
+                      backgroundColor: item.color,
+                      width: `${percent}%`
+                    }}
+                  />
+                </div>
+                <div className="text-right min-w-[140px]">
+                  <div className="text-xl font-bold text-gray-900">{formatValue(item.value)}</div>
+                  <div className="text-sm text-gray-600 font-medium">{percent}% of total</div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <ResponsiveContainer width="100%" height={300}>
       <PieChart>
@@ -109,6 +152,7 @@ export default function TradePieChart({ stats, mode }: TradePieChartProps) {
           outerRadius={100}
           fill="#8884d8"
           dataKey="value"
+          minAngle={15}
         >
           {chartData.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={entry.color} />

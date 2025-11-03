@@ -23,7 +23,7 @@ class PaginationParams(BaseModel):
 
 class SortParams(BaseModel):
     """Schema for sorting parameters."""
-    sort_by: str = Field("created_at", description="Field to sort by")
+    sort_by: str = Field("transaction_date", description="Field to sort by")
     order: str = Field("desc", pattern="^(asc|desc)$", description="Sort order (asc or desc)")
 
 

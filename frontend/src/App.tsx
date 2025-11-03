@@ -7,8 +7,16 @@ import CompanyPage from './pages/CompanyPage';
 import InsiderPage from './pages/InsiderPage';
 import AlertsPage from './pages/AlertsPage';
 import NotFound from './pages/NotFound';
+import { NotificationProvider } from './contexts/NotificationContext';
+import { useRealtimeAlerts } from './hooks/useRealtimeAlerts';
 
-function App() {
+// WebSocket URL for real-time alerts
+const ALERTS_WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/api/v1/alerts/stream';
+
+function AppContent() {
+  // Connect to real-time alerts WebSocket
+  useRealtimeAlerts({ url: ALERTS_WS_URL, enabled: true });
+
   return (
     <Layout>
       <Routes>
@@ -21,6 +29,14 @@ function App() {
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>
+  );
+}
+
+function App() {
+  return (
+    <NotificationProvider>
+      <AppContent />
+    </NotificationProvider>
   );
 }
 
