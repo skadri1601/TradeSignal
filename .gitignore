@@ -160,3 +160,4 @@ backend/scripts/add_*.py
 backend/scripts/analyze_*.py
 *.example
 /backend
+backend/.env.example
