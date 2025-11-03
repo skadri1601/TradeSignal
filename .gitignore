@@ -158,6 +158,3 @@ backend/scripts/add_*.py
 
 # Temporary analysis files
 backend/scripts/analyze_*.py
-*.example
-/backend
-backend/.env.example
