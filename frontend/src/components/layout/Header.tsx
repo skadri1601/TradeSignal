@@ -33,6 +33,18 @@ export default function Header() {
               Trades
             </Link>
             <Link
+              to="/market-overview"
+              className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${isActive('/market-overview')}`}
+            >
+              Market Overview
+            </Link>
+            <Link
+              to="/ai-insights"
+              className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${isActive('/ai-insights')}`}
+            >
+              AI Insights
+            </Link>
+            <Link
               to="/alerts"
               className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${isActive('/alerts')}`}
             >

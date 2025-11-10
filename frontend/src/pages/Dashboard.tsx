@@ -1,17 +1,19 @@
-import { useCallback } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useState, useEffect } from 'react';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { tradesApi } from '../api/trades';
-import { TrendingUp, TrendingDown, Building2, ArrowRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, Building2, ArrowRight, RefreshCw } from 'lucide-react';
 import { formatNumber, formatCurrencyCompact } from '../utils/formatters';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import TradeList from '../components/trades/TradeList';
 import TradePieChart from '../components/trades/TradePieChart';
+import MarketSummaryCard from '../components/stocks/MarketSummaryCard';
 import useTradeStream from '../hooks/useTradeStream';
 import type { Trade } from '../types';
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
   // Calculate date 7 days ago
   const sevenDaysAgo = new Date();
@@ -22,12 +24,24 @@ export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['tradeStats', 'last7days'],
     queryFn: () => tradesApi.getTradeStats({ transaction_date_from: dateFrom }),
+    onSuccess: () => setLastUpdated(new Date()),
   });
 
   // Fetch recent trades
   const { data: recentTrades, isLoading: tradesLoading } = useQuery({
     queryKey: ['recentTrades'],
     queryFn: () => tradesApi.getRecentTrades(7),
+  });
+
+  // Refresh data
+  const refreshMutation = useMutation({
+    mutationFn: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['tradeStats'] });
+      await queryClient.invalidateQueries({ queryKey: ['recentTrades'] });
+    },
+    onSuccess: () => {
+      setLastUpdated(new Date());
+    },
   });
 
   const handleStreamMessage = useCallback(
@@ -61,12 +75,41 @@ export default function Dashboard() {
     );
   }
 
+  // Format last updated time
+  const formatLastUpdated = () => {
+    const now = new Date();
+    const diff = Math.floor((now.getTime() - lastUpdated.getTime()) / 1000); // seconds
+
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return lastUpdated.toLocaleTimeString();
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="mt-2 text-gray-600">Insider trading activity - Last 7 Days</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="mt-2 text-gray-600">Insider trading activity - Last 7 Days</p>
+        </div>
+        <div className="flex items-center space-x-4">
+          <div className="text-right">
+            <p className="text-xs text-gray-500">Last updated</p>
+            <p className="text-sm font-medium text-gray-700">{formatLastUpdated()}</p>
+          </div>
+          <button
+            onClick={() => refreshMutation.mutate()}
+            disabled={refreshMutation.isPending}
+            className={`flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors ${
+              refreshMutation.isPending ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
+            <span>{refreshMutation.isPending ? 'Refreshing...' : 'Refresh Data'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -159,6 +202,9 @@ export default function Dashboard() {
           <TradePieChart stats={stats} mode="value" />
         </div>
       </div>
+
+      {/* Market Summary - Top Gainers/Losers */}
+      <MarketSummaryCard />
 
       {/* Recent Trades */}
       <div className="card">

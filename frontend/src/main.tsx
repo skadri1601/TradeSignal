@@ -51,15 +51,27 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   </React.StrictMode>
 );
 
-// Register service worker for push notifications
-if ('serviceWorker' in navigator && 'PushManager' in window) {
+// Remove any previously registered service workers while developing
+if (!import.meta.env.PROD && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    registrations.forEach((registration) => registration.unregister());
+  });
+
+  if ('caches' in window) {
+    caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
+  }
+}
+
+// Register service worker for push notifications (production builds only)
+if (import.meta.env.PROD && 'serviceWorker' in navigator && 'PushManager' in window) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(registration => {
-        console.log('✅ Service Worker registered:', registration.scope);
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((registration) => {
+        console.log('Service Worker registered:', registration.scope);
       })
-      .catch(error => {
-        console.error('❌ Service Worker registration failed:', error);
+      .catch((error) => {
+        console.error('Service Worker registration failed:', error);
       });
   });
 }

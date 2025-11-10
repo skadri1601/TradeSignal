@@ -2,10 +2,12 @@ import { Routes, Route } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import Dashboard from './pages/Dashboard';
 import TradesPage from './pages/TradesPage';
+import MarketOverviewPage from './pages/MarketOverviewPage';
 import AboutPage from './pages/AboutPage';
 import CompanyPage from './pages/CompanyPage';
 import InsiderPage from './pages/InsiderPage';
 import AlertsPage from './pages/AlertsPage';
+import AIInsightsPage from './pages/AIInsightsPage';
 import NotFound from './pages/NotFound';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { useRealtimeAlerts } from './hooks/useRealtimeAlerts';
@@ -22,6 +24,8 @@ function AppContent() {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/trades" element={<TradesPage />} />
+        <Route path="/market-overview" element={<MarketOverviewPage />} />
+        <Route path="/ai-insights" element={<AIInsightsPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/companies/:ticker" element={<CompanyPage />} />
         <Route path="/insiders/:id" element={<InsiderPage />} />

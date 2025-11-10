@@ -37,12 +37,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [items, setItems] = useState<NotificationItem[]>([]);
   const genId = useId();
 
-  const add: NotificationContextValue['add'] = useCallback((n) => {
-    const id = n.id ?? genId();
-    const createdAt = Date.now();
-    setItems((prev) => [...prev, { id, createdAt, kind: 'info', duration: 6000, ...n }]);
-    return id;
-  }, []);
+  const add: NotificationContextValue['add'] = useCallback(
+    (n) => {
+      const id = n.id ?? genId();
+      const createdAt = Date.now();
+      setItems((prev) => [...prev, { id, createdAt, kind: 'info', duration: 6000, ...n }]);
+      return id;
+    },
+    [genId]
+  );
 
   const remove: NotificationContextValue['remove'] = useCallback((id) => {
     setItems((prev) => prev.filter((x) => x.id !== id));

@@ -14,6 +14,38 @@ export const companiesApi = {
     return response.data;
   },
 
+  // Fetch all companies across pages (limited to API max 100 per page)
+  getAllCompanies: async (): Promise<Company[]> => {
+    const perPage = 100;
+    let page = 1;
+    let hasNext = true;
+    const results: Company[] = [];
+
+    while (hasNext) {
+      const response = await apiClient.get<PaginatedResponse<Company>>('/api/v1/companies/', {
+        params: { limit: perPage, page },
+      });
+
+      results.push(...(response.data?.items ?? []));
+      hasNext = response.data?.has_next ?? false;
+
+      if (!hasNext || (response.data?.items?.length ?? 0) === 0) {
+        break;
+      }
+
+      page += 1;
+
+      // Safety break to avoid infinite loops if API misbehaves
+      if (page > 25) {
+        console.warn('[companiesApi] Reached pagination safety limit while fetching companies');
+        break;
+      }
+    }
+
+    console.log('[companiesApi] Loaded companies:', results.length);
+    return results;
+  },
+
   // Get single company by ticker
   getCompany: async (ticker: string): Promise<Company> => {
     const response = await apiClient.get(`/api/v1/companies/${ticker}`);

@@ -1,9 +1,11 @@
 import axios from 'axios';
 
+const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT ?? '120000');
+
 // Create axios instance with base configuration
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-  timeout: 30000,
+  timeout: Number.isFinite(API_TIMEOUT) && API_TIMEOUT >= 0 ? API_TIMEOUT : 120000,
   headers: {
     'Content-Type': 'application/json',
   },

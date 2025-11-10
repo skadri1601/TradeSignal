@@ -81,24 +81,40 @@ class SchedulerService:
 
     async def scrape_all_companies(self) -> None:
         """
-        Scrape all companies in the database.
+        Scrape all companies from watchlist file.
 
-        Called by scheduled job. Iterates through all companies and scrapes
+        Called by scheduled job. Iterates through companies in watchlist and scrapes
         recent Form 4 filings while respecting rate limits and last scrape times.
         """
         logger.info("Starting scheduled scrape of all companies")
 
+        # Load companies from watchlist file
+        import os
+        watchlist_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'watchlist_companies.txt')
+
+        tickers = []
+        try:
+            with open(watchlist_path, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    # Skip comments and empty lines
+                    if line and not line.startswith('#'):
+                        tickers.append(line)
+            logger.info(f"Loaded {len(tickers)} companies from watchlist")
+        except FileNotFoundError:
+            logger.error(f"Watchlist file not found at {watchlist_path}")
+            return
+        except Exception as e:
+            logger.error(f"Error reading watchlist file: {e}")
+            return
+
+        if not tickers:
+            logger.warning("No companies found in watchlist")
+            return
+
         async with db_manager.get_session() as db:
             try:
-                # Get all companies
-                result = await db.execute(select(Company))
-                companies = result.scalars().all()
-
-                if not companies:
-                    logger.warning("No companies found in database")
-                    return
-
-                logger.info(f"Found {len(companies)} companies to scrape")
+                logger.info(f"Found {len(tickers)} companies to scrape")
 
                 # Track results
                 total_filings = 0
@@ -106,18 +122,18 @@ class SchedulerService:
                 successful = 0
                 failed = 0
 
-                for company in companies:
+                for ticker in tickers:
                     try:
                         # Check if scraped recently (skip if within cooldown period)
-                        last_scrape = await self._get_last_successful_scrape(db, company.ticker)
+                        last_scrape = await self._get_last_successful_scrape(db, ticker)
                         cooldown = timedelta(hours=settings.scraper_cooldown_hours)
                         if last_scrape and (datetime.now() - last_scrape.completed_at) < cooldown:
-                            logger.info(f"Skipping {company.ticker} - scraped {last_scrape.completed_at}")
+                            logger.info(f"Skipping {ticker} - scraped {last_scrape.completed_at}")
                             continue
 
                         # Scrape this company with configured parameters
                         result = await self.scrape_company(
-                            company.ticker,
+                            ticker,
                             days_back=settings.scraper_days_back,
                             max_filings=settings.scraper_max_filings
                         )
@@ -130,7 +146,7 @@ class SchedulerService:
                             failed += 1
 
                     except Exception as e:
-                        logger.error(f"Error scraping {company.ticker}: {e}")
+                        logger.error(f"Error scraping {ticker}: {e}")
                         failed += 1
 
                 logger.info(
