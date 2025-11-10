@@ -107,3 +107,51 @@ export const formatCurrencyCompact = (value: string | number | null): string => 
   // For smaller numbers, use standard currency format
   return formatCurrency(num);
 };
+
+// Format date in CDT timezone (Dallas, TX)
+export const formatDateCDT = (dateString: string): string => {
+  try {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Chicago',
+      month: 'short',
+      day: '2-digit',
+      year: 'numeric',
+    }).format(date);
+  } catch {
+    return dateString;
+  }
+};
+
+// Format datetime in CDT timezone (Dallas, TX)
+export const formatDateTimeCDT = (dateString: string): string => {
+  try {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Chicago',
+      month: 'short',
+      day: '2-digit',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    }).format(date) + ' CDT';
+  } catch {
+    return dateString;
+  }
+};
+
+// Format time only in CDT timezone (Dallas, TX)
+export const formatTimeCDT = (dateString: string): string => {
+  try {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Chicago',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    }).format(date) + ' CDT';
+  } catch {
+    return dateString;
+  }
+};

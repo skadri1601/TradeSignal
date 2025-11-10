@@ -8,33 +8,39 @@ interface CompanyAutocompleteProps {
   value: string;
   onChange: (ticker: string) => void;
   placeholder?: string;
+  disabled?: boolean;
 }
 
 export default function CompanyAutocomplete({
   value,
   onChange,
   placeholder = 'Search by ticker (e.g., AAPL)...',
+  disabled = false,
 }: CompanyAutocompleteProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState(value);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const { data: companiesData, isLoading, error } = useQuery({
+  const {
+    data: companiesData,
+    isLoading,
+    error,
+  } = useQuery<Company[]>({
     queryKey: ['companies', 'all'],
-    queryFn: () => companiesApi.getCompanies({ limit: 100 }),
+    queryFn: () => companiesApi.getAllCompanies(),
+    staleTime: 1000 * 60 * 10, // cache for 10 minutes
   });
 
   // Debug logging
   useEffect(() => {
     console.log('[CompanyAutocomplete] Query State:', {
       isLoading,
-      hasData: !!companiesData,
-      itemsCount: companiesData?.items?.length || 0,
+      itemsCount: companiesData?.length || 0,
       error: error?.message || null,
     });
   }, [isLoading, companiesData, error]);
 
-  const companies = companiesData?.items || [];
+  const companies = companiesData || [];
 
   const filteredCompanies = companies.filter((company) => {
     const search = searchTerm.toLowerCase();
@@ -73,14 +79,11 @@ export default function CompanyAutocomplete({
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (disabled) return;
     const newValue = e.target.value;
     setSearchTerm(newValue);
     setIsOpen(newValue.length > 0);
-
-    // If user clears the input, clear the filter
-    if (newValue === '') {
-      onChange('');
-    }
+    onChange(newValue);
   };
 
   return (
@@ -93,10 +96,11 @@ export default function CompanyAutocomplete({
           type="text"
           value={searchTerm}
           onChange={handleInputChange}
-          onFocus={() => searchTerm.length > 0 && setIsOpen(true)}
+          onFocus={() => !disabled && searchTerm.length > 0 && setIsOpen(true)}
           placeholder={placeholder}
-          className="input pl-10 pr-10"
+          className="input pl-10 pr-10 disabled:opacity-50 disabled:cursor-not-allowed"
           autoComplete="off"
+          disabled={disabled}
         />
         {searchTerm && (
           <button

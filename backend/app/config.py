@@ -43,10 +43,52 @@ class Settings(BaseSettings):
     )
 
     # External API Keys (Optional for now)
+    # AI Provider Selection
+    ai_provider: str = Field(
+        default="gemini",
+        description="AI provider to use (gemini, openai)",
+        alias="AI_PROVIDER"
+    )
+
+    # OpenAI Configuration
     openai_api_key: Optional[str] = Field(
         default=None,
         description="OpenAI API key for AI insights",
         alias="OPENAI_API_KEY"
+    )
+    openai_model: str = Field(
+        default="gpt-4o-mini",
+        description="OpenAI model to use (gpt-4o-mini, gpt-4o, gpt-4-turbo)",
+        alias="OPENAI_MODEL"
+    )
+
+    # Gemini Configuration
+    gemini_api_key: Optional[str] = Field(
+        default=None,
+        description="Google Gemini API key for AI insights",
+        alias="GEMINI_API_KEY"
+    )
+    gemini_model: str = Field(
+        default="gemini-2.0-flash",
+        description="Gemini model to use (e.g., gemini-2.0-flash, gemini-2.5-flash)",
+        alias="GEMINI_MODEL"
+    )
+
+    # Shared AI Settings
+    ai_max_tokens: int = Field(
+        default=1000,
+        description="Maximum tokens for AI responses",
+        alias="AI_MAX_TOKENS"
+    )
+    ai_temperature: float = Field(
+        default=0.7,
+        description="AI temperature for response creativity (0-2)",
+        alias="AI_TEMPERATURE"
+    )
+    ai_cache_ttl_hours: int = Field(
+        default=24,
+        description="Hours to cache AI responses",
+        alias="AI_CACHE_TTL_HOURS"
     )
     alpha_vantage_api_key: Optional[str] = Field(
         default=None,
@@ -73,8 +115,8 @@ class Settings(BaseSettings):
     )
 
     scraper_timezone: str = Field(
-        default="UTC",
-        description="Timezone for the scraper",
+        default="America/Chicago",
+        description="Timezone for the scraper (CDT - Dallas, TX)",
         alias="SCRAPER_TIMEZONE"
     )
 

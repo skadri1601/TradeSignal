@@ -24,10 +24,12 @@ lxml==4.9.3
 
 # AI/ML
 openai==1.3.5
+google-generativeai>=0.8.0
 scikit-learn==1.3.2
 
 # Stock/Crypto Data
-yfinance==0.2.32
+yfinance>=0.2.66
+alpha-vantage==3.0.0
 
 # Scheduling
 apscheduler==3.10.4

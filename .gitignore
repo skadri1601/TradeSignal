@@ -38,7 +38,9 @@ dist-ssr/
 .env.local
 .env.*.local
 backend/.env
-.env.example
+# Keep .env.example files for documentation
+!.env.example
+!backend/.env.example
 
 # IDE
 .vscode/
@@ -158,3 +160,12 @@ backend/scripts/add_*.py
 
 # Temporary analysis files
 backend/scripts/analyze_*.py
+
+# Company data text files
+backend/watchlist_companies.txt
+current_companies.txt
+companies_list.txt
+tickers.txt
+
+# ESLint config (if auto-generated)
+frontend/.eslintrc.cjs

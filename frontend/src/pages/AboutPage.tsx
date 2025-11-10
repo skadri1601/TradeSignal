@@ -1,4 +1,4 @@
-import { Building2, TrendingUp, Filter, Zap, Database, Shield, Bell, Mail, Webhook } from 'lucide-react';
+import { Building2, TrendingUp, Filter, Zap, Database, Shield, Bell, Mail, Webhook, Brain, Sparkles } from 'lucide-react';
 
 export default function AboutPage() {
   return (
@@ -41,8 +41,8 @@ export default function AboutPage() {
               <h3 className="text-lg font-semibold text-gray-900">Live SEC Data</h3>
             </div>
             <p className="text-gray-600">
-              7,600+ real insider trades from SEC Form 4 filings across 151 companies.
-              No dummy data - all transactions are authentic and verified.
+              3,761+ real insider trades from SEC Form 4 filings across 164 companies.
+              No dummy data - all transactions are authentic and verified from the SEC.
             </p>
           </div>
 
@@ -98,7 +98,7 @@ export default function AboutPage() {
             </div>
             <p className="text-gray-600">
               Detailed company information with all insider trading history. Track
-              activity across 151 major companies including NASDAQ-100, Dow Jones 30, and top tech stocks.
+              activity across 164 major companies including NASDAQ-100, Dow Jones 30, and top tech stocks.
             </p>
           </div>
 
@@ -114,6 +114,128 @@ export default function AboutPage() {
               Every trade links directly to the official SEC Form 4 filing. Verify
               any transaction with a single click.
             </p>
+          </div>
+
+          {/* Feature 7 - AI Insights */}
+          <div className="card border-2 border-blue-300 bg-gradient-to-br from-blue-50 to-purple-50">
+            <div className="flex items-center mb-3">
+              <div className="p-2 bg-blue-100 rounded-lg mr-3">
+                <Brain className="h-6 w-6 text-blue-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">AI-Powered Insights</h3>
+              <Sparkles className="h-4 w-4 text-yellow-500 ml-2" />
+            </div>
+            <p className="text-gray-600">
+              Google Gemini 2.0 Flash AI analyzes insider trading patterns, generates
+              daily news summaries, provides trading signals, and answers questions about
+              insider activity with real-time database access.
+            </p>
+          </div>
+
+          {/* Feature 8 - Auto Scraping */}
+          <div className="card">
+            <div className="flex items-center mb-3">
+              <div className="p-2 bg-green-100 rounded-lg mr-3">
+                <Zap className="h-6 w-6 text-green-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Automated Scraping</h3>
+            </div>
+            <p className="text-gray-600">
+              Hourly automated scraping of all 164 companies. New SEC Form 4 filings
+              are detected and processed automatically, keeping data fresh and up-to-date.
+            </p>
+          </div>
+
+          {/* Feature 9 - Smart Alerts */}
+          <div className="card">
+            <div className="flex items-center mb-3">
+              <div className="p-2 bg-purple-100 rounded-lg mr-3">
+                <Bell className="h-6 w-6 text-purple-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Smart Alerts</h3>
+            </div>
+            <p className="text-gray-600">
+              Create custom alerts with advanced filtering. Get notified via webhooks,
+              email, browser push, or in-app when trades match your criteria.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* AI Features Section */}
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">AI-Powered Analysis</h2>
+        <p className="text-gray-600 mb-6">
+          TradeSignal uses Google Gemini 2.0 Flash to provide intelligent insights into insider trading
+          patterns. Our AI has real-time access to the complete database of insider trades.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Daily Summary */}
+          <div className="card bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+            <div className="flex items-center mb-3">
+              <div className="p-2 bg-blue-100 rounded-lg mr-3">
+                <Sparkles className="h-6 w-6 text-blue-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Daily News Feed</h3>
+            </div>
+            <p className="text-gray-600 text-sm mb-3">
+              AI-generated news-style summaries of the top 10 companies with the most significant
+              insider trading activity. Updates every 5 minutes with fresh insights.
+            </p>
+            <div className="text-xs text-blue-700 bg-blue-100 rounded px-2 py-1 inline-block">
+              Last 7 days • Auto-refresh
+            </div>
+          </div>
+
+          {/* Trading Signals */}
+          <div className="card bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+            <div className="flex items-center mb-3">
+              <div className="p-2 bg-green-100 rounded-lg mr-3">
+                <TrendingUp className="h-6 w-6 text-green-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Trading Signals</h3>
+            </div>
+            <p className="text-gray-600 text-sm mb-3">
+              AI analyzes 30 days of insider activity to generate BULLISH/BEARISH/NEUTRAL signals
+              with strength indicators and detailed reasoning for each company.
+            </p>
+            <div className="text-xs text-green-700 bg-green-100 rounded px-2 py-1 inline-block">
+              Last 30 days • AI reasoning included
+            </div>
+          </div>
+
+          {/* Company Analysis */}
+          <div className="card bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+            <div className="flex items-center mb-3">
+              <div className="p-2 bg-purple-100 rounded-lg mr-3">
+                <Building2 className="h-6 w-6 text-purple-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Company Deep-Dive</h3>
+            </div>
+            <p className="text-gray-600 text-sm mb-3">
+              Get AI-powered analysis for any company with sentiment classification, key insights,
+              and pattern detection based on configurable time periods (7-90 days).
+            </p>
+            <div className="text-xs text-purple-700 bg-purple-100 rounded px-2 py-1 inline-block">
+              Customizable timeframe • Sentiment analysis
+            </div>
+          </div>
+
+          {/* AI Chat */}
+          <div className="card bg-gradient-to-br from-orange-50 to-yellow-50 border-orange-200">
+            <div className="flex items-center mb-3">
+              <div className="p-2 bg-orange-100 rounded-lg mr-3">
+                <Brain className="h-6 w-6 text-orange-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">AI Chat Assistant</h3>
+            </div>
+            <p className="text-gray-600 text-sm mb-3">
+              Ask questions about insider trading data and get precise, data-driven answers.
+              The AI queries the database in real-time to provide accurate insights with insider names and positions.
+            </p>
+            <div className="text-xs text-orange-700 bg-orange-100 rounded px-2 py-1 inline-block">
+              Real-time DB queries • Precise answers
+            </div>
           </div>
         </div>
       </div>
@@ -260,21 +382,26 @@ export default function AboutPage() {
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           <div>
-            <p className="text-3xl font-bold text-blue-600">7,662</p>
+            <p className="text-3xl font-bold text-blue-600">3,761</p>
             <p className="text-sm text-gray-600 mt-1">Total Trades</p>
           </div>
           <div>
-            <p className="text-3xl font-bold text-green-600">151</p>
+            <p className="text-3xl font-bold text-green-600">164</p>
             <p className="text-sm text-gray-600 mt-1">Companies</p>
           </div>
           <div>
-            <p className="text-3xl font-bold text-purple-600">594</p>
+            <p className="text-3xl font-bold text-purple-600">600+</p>
             <p className="text-sm text-gray-600 mt-1">Insiders</p>
           </div>
           <div>
-            <p className="text-3xl font-bold text-red-600">$24.2B</p>
-            <p className="text-sm text-gray-600 mt-1">Total Value</p>
+            <p className="text-3xl font-bold text-red-600">Live Data</p>
+            <p className="text-sm text-gray-600 mt-1">Auto-Updated</p>
           </div>
+        </div>
+        <div className="mt-6 text-center">
+          <p className="text-xs text-gray-600">
+            Database updated hourly via automated SEC scraping • Last 7 days of activity
+          </p>
         </div>
       </div>
 
