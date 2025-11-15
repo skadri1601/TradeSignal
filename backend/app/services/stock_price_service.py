@@ -22,14 +22,38 @@ from sqlalchemy import select
 from app.models import Company
 from app.config import settings
 from alpha_vantage.timeseries import TimeSeries
+import finnhub
+from app.core.redis_cache import get_cache
+from prometheus_client import Counter, Histogram
 
 logger = logging.getLogger(__name__)
+
+# Prometheus metrics
+QUOTE_FETCH_COUNTER = Counter(
+    'stock_quote_fetches_total',
+    'Total stock quote fetches',
+    ['ticker', 'source', 'status']
+)
+
+QUOTE_FETCH_DURATION = Histogram(
+    'stock_quote_fetch_duration_seconds',
+    'Stock quote fetch duration seconds',
+    ['ticker', 'source']
+)
+
+CACHE_HIT_COUNTER = Counter(
+    'cache_hits_total',
+    'Total cache hits',
+    ['cache_type']
+)
 
 # Rate limiting
 _last_yahoo_request_time = 0
 _last_alpha_vantage_request_time = 0
+_last_finnhub_request_time = 0
 _min_yahoo_interval = 0.2  # 0.2 seconds between Yahoo requests to avoid rate limits
 _min_alpha_vantage_interval = 12.0  # 12 seconds between Alpha Vantage requests (5 per minute limit)
+_min_finnhub_interval = 1.0  # 1 second between Finnhub requests (60 per minute limit)
 
 # Cache for stock quotes (ticker -> (quote_data, timestamp))
 _quote_cache: Dict[str, tuple[Dict[str, Any], float]] = {}
@@ -37,6 +61,8 @@ _cache_ttl = 10  # Cache quotes for 10 seconds (allows 15s auto-refresh to get f
 
 # Track consecutive failures to switch data sources
 _yahoo_consecutive_failures = 0
+_finnhub_consecutive_failures = 0
+_alpha_vantage_consecutive_failures = 0
 _max_yahoo_failures_before_fallback = 3
 
 
@@ -68,6 +94,18 @@ class StockPriceService:
             time.sleep(wait_time)
 
         _last_alpha_vantage_request_time = time.time()
+
+    @staticmethod
+    def _rate_limit_finnhub():
+        """Apply rate limiting for Finnhub requests (60 calls per minute limit)."""
+        global _last_finnhub_request_time
+        current_time = time.time()
+        time_since_last = current_time - _last_finnhub_request_time
+
+        if time_since_last < _min_finnhub_interval:
+            time.sleep(_min_finnhub_interval - time_since_last)
+
+        _last_finnhub_request_time = time.time()
 
     @staticmethod
     def _fetch_from_yahoo(ticker: str) -> Optional[Dict[str, Any]]:
@@ -236,7 +274,67 @@ class StockPriceService:
             return quote_data
 
         except Exception as e:
-            logger.error(f"Alpha Vantage failed for {ticker}: {e}")
+            global _alpha_vantage_consecutive_failures
+            _alpha_vantage_consecutive_failures += 1
+            logger.error(f"Alpha Vantage failed for {ticker} (failure #{_alpha_vantage_consecutive_failures}): {e}")
+            return None
+
+    @staticmethod
+    def _fetch_from_finnhub(ticker: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch stock quote from Finnhub API (FREE tier: 60 calls/min).
+
+        Returns quote data or None if failed/not configured.
+        """
+        global _finnhub_consecutive_failures
+
+        if not settings.finnhub_api_key:
+            logger.debug("Finnhub API key not configured")
+            return None
+
+        try:
+            StockPriceService._rate_limit_finnhub()
+
+            # Initialize Finnhub client
+            finnhub_client = finnhub.Client(api_key=settings.finnhub_api_key)
+
+            # Get quote data
+            quote = finnhub_client.quote(ticker)
+
+            if not quote or 'c' not in quote:
+                logger.warning(f"Invalid response from Finnhub for {ticker}")
+                return None
+
+            current_price = float(quote['c'])  # Current price
+            previous_close = float(quote['pc'])  # Previous close
+            price_change = current_price - previous_close
+            price_change_percent = (price_change / previous_close) * 100 if previous_close else 0
+
+            quote_data = {
+                'ticker': ticker,
+                'current_price': round(current_price, 2),
+                'previous_close': round(previous_close, 2),
+                'price_change': round(price_change, 2),
+                'price_change_percent': round(price_change_percent, 2),
+                'market_cap': None,  # Not available in basic quote
+                'volume': None,
+                'avg_volume': None,
+                'day_high': round(float(quote['h']), 2) if 'h' in quote and quote['h'] else None,  # High price of the day
+                'day_low': round(float(quote['l']), 2) if 'l' in quote and quote['l'] else None,  # Low price of the day
+                'fifty_two_week_high': None,
+                'fifty_two_week_low': None,
+                'market_state': 'REGULAR',
+                'updated_at': datetime.utcnow().isoformat()
+            }
+
+            # Reset failure counter on success
+            _finnhub_consecutive_failures = 0
+            logger.info(f"Successfully fetched {ticker} from Finnhub")
+            return quote_data
+
+        except Exception as e:
+            _finnhub_consecutive_failures += 1
+            logger.error(f"Finnhub failed for {ticker} (failure #{_finnhub_consecutive_failures}): {e}")
             return None
 
     @staticmethod
@@ -255,33 +353,133 @@ class StockPriceService:
             use_cache: Whether to use cached data (default True)
 
         Returns:
-            Dict with price data or None if all sources failed
+            Dict with price data including staleness indicators or None if all sources failed
         """
-        # Check cache first - SKIP rate limiting for cached data
+        # Check cache first - prefer Redis, fall back to in-memory cache
+        cache = get_cache()
+        if use_cache and cache and cache.enabled():
+            cache_key = f"quote:{ticker}"
+            cached = cache.get(cache_key)
+            if cached:
+                # Calculate age if cached_at_ts present, else 0
+                cached_ts = cached.get('cached_at_ts')
+                age_seconds = int(time.time() - cached_ts) if cached_ts else 0
+                logger.debug(f"Using Redis cached data for {ticker} (age: {age_seconds}s)")
+                cached['is_stale'] = age_seconds > 60
+                cached['data_age_seconds'] = age_seconds
+                cached['last_updated'] = datetime.fromtimestamp(cached_ts).isoformat() if cached_ts else cached.get('updated_at')
+                cached['cached'] = True
+                cached['data_source'] = cached.get('data_source', 'yahoo_finance')
+                try:
+                    CACHE_HIT_COUNTER.labels(cache_type='redis').inc()
+                except Exception:
+                    pass
+                return cached
+
+        # Fallback: check local in-memory cache
         if use_cache and ticker in _quote_cache:
             cached_data, cached_time = _quote_cache[ticker]
-            age = time.time() - cached_time
-            if age < _cache_ttl:
-                logger.debug(f"Using cached data for {ticker} (age: {age:.1f}s)")
+            age_seconds = int(time.time() - cached_time)
+
+            if age_seconds < _cache_ttl:
+                logger.debug(f"Using in-memory cached data for {ticker} (age: {age_seconds}s)")
+                # Add staleness metadata for cached data
+                cached_data['is_stale'] = age_seconds > 60
+                cached_data['data_age_seconds'] = age_seconds
+                cached_data['last_updated'] = datetime.fromtimestamp(cached_time).isoformat()
+                cached_data['cached'] = True
+                cached_data['data_source'] = cached_data.get('data_source', 'yahoo_finance')
+                try:
+                    CACHE_HIT_COUNTER.labels(cache_type='memory').inc()
+                except Exception:
+                    pass
                 return cached_data
 
         # Try Yahoo Finance first
-        quote = StockPriceService._fetch_from_yahoo(ticker)
+        # Time the fetch from Yahoo
+        with QUOTE_FETCH_DURATION.labels(ticker=ticker, source='yahoo').time():
+            quote = StockPriceService._fetch_from_yahoo(ticker)
 
-        # If Yahoo fails repeatedly, try Alpha Vantage
+        if quote:
+            try:
+                QUOTE_FETCH_COUNTER.labels(ticker=ticker, source='yahoo', status='success').inc()
+            except Exception:
+                pass
+
+        if quote:
+            # Add staleness metadata for fresh data
+            quote['is_stale'] = False
+            quote['data_age_seconds'] = 0
+            quote['last_updated'] = datetime.now().isoformat()
+            quote['cached'] = False
+            quote['data_source'] = 'yahoo_finance'
+
+        # If Yahoo fails repeatedly, try Finnhub
         if not quote and _yahoo_consecutive_failures >= _max_yahoo_failures_before_fallback:
-            logger.info(f"Yahoo Finance has failed {_yahoo_consecutive_failures} times, trying Alpha Vantage")
-            quote = StockPriceService._fetch_from_alpha_vantage(ticker)
+            logger.info(f"Yahoo Finance has failed {_yahoo_consecutive_failures} times, trying Finnhub")
+            with QUOTE_FETCH_DURATION.labels(ticker=ticker, source='finnhub').time():
+                quote = StockPriceService._fetch_from_finnhub(ticker)
+
+            if quote:
+                # Add staleness metadata for Finnhub data
+                quote['is_stale'] = False
+                quote['data_age_seconds'] = 0
+                quote['last_updated'] = datetime.now().isoformat()
+                quote['cached'] = False
+                quote['data_source'] = 'finnhub'
+                try:
+                    QUOTE_FETCH_COUNTER.labels(ticker=ticker, source='finnhub', status='success').inc()
+                except Exception:
+                    pass
+
+        # If Finnhub also fails, try Alpha Vantage as last resort
+        if not quote and _finnhub_consecutive_failures >= 3:
+            logger.info(f"Finnhub has failed {_finnhub_consecutive_failures} times, trying Alpha Vantage")
+            with QUOTE_FETCH_DURATION.labels(ticker=ticker, source='alpha_vantage').time():
+                quote = StockPriceService._fetch_from_alpha_vantage(ticker)
+
+            if quote:
+                # Add staleness metadata for Alpha Vantage data
+                quote['is_stale'] = False
+                quote['data_age_seconds'] = 0
+                quote['last_updated'] = datetime.now().isoformat()
+                quote['cached'] = False
+                quote['data_source'] = 'alpha_vantage'
+                try:
+                    QUOTE_FETCH_COUNTER.labels(ticker=ticker, source='alpha_vantage', status='success').inc()
+                except Exception:
+                    pass
 
         # If both APIs failed, check for stale cache
         if not quote and ticker in _quote_cache:
             logger.warning(f"All live APIs failed for {ticker}, returning stale cache")
-            cached_data, _ = _quote_cache[ticker]
+            cached_data, cached_time = _quote_cache[ticker]
+            age_seconds = int(time.time() - cached_time)
+
+            # Add staleness metadata for stale cache
+            cached_data['is_stale'] = True
+            cached_data['data_age_seconds'] = age_seconds
+            cached_data['last_updated'] = datetime.fromtimestamp(cached_time).isoformat()
+            cached_data['cached'] = True
+            cached_data['data_source'] = 'stale_cache'
+            cached_data['source_status'] = 'stale'
+
             return cached_data
 
         # Cache the result if we got data
         if quote:
+            # store in in-memory cache
             _quote_cache[ticker] = (quote, time.time())
+
+            # store in Redis for shared cache (include timestamp)
+            try:
+                cache = get_cache()
+                if cache and cache.enabled():
+                    cached_payload = dict(quote)
+                    cached_payload['cached_at_ts'] = time.time()
+                    cache.set(f"quote:{ticker}", cached_payload, ttl=_cache_ttl)
+            except Exception:
+                pass
 
         return quote
 
@@ -301,24 +499,78 @@ class StockPriceService:
         """
         results = {}
 
-        # Use ThreadPoolExecutor for parallel fetching
-        # Limit to 10 concurrent threads to avoid overwhelming the API
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            # Submit all tasks
-            future_to_ticker = {
-                executor.submit(StockPriceService.get_stock_quote, ticker): ticker
-                for ticker in tickers
-            }
+        # Try Redis batch lookup first for speed
+        cache = get_cache()
+        cache_keys = [f"quote:{ticker}" for ticker in tickers]
+        cached_values = None
 
-            # Collect results as they complete
-            for future in future_to_ticker:
-                ticker = future_to_ticker[future]
-                try:
-                    quote = future.result()
-                    results[ticker] = quote
-                except Exception as e:
-                    logger.error(f"Error getting quote for {ticker}: {e}")
-                    results[ticker] = None
+        if cache and cache.enabled():
+            try:
+                cached_values = cache.mget(cache_keys)
+            except Exception:
+                cached_values = None
+
+        tickers_to_fetch: List[str] = []
+
+        if cached_values:
+            for i, ticker in enumerate(tickers):
+                cached = cached_values[i]
+                if cached:
+                    # compute age
+                    cached_ts = cached.get('cached_at_ts')
+                    age_seconds = int(time.time() - cached_ts) if cached_ts else 0
+                    cached['is_stale'] = age_seconds > 60
+                    cached['data_age_seconds'] = age_seconds
+                    cached['last_updated'] = datetime.fromtimestamp(cached_ts).isoformat() if cached_ts else cached.get('updated_at')
+                    cached['cached'] = True
+                    results[ticker] = cached
+                else:
+                    tickers_to_fetch.append(ticker)
+        else:
+            # No Redis or mget failed - fall back to in-memory cache check
+            for ticker in tickers:
+                if ticker in _quote_cache:
+                    cached_data, cached_time = _quote_cache[ticker]
+                    age_seconds = int(time.time() - cached_time)
+                    if age_seconds < _cache_ttl:
+                        cached_data['is_stale'] = age_seconds > 60
+                        cached_data['data_age_seconds'] = age_seconds
+                        cached_data['last_updated'] = datetime.fromtimestamp(cached_time).isoformat()
+                        cached_data['cached'] = True
+                        results[ticker] = cached_data
+                        continue
+                tickers_to_fetch.append(ticker)
+
+        logger.info(f"Cache hit: {len(results)}/{len(tickers)}, fetching: {len(tickers_to_fetch)}")
+
+        # Fetch remaining tickers in parallel
+        if tickers_to_fetch:
+            with ThreadPoolExecutor(max_workers=20) as executor:
+                future_to_ticker = {
+                    executor.submit(StockPriceService.get_stock_quote, ticker): ticker
+                    for ticker in tickers_to_fetch
+                }
+
+                for future in future_to_ticker:
+                    ticker = future_to_ticker[future]
+                    try:
+                        quote = future.result()
+                        results[ticker] = quote
+
+                        # Cache result in Redis if available
+                        try:
+                            if quote:
+                                cache = get_cache()
+                                if cache and cache.enabled():
+                                    payload = dict(quote)
+                                    payload['cached_at_ts'] = time.time()
+                                    cache.set(f"quote:{ticker}", payload, ttl=_cache_ttl)
+                        except Exception:
+                            pass
+
+                    except Exception as e:
+                        logger.error(f"Error getting quote for {ticker}: {e}")
+                        results[ticker] = None
 
         return results
 

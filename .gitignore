@@ -147,6 +147,7 @@ Truth*.md
 QUICK_START.md
 QUICKSTART*.md
 session_summary*.md
+project_status*.md
 
 # Claude Code settings (local)
 .claude/
