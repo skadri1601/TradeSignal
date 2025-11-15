@@ -327,7 +327,7 @@ async def root() -> dict[str, Any]:
 
 # Health Check Endpoint
 @app.get("/health", tags=["Health"])
-async def health_check() -> dict[str, Any]:
+async def health_check() -> dict[str, Any] | JSONResponse:
     """
     Health check endpoint for monitoring and load balancers.
 
