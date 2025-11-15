@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from decimal import Decimal
 from enum import Enum
 
-from sqlalchemy import String, Integer, ForeignKey, Date, DateTime, Boolean, Numeric, Text, CheckConstraint
+from sqlalchemy import String, Integer, ForeignKey, Date, DateTime, Boolean, Numeric, Text, CheckConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -144,6 +144,10 @@ class Trade(Base):
     # Constraints
     __table_args__ = (
         CheckConstraint("transaction_type IN ('BUY', 'SELL')", name="check_transaction_type"),
+        # Composite index for efficient queries by company and transaction date
+        Index('ix_company_transaction_date', 'company_id', 'transaction_date'),
+        # Composite index for company and created_at for recent activity lookups
+        Index('ix_company_created_at', 'company_id', 'created_at'),
     )
 
     def __repr__(self) -> str:

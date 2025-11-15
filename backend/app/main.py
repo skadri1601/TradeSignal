@@ -11,6 +11,7 @@ load_dotenv()
 
 import logging
 import time
+import os
 from datetime import datetime
 from contextlib import asynccontextmanager
 from typing import Any
@@ -20,19 +21,65 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.database import db_manager
+from prometheus_fastapi_instrumentator import Instrumentator
+
+# Sentry error tracking
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+if settings.is_production and os.getenv("SENTRY_DSN"):
+    sentry_sdk.init(
+        dsn=os.getenv("SENTRY_DSN"),
+        environment=settings.environment,
+        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+        profiles_sample_rate=float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.1")),
+        integrations=[
+            FastApiIntegration(),
+            SqlalchemyIntegration(),
+        ],
+        send_default_pii=False,  # Don't send personally identifiable information
+    )
+    logging.info("Sentry error tracking initialized")
+elif os.getenv("SENTRY_DSN"):
+    # Development mode with Sentry
+    sentry_sdk.init(
+        dsn=os.getenv("SENTRY_DSN"),
+        environment="development",
+        traces_sample_rate=1.0,  # 100% tracing in dev
+        integrations=[
+            FastApiIntegration(),
+            SqlalchemyIntegration(),
+        ],
+    )
+    logging.info("Sentry error tracking initialized (development mode)")
 
 
 
-# Configure logging
-logging.basicConfig(
-    level=getattr(logging, settings.log_level),
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
-logger = logging.getLogger(__name__)
+# Configure logging (Phase 5.4: Structured JSON logging in production)
+if settings.is_production or os.getenv("USE_JSON_LOGGING", "false").lower() == "true":
+    from app.core.logging_config import setup_json_logging
+    setup_json_logging(level=settings.log_level)
+    logger = logging.getLogger(__name__)
+    logger.info("Using structured JSON logging")
+else:
+    # Use human-readable logging in development
+    logging.basicConfig(
+        level=getattr(logging, settings.log_level),
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    logger = logging.getLogger(__name__)
+
+
+# Configure rate limiter (uses in-memory storage, upgrade to Redis for production)
+limiter = Limiter(key_func=get_remote_address)
 
 
 @asynccontextmanager
@@ -117,6 +164,21 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Prometheus metrics: instrument the FastAPI app and expose /metrics
+try:
+    Instrumentator().instrument(app).expose(app)
+    logger.info("Prometheus instrumentator registered (/metrics)")
+except Exception as e:
+    logger.warning(f"Prometheus instrumentation failed to initialize: {e}")
+
+# Add rate limiter to app state
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+# HTTPS Redirect and Security Headers Middleware (must be added first)
+from app.middleware import HTTPSRedirectMiddleware
+app.add_middleware(HTTPSRedirectMiddleware)
 
 # CORS Middleware Configuration
 app.add_middleware(
@@ -310,7 +372,7 @@ async def health_check() -> dict[str, Any]:
 
 
 # API v1 Routers
-from app.routers import trades, companies, insiders, scraper, scheduler, alerts, push, ai, stocks
+from app.routers import trades, companies, insiders, scraper, scheduler, alerts, push, ai, stocks, health, tasks, billing
 
 # Include all routers with API v1 prefix
 app.include_router(
@@ -357,6 +419,21 @@ app.include_router(
     stocks.router,
     prefix=f"{settings.api_v1_prefix}",
     tags=["Stock Prices"]
+)
+app.include_router(
+    health.router,
+    prefix=f"{settings.api_v1_prefix}",
+    tags=["Health Checks"]
+)
+app.include_router(
+    tasks.router,
+    prefix=f"{settings.api_v1_prefix}",
+    tags=["Background Tasks"]
+)
+app.include_router(
+    billing.router,
+    prefix=f"{settings.api_v1_prefix}",
+    tags=["Billing"]
 )
 
 

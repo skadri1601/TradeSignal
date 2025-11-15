@@ -11,16 +11,39 @@
 ![TradeSignal Demo](docs/demo.gif)
 <!-- Add demo screenshot/gif later -->
 
+## 📊 Current Status
+
+**✅ FULLY OPERATIONAL** - All core features implemented and deployed via Docker
+
+- **109+ Companies** actively tracked with hourly automated scraping
+- **Real-time Data** via WebSocket connections and 15-second market updates
+- **AI Integration** with Google Gemini 2.0 Flash for insights and chatbot
+- **Multi-channel Alerts** with webhooks, email, and browser push notifications
+- **Live Market Data** from Yahoo Finance with intelligent caching
+- **8 Database Models** with full CRUD operations and pagination
+- **60+ API Endpoints** documented with interactive Swagger UI
+- **Celery Background Tasks** for automated scraping and alerts
+- **Docker Deployment** with PostgreSQL, Redis, Celery, Flower, and monitoring
+
+**Access Your TradeSignal Instance:**
+- Frontend Dashboard: http://localhost:5174
+- Backend API: http://localhost:8000
+- API Documentation: http://localhost:8000/docs
+- Celery Flower: http://localhost:5555
+
+---
+
 ## 🚀 Features
 
 - **📡 Real-Time SEC Monitoring**: Track Form 4 insider trading filings within minutes of publication
-- **🏛️ Congressional Trade Tracking**: Monitor U.S. politician stock transactions (STOCK Act disclosures)
-- **📊 Live Market Data**: Real-time stock and crypto price integration
-- **🤖 AI-Powered Insights**: GPT-4o-generated analysis of trading patterns and significance
-- **🔔 Smart Alerts**: Custom watchlists with email/webhook notifications
-- **📈 Performance Analytics**: Historical win rates and pattern detection
-- **⚡ Real-Time Dashboard**: WebSocket-powered live updates
-- **🎯 Advanced Filtering**: Search by insider, company, trade size, date range
+- **📊 Live Market Overview**: Real-time stock prices for 109+ companies with 15-second auto-refresh
+- **🤖 AI-Powered Insights**: Google Gemini 2.0 Flash analysis with daily summaries and trading signals
+- **🔔 Smart Alerts**: Multi-channel notifications (webhooks, email, browser push) with custom filters
+- **⚡ Real-Time Dashboard**: WebSocket-powered live updates with trade streaming
+- **🎯 Advanced Filtering**: Search by ticker, insider role, trade value, transaction type
+- **📈 Market Analytics**: Live top gainers/losers, insider activity patterns, buy/sell ratios
+- **🔄 Auto-Scraping**: Hourly automated SEC filing scraping for 109+ companies
+- **💬 AI Chatbot**: Interactive Q&A about insider trading with real-time data access
 
 ## 🎯 Use Cases
 
@@ -36,8 +59,10 @@
 - **Framework**: FastAPI (async Python web framework)
 - **Database**: PostgreSQL with SQLAlchemy ORM
 - **Data Processing**: Pandas, BeautifulSoup, lxml
-- **AI/ML**: OpenAI GPT-4o, scikit-learn
+- **AI/ML**: Google Gemini 2.0 Flash, OpenAI GPT-4o-mini
+- **Market Data**: Yahoo Finance (yfinance), Alpha Vantage (fallback)
 - **Task Scheduling**: APScheduler
+- **Notifications**: pywebpush, SendGrid, webhooks
 
 ### Frontend
 - **Framework**: React 18 with TypeScript
@@ -54,12 +79,12 @@
 
 ## 📊 Data Sources
 
-- **SEC EDGAR**: Form 4 filings (corporate insiders)
-- **House Financial Disclosures**: Congressional trades
-- **Senate Financial Disclosures**: Senate trades
-- **Yahoo Finance**: Stock prices (via yfinance)
-- **CoinGecko API**: Cryptocurrency prices
-- **Alpha Vantage**: Alternative market data
+- **SEC EDGAR**: Form 4 filings (corporate insiders) - 100% live data
+- **Yahoo Finance**: Real-time stock prices (primary, free)
+- **Alpha Vantage**: Market data fallback (requires API key)
+- **Google Gemini**: AI-powered trade analysis (1500 free requests/day)
+- **OpenAI GPT-4**: AI fallback for insights
+- **House/Senate Disclosures**: Congressional trades (planned Phase 7)
 
 ## 🏗️ Architecture
 ```
@@ -177,7 +202,7 @@ docker-compose up --build
 ```
 
 Access:
-- Frontend: http://localhost:3000
+- Frontend: http://localhost:5174
 - Backend API: http://localhost:8000
 - API Docs: http://localhost:8000/docs
 
@@ -193,9 +218,13 @@ Access:
 # Database
 DATABASE_URL=postgresql://user:password@localhost:5432/tradesignal
 
-# APIs
-OPENAI_API_KEY=sk-...
-ALPHA_VANTAGE_API_KEY=...
+# AI Providers (optional)
+GEMINI_API_KEY=your-gemini-key  # Free tier: 1500 requests/day
+OPENAI_API_KEY=sk-...           # Fallback
+AI_PROVIDER=gemini              # gemini or openai
+
+# Market Data (optional)
+ALPHA_VANTAGE_API_KEY=...       # Fallback for Yahoo Finance
 
 # Security
 JWT_SECRET=your-secret-key
@@ -204,6 +233,8 @@ JWT_ALGORITHM=HS256
 # Features
 ENABLE_AI_INSIGHTS=true
 ENABLE_WEBHOOKS=true
+ENABLE_EMAIL_ALERTS=false
+ENABLE_PUSH_NOTIFICATIONS=false
 ```
 
 See `.env.example` for full configuration.
@@ -235,25 +266,58 @@ npm test
 - [x] Real-time scraper service
 - [x] Auto-create companies and insiders
 - [x] Scraper API endpoints
-- [x] Successfully tested with AAPL, TSLA
+- [x] Successfully tested with 109+ companies
 
-### 🚧 Phase 3: Frontend Dashboard (IN PROGRESS)
-- [ ] React dashboard with TypeScript
-- [ ] Tailwind CSS styling
-- [ ] Trade listing and filtering
-- [ ] Company/insider profiles
-- [ ] Real-time updates (WebSocket)
-- [ ] Charts and analytics
+### ✅ Phase 3: Frontend Dashboard (COMPLETED)
+- [x] React 18 dashboard with TypeScript
+- [x] Tailwind CSS styling
+- [x] Trade listing with advanced filtering
+- [x] Company/insider profiles
+- [x] Real-time updates (WebSocket)
+- [x] Charts and analytics (Recharts)
+- [x] Responsive design
+
+### ✅ Phase 4: Scheduled Auto-Scraping (COMPLETED)
+- [x] APScheduler integration
+- [x] Hourly automated scraping (all 109+ companies)
+- [x] Intelligent cooldown (23-hour per company)
+- [x] Job management API endpoints
+- [x] Error handling and retry logic
+
+### ✅ Phase 5: Notifications & Alerts (COMPLETED)
+- [x] Alert rule engine with flexible filters
+- [x] Multi-channel notifications (webhooks, email, push)
+- [x] Real-time WebSocket alert streaming
+- [x] Alert management UI
+- [x] Slack/Discord integration tested
+- [x] Browser push notifications with VAPID
+
+### ✅ Phase 6: AI-Powered Insights (COMPLETED)
+- [x] Google Gemini 2.0 Flash integration (free tier)
+- [x] OpenAI GPT-4o-mini fallback
+- [x] Daily market summary (news feed style)
+- [x] Trading signals (bullish/bearish/neutral)
+- [x] Company-specific AI analysis
+- [x] Interactive AI chatbot with real data
+- [x] AI Insights dashboard page
+
+### ✅ Phase 6.5: Live Market Overview (COMPLETED - Nov 10, 2025)
+- [x] Yahoo Finance integration (primary)
+- [x] Alpha Vantage fallback
+- [x] Real-time prices for 109+ stocks
+- [x] 15-second auto-refresh
+- [x] Parallel fetching (7-8s for all stocks)
+- [x] Market Overview page with search/filter/sort
+- [x] Dashboard widget (top gainers/losers)
+- [x] Intelligent caching (10s TTL)
 
 ### 📋 Future Phases
-- [ ] Congressional trade tracking
-- [ ] AI-powered insights (GPT-4o)
-- [ ] Email/webhook alerts
-- [ ] Scheduled auto-scraping
-- [ ] Mobile app (React Native)
+- [ ] **Phase 7**: Congressional trade tracking (House/Senate)
+- [ ] **Phase 8**: Mobile app (React Native, iOS/Android)
 - [ ] Machine learning predictions
 - [ ] Options flow tracking
 - [ ] International market support
+- [ ] Advanced portfolio tracking
 
 ## 🤝 Contributing
 

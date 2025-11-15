@@ -13,6 +13,9 @@ from app.models.alert_history import AlertHistory
 from app.models.scrape_job import ScrapeJob
 from app.models.scrape_history import ScrapeHistory
 from app.models.push_subscription import PushSubscription
+from app.models.subscription import Subscription, SubscriptionTier, SubscriptionStatus
+from app.models.usage import UsageTracking
+from app.models.user import User
 
 __all__ = [
     "Company",
@@ -25,4 +28,9 @@ __all__ = [
     "ScrapeJob",
     "ScrapeHistory",
     "PushSubscription",
+    "Subscription",
+    "SubscriptionTier",
+    "SubscriptionStatus",
+    "UsageTracking",
+    "User",
 ]

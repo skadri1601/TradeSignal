@@ -6,6 +6,7 @@ import AIChat from '../components/ai/AIChat';
 import CompanyAnalysis from '../components/ai/CompanyAnalysis';
 import TradingSignals from '../components/ai/TradingSignals';
 import DailySummaryCard from '../components/ai/DailySummaryCard';
+import { LegalDisclaimer } from '../components/LegalDisclaimer';
 
 export default function AIInsightsPage() {
   const [activeTab, setActiveTab] = useState<'chat' | 'analysis' | 'signals' | 'summary'>('summary');
@@ -109,6 +110,8 @@ export default function AIInsightsPage() {
   // AI available - show interface
   return (
     <div className="space-y-6">
+      <LegalDisclaimer />
+
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">AI-Powered Insights</h1>

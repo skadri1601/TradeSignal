@@ -95,6 +95,11 @@ class Settings(BaseSettings):
         description="Alpha Vantage API key for market data",
         alias="ALPHA_VANTAGE_API_KEY"
     )
+    finnhub_api_key: Optional[str] = Field(
+        default=None,
+        description="Finnhub API key for market data (FREE tier: 60 calls/min)",
+        alias="FINNHUB_API_KEY"
+    )
     coingecko_api_key: Optional[str] = Field(
         default=None,
         description="CoinGecko API key for crypto data",
@@ -245,11 +250,21 @@ class Settings(BaseSettings):
         alias="ENABLE_PUSH_NOTIFICATIONS"
     )
 
-    # Redis Configuration (Optional)
+    # Redis Configuration (Phase 4.1 - Caching)
     redis_url: Optional[str] = Field(
         default=None,
         description="Redis connection URL for caching",
         alias="REDIS_URL"
+    )
+    redis_host: str = Field(
+        default="127.0.0.1",
+        description="Redis host",
+        alias="REDIS_HOST"
+    )
+    redis_port: int = Field(
+        default=6379,
+        description="Redis port",
+        alias="REDIS_PORT"
     )
 
     # Application Configuration
@@ -271,7 +286,7 @@ class Settings(BaseSettings):
 
     # CORS Configuration
     cors_origins: str = Field(
-        default="http://localhost:3000,http://localhost:5173,http://localhost:5174,http://localhost:5175",
+        default="http://localhost:5174,http://localhost:5173,http://localhost:5175",
         description="Comma-separated list of allowed CORS origins",
         alias="CORS_ORIGINS"
     )
@@ -317,6 +332,22 @@ class Settings(BaseSettings):
                 "Format: 'YourName your@email.com'"
             )
         return v.strip()
+
+    @field_validator("jwt_secret")
+    @classmethod
+    def validate_jwt_secret(cls, v: str) -> str:
+        """
+        Validate JWT secret is strong enough.
+
+        Requires at least 32 characters for security.
+        Generate with: python -c "import secrets; print(secrets.token_urlsafe(64))"
+        """
+        if not v or len(v) < 32:
+            raise ValueError(
+                "JWT_SECRET must be at least 32 characters for security. "
+                "Generate a strong secret with: python -c \"import secrets; print(secrets.token_urlsafe(64))\""
+            )
+        return v
 
     @field_validator("log_level")
     @classmethod

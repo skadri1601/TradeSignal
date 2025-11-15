@@ -5,8 +5,10 @@ Provides AI-powered analysis of insider trading patterns using configured AI pro
 """
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.database import get_db
 from app.services.ai_service import AIService
@@ -22,6 +24,9 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/ai", tags=["AI Insights"])
+
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
 
 
 def check_ai_availability():
@@ -44,7 +49,9 @@ def check_ai_availability():
     summary="Analyze company insider trading",
     dependencies=[Depends(check_ai_availability)]
 )
+@limiter.limit("5/hour")  # AI is expensive, limit to 5 requests per hour
 async def analyze_company(
+    request: Request,
     ticker: str,
     days_back: int = Query(30, ge=1, le=365, description="Days to analyze"),
     db: AsyncSession = Depends(get_db)
@@ -89,7 +96,8 @@ async def analyze_company(
     summary="Get daily insider trading summary",
     dependencies=[Depends(check_ai_availability)]
 )
-async def get_daily_summary(db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/hour")
+async def get_daily_summary(request: Request, db: AsyncSession = Depends(get_db)):
     """
     Get AI-generated summary of top insider trades from the last 24 hours.
 
@@ -127,7 +135,9 @@ async def get_daily_summary(db: AsyncSession = Depends(get_db)):
     summary="Ask AI about insider trades",
     dependencies=[Depends(check_ai_availability)]
 )
+@limiter.limit("20/hour")
 async def ask_question(
+    request: Request,
     question_data: ChatQuestion,
     db: AsyncSession = Depends(get_db)
 ):
@@ -170,7 +180,8 @@ async def ask_question(
     summary="Get AI trading signals",
     dependencies=[Depends(check_ai_availability)]
 )
-async def get_trading_signals(db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/hour")
+async def get_trading_signals(request: Request, db: AsyncSession = Depends(get_db)):
     """
     Get AI-generated trading signals based on recent insider activity.
 
@@ -216,7 +227,8 @@ async def get_trading_signals(db: AsyncSession = Depends(get_db)):
     "/status",
     summary="Check AI service status"
 )
-async def get_ai_status():
+@limiter.limit("30/minute")
+async def get_ai_status(request: Request):
     """
     Check if AI insights service is available.
 

@@ -143,6 +143,10 @@ port.md
 *_COMPLETE.md
 IMPLEMENTATION*.md
 SETUP*.md
+Truth*.md
+QUICK_START.md
+QUICKSTART*.md
+session_summary*.md
 
 # Claude Code settings (local)
 .claude/

@@ -5,8 +5,10 @@ REST API routes for insider operations.
 """
 
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.database import get_db
 from app.services import InsiderService, TradeService
@@ -21,10 +23,13 @@ from app.schemas.trade import TradeRead, TradeFilter, TradeWithDetails
 from app.schemas.common import PaginationParams, SortParams, PaginatedResponse
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.get("/", response_model=PaginatedResponse[InsiderRead])
+@limiter.limit("60/minute")
 async def get_insiders(
+    request: Request,
     pagination: PaginationParams = Depends(),
     company_id: int | None = Query(None, description="Filter by company"),
     db: AsyncSession = Depends(get_db)
@@ -55,7 +60,9 @@ async def get_insiders(
 
 
 @router.get("/search", response_model=PaginatedResponse[InsiderRead])
+@limiter.limit("60/minute")
 async def search_insiders(
+    request: Request,
     q: str = Query(..., min_length=1, description="Search query (name)"),
     pagination: PaginationParams = Depends(),
     db: AsyncSession = Depends(get_db)
@@ -86,7 +93,9 @@ async def search_insiders(
 
 
 @router.get("/{insider_id}", response_model=InsiderRead)
+@limiter.limit("60/minute")
 async def get_insider(
+    request: Request,
     insider_id: int,
     db: AsyncSession = Depends(get_db)
 ):
@@ -118,7 +127,9 @@ async def get_insider(
 
 
 @router.get("/{insider_id}/trades", response_model=PaginatedResponse[TradeWithDetails])
+@limiter.limit("60/minute")
 async def get_insider_trades(
+    request: Request,
     insider_id: int,
     pagination: PaginationParams = Depends(),
     sort: SortParams = Depends(),
@@ -165,7 +176,9 @@ async def get_insider_trades(
 
 
 @router.post("/", response_model=InsiderRead, status_code=status.HTTP_201_CREATED)
+@limiter.limit("20/minute")
 async def create_insider(
+    request: Request,
     insider_data: InsiderCreate,
     db: AsyncSession = Depends(get_db)
 ):
@@ -200,7 +213,9 @@ async def create_insider(
 
 
 @router.patch("/{insider_id}", response_model=InsiderRead)
+@limiter.limit("20/minute")
 async def update_insider(
+    request: Request,
     insider_id: int,
     insider_data: InsiderUpdate,
     db: AsyncSession = Depends(get_db)
@@ -223,7 +238,9 @@ async def update_insider(
 
 
 @router.delete("/{insider_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("20/minute")
 async def delete_insider(
+    request: Request,
     insider_id: int,
     db: AsyncSession = Depends(get_db)
 ):

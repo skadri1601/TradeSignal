@@ -78,17 +78,21 @@ export interface TradingSignal {
   signal: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
   strength: 'STRONG' | 'MODERATE' | 'WEAK';
   trade_count: number;
+  total_trades?: number;
   buy_volume: number;
   sell_volume: number;
   buy_ratio: number;
   total_value: number;
   reasoning?: string;
+  timestamp?: string;
 }
 
 export interface TradingSignalsResponse {
   signals: TradingSignal[];
   generated_at: string;
   period: string;
+  days_analyzed?: number;
+  timestamp?: string;
   message?: string;
 }
 

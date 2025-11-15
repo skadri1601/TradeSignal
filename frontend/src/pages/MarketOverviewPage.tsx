@@ -1,13 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { stocksApi } from '../api/stocks';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import { TrendingUp, TrendingDown, AlertCircle, Filter } from 'lucide-react';
+import { TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
 import { useState, useMemo } from 'react';
+import { LegalDisclaimer } from '../components/LegalDisclaimer';
+import MarketStatusBanner from '../components/MarketStatusBanner';
 
 export default function MarketOverviewPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'market_cap' | 'price' | 'change_percent' | 'volume'>('market_cap');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sortOrder] = useState<'asc' | 'desc'>('desc');
   const [filterBy, setFilterBy] = useState<'all' | 'gainers' | 'losers'>('all');
   const { data: quotes, isLoading, error, refetch } = useQuery({
     queryKey: ['market-overview-all'],
@@ -165,6 +167,9 @@ export default function MarketOverviewPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <LegalDisclaimer />
+      <MarketStatusBanner />
+
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <div>

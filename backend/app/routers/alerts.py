@@ -9,8 +9,10 @@ import logging
 import json
 import asyncio
 from typing import Set
-from fastapi import APIRouter, Depends, HTTPException, Query, status, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Query, status, WebSocket, WebSocketDisconnect, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.database import get_db
 from app.services.alert_service import AlertService
@@ -28,6 +30,7 @@ from app.schemas.common import PaginatedResponse
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
+limiter = Limiter(key_func=get_remote_address)
 
 # WebSocket connection manager for real-time alerts
 class AlertConnectionManager:
@@ -61,7 +64,9 @@ alert_manager = AlertConnectionManager()
 
 
 @router.post("/", response_model=AlertResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("20/minute")
 async def create_alert(
+    request: Request,
     alert_data: AlertCreate,
     db: AsyncSession = Depends(get_db)
 ):
@@ -86,7 +91,9 @@ async def create_alert(
 
 
 @router.get("/", response_model=PaginatedResponse[AlertResponse])
+@limiter.limit("60/minute")
 async def list_alerts(
+    request: Request,
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(20, ge=1, le=100, description="Items per page"),
     is_active: bool = Query(None, description="Filter by active status"),
@@ -112,7 +119,9 @@ async def list_alerts(
 
 
 @router.get("/{alert_id}", response_model=AlertResponse)
+@limiter.limit("60/minute")
 async def get_alert(
+    request: Request,
     alert_id: int,
     db: AsyncSession = Depends(get_db)
 ):
@@ -132,7 +141,9 @@ async def get_alert(
 
 
 @router.patch("/{alert_id}", response_model=AlertResponse)
+@limiter.limit("20/minute")
 async def update_alert(
+    request: Request,
     alert_id: int,
     alert_data: AlertUpdate,
     db: AsyncSession = Depends(get_db)
@@ -155,7 +166,9 @@ async def update_alert(
 
 
 @router.delete("/{alert_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("20/minute")
 async def delete_alert(
+    request: Request,
     alert_id: int,
     db: AsyncSession = Depends(get_db)
 ):
@@ -177,7 +190,9 @@ async def delete_alert(
 
 
 @router.post("/{alert_id}/toggle", response_model=AlertResponse)
+@limiter.limit("20/minute")
 async def toggle_alert(
+    request: Request,
     alert_id: int,
     toggle_data: AlertToggle,
     db: AsyncSession = Depends(get_db)
@@ -200,7 +215,9 @@ async def toggle_alert(
 
 
 @router.post("/{alert_id}/test", status_code=status.HTTP_200_OK)
+@limiter.limit("20/minute")
 async def test_alert(
+    request: Request,
     alert_id: int,
     db: AsyncSession = Depends(get_db)
 ):
@@ -222,7 +239,9 @@ async def test_alert(
 
 
 @router.get("/history/", response_model=PaginatedResponse[AlertHistoryResponse])
+@limiter.limit("60/minute")
 async def list_alert_history(
+    request: Request,
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(20, ge=1, le=100, description="Items per page"),
     alert_id: int = Query(None, description="Filter by alert ID"),
@@ -255,7 +274,9 @@ async def list_alert_history(
 
 
 @router.get("/stats/", response_model=AlertStatsResponse)
+@limiter.limit("60/minute")
 async def get_alert_stats(
+    request: Request,
     db: AsyncSession = Depends(get_db)
 ):
     """

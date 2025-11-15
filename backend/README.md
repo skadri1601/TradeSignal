@@ -4,53 +4,172 @@ FastAPI backend service for the TradeSignal insider trading intelligence platfor
 
 ---
 
-## 📁 Project Structure
+## 📁 Current Project Structure
 
 ```
 backend/
 ├── app/
-│   ├── models/                    # SQLAlchemy ORM models
+│   ├── models/                    # ✅ SQLAlchemy ORM models
 │   │   ├── __init__.py
 │   │   ├── company.py             # Company model (ticker, CIK, name, sector)
 │   │   ├── insider.py             # Insider model (name, title, relationships)
-│   │   └── trade.py               # Trade model (transactions with details)
+│   │   ├── trade.py               # Trade model (transactions with details)
+│   │   ├── alert.py               # Alert rule model
+│   │   ├── alert_history.py       # Alert history tracking
+│   │   ├── push_subscription.py   # Push notification subscriptions
+│   │   ├── scrape_job.py          # Scheduled scrape jobs
+│   │   └── scrape_history.py      # Scraping history logs
 │   │
-│   ├── schemas/                   # Pydantic schemas (validation & serialization)
+│   ├── schemas/                   # ✅ Pydantic schemas (validation & serialization)
 │   │   ├── __init__.py
 │   │   ├── common.py              # Shared schemas (pagination, filters)
 │   │   ├── company.py             # Company schemas (Create, Read, Update)
 │   │   ├── insider.py             # Insider schemas
-│   │   └── trade.py               # Trade schemas
+│   │   ├── trade.py               # Trade schemas
+│   │   ├── alert.py               # Alert schemas
+│   │   ├── ai.py                  # AI insights schemas
+│   │   ├── stock.py               # Stock price schemas
+│   │   ├── push_subscription.py   # Push subscription schemas
+│   │   ├── scrape_job.py          # Scrape job schemas
+│   │   └── scrape_history.py      # Scrape history schemas
 │   │
-│   ├── routers/                   # API endpoints
+│   ├── routers/                   # ✅ API endpoints
 │   │   ├── __init__.py
 │   │   ├── companies.py           # Company endpoints (/api/v1/companies)
 │   │   ├── insiders.py            # Insider endpoints (/api/v1/insiders)
-│   │   ├── trades.py              # Trade endpoints (/api/v1/trades)
-│   │   └── scraper.py             # Scraper endpoints (/api/v1/scraper)
+│   │   ├── trades.py              # Trade endpoints + WebSocket (/api/v1/trades)
+│   │   ├── scraper.py             # Scraper endpoints (/api/v1/scraper)
+│   │   ├── alerts.py              # Alert management (/api/v1/alerts)
+│   │   ├── ai.py                  # AI insights & chatbot (/api/v1/ai)
+│   │   ├── stocks.py              # Stock prices & market data (/api/v1/stocks)
+│   │   ├── push.py                # Push notifications (/api/v1/push)
+│   │   ├── scheduler.py           # Scheduler management (/api/v1/scheduler)
+│   │   ├── tasks.py               # Background tasks (/api/v1/tasks)
+│   │   └── health.py              # Health check endpoint
 │   │
-│   ├── services/                  # Business logic layer
+│   ├── services/                  # ✅ Business logic layer
 │   │   ├── __init__.py
 │   │   ├── company_service.py     # Company operations
 │   │   ├── insider_service.py     # Insider operations
 │   │   ├── trade_service.py       # Trade operations
 │   │   ├── sec_client.py          # SEC EDGAR API client
 │   │   ├── form4_parser.py        # Form 4 XML parser
-│   │   └── scraper_service.py     # Scraper orchestration
+│   │   ├── scraper_service.py     # Scraper orchestration
+│   │   ├── alert_service.py       # Alert rule engine
+│   │   ├── notification_service.py # Multi-channel notifications
+│   │   ├── ai_service.py          # AI insights (Gemini/OpenAI)
+│   │   ├── stock_price_service.py # Stock price fetching (Yahoo/Alpha Vantage)
+│   │   ├── market_status_service.py # Market open/closed detection
+│   │   ├── scheduler_service.py   # APScheduler integration
+│   │   ├── push_subscription_service.py # Push notification management
+│   │   ├── company_enrichment_service.py # Company data enrichment
+│   │   └── trade_event_manager.py # Real-time trade event broadcasting
 │   │
-│   ├── config.py                  # Settings management (Pydantic BaseSettings)
-│   ├── database.py                # Database connection & session factory
-│   ├── main.py                    # FastAPI application entry point
-│   └── seed_data.py               # Database seed script
+│   ├── core/                      # ✅ Core infrastructure
+│   │   ├── celery_app.py          # Celery configuration
+│   │   ├── redis_cache.py         # Redis caching utilities
+│   │   └── logging_config.py      # Logging configuration
+│   │
+│   ├── middleware/                # ✅ Custom middleware
+│   │   ├── __init__.py
+│   │   └── https_redirect.py      # HTTPS redirect middleware
+│   │
+│   ├── tasks/                     # ✅ Celery background tasks
+│   │   └── scraper_tasks.py       # Scheduled scraping tasks
+│   │
+│   ├── config.py                  # ✅ Settings management (Pydantic BaseSettings)
+│   ├── database.py                # ✅ Database connection & session factory
+│   ├── main.py                    # ✅ FastAPI application entry point
+│   └── seed_data.py               # ✅ Database seed script
 │
-├── tests/                         # Test data and test cases
+├── tests/                         # ✅ Test configuration
 │   ├── __init__.py
+│   ├── conftest.py                # Pytest configuration
+│   ├── test_health.py             # Health endpoint tests
 │   └── seed_trades.json           # Sample trade data
 │
-├── requirements.txt               # Python dependencies
-├── Dockerfile                     # Docker image definition
+├── scripts/                       # SQL scripts & utilities
+│   └── add_indexes.sql            # Database indexes
+│
+├── requirements.txt               # ✅ Python dependencies
+├── Dockerfile                     # ✅ Docker image definition
 └── README.md                      # This file
 ```
+
+**Status:** ✅ **FULLY IMPLEMENTED** - All phases complete (Phases 1-6.5)
+
+---
+
+## ✨ Key Features Implemented
+
+### 📡 SEC Data Scraping
+- Real-time Form 4 insider trading scraper
+- SEC EDGAR API integration with rate limiting
+- Automated hourly scraping for 109+ companies
+- XML parsing with lxml and BeautifulSoup
+- Intelligent cooldown (23-hour per company)
+- Scrape history tracking and job management
+- Error handling and retry logic
+
+### 🗄️ Database & Models
+- PostgreSQL with async SQLAlchemy 2.0
+- 8 database models (Company, Insider, Trade, Alert, Alert History, Push Subscription, Scrape Job, Scrape History)
+- Full CRUD operations for all models
+- Pagination support
+- Advanced filtering and querying
+- Database indexes for performance
+
+### 🔔 Alerts & Notifications
+- Flexible alert rule engine
+- Multi-channel notifications (webhooks, email, browser push)
+- Real-time WebSocket alert streaming
+- VAPID-based browser push notifications
+- Alert history tracking
+- Scheduled alert processing
+
+### 🤖 AI Integration
+- Google Gemini 2.0 Flash (primary)
+- OpenAI GPT-4o-mini (fallback)
+- Daily market summaries
+- AI trading signals (bullish/bearish/neutral)
+- Company-specific analysis
+- Interactive chatbot with real-time data access
+- Smart caching (24-hour TTL)
+- Token usage tracking
+
+### 📈 Stock Market Data
+- Yahoo Finance integration (primary, free)
+- Alpha Vantage fallback
+- Real-time prices for 109+ stocks
+- Market status detection (open/closed)
+- Parallel data fetching (7-8s for all stocks)
+- Redis caching (10s TTL)
+- Top gainers/losers calculation
+
+### ⚙️ Background Tasks
+- Celery integration with Redis broker
+- Scheduled scraping tasks
+- APScheduler for job management
+- Celery Beat for periodic tasks
+- Flower UI for monitoring
+- Task status tracking
+
+### 🔌 API Endpoints (60+)
+- RESTful API with FastAPI
+- WebSocket support for real-time updates
+- Interactive API docs (Swagger UI)
+- Full OpenAPI specification
+- CORS configuration
+- Health check endpoints
+- Rate limiting ready
+
+### 🚀 Performance & Caching
+- Redis caching layer
+- Async operations throughout
+- Database query optimization
+- Parallel API requests
+- Smart cache invalidation
+- Efficient data pagination
 
 ---
 
@@ -59,6 +178,12 @@ backend/
 - **Framework**: FastAPI 0.104+ (async Python web framework)
 - **Database**: PostgreSQL 15 with SQLAlchemy 2.0 (async)
 - **Validation**: Pydantic v2
+- **Task Queue**: Celery + Redis
+- **Caching**: Redis
+- **AI**: Google Gemini 2.0 Flash, OpenAI GPT-4o-mini
+- **Market Data**: Yahoo Finance (yfinance), Alpha Vantage
+- **Scheduler**: APScheduler
+- **Monitoring**: Flower, Prometheus
 - **HTTP Client**: httpx (async)
 - **XML Parsing**: lxml, BeautifulSoup4
 - **Testing**: pytest (planned)

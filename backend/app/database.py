@@ -65,10 +65,20 @@ class DatabaseManager:
                     settings.database_url_async,
                     echo=settings.debug,  # Log SQL queries in debug mode
                     pool_pre_ping=True,  # Verify connections before using
-                    pool_size=5,  # Number of connections to maintain
-                    max_overflow=10,  # Additional connections when pool is full
+                    pool_size=20,  # Increased from 10 for better concurrency
+                    max_overflow=40,  # Increased from 20 for burst traffic
                     pool_recycle=3600,  # Recycle connections after 1 hour
+                    pool_timeout=30,  # Wait 30s for connection from pool
+                    pool_use_lifo=True,  # Use most recent connections (better for connection health)
                     poolclass=pool_class,
+                    connect_args={
+                        "server_settings": {
+                            "application_name": "tradesignal",
+                            "jit": "off",  # Disable JIT for faster simple queries
+                        },
+                        "command_timeout": 60,  # 60 second query timeout
+                        "timeout": 10,  # 10 second connection timeout
+                    },
                 )
                 logger.info(
                     f"Database engine created successfully (environment: {settings.environment})"

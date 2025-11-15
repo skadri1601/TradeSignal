@@ -4,88 +4,152 @@ React 18 + TypeScript frontend dashboard for the TradeSignal insider trading int
 
 ---
 
-## 📁 Project Structure
+## 📁 Current Project Structure
 
 ```
 frontend/
 ├── src/
-│   ├── api/                       # API client & HTTP requests
+│   ├── api/                       # ✅ API client & HTTP requests
 │   │   ├── client.ts              # Axios instance configuration
+│   │   ├── ai.ts                  # AI insights & chatbot API
+│   │   ├── alerts.ts              # Alert management API
 │   │   ├── companies.ts           # Company API calls
 │   │   ├── insiders.ts            # Insider API calls
+│   │   ├── stocks.ts              # Stock price & market data API
 │   │   └── trades.ts              # Trade API calls
 │   │
-│   ├── components/                # Reusable UI components
+│   ├── components/                # ✅ Reusable UI components
 │   │   ├── layout/
 │   │   │   ├── Header.tsx         # App header with navigation
-│   │   │   ├── Sidebar.tsx        # Filter sidebar
 │   │   │   └── Layout.tsx         # Main layout wrapper
 │   │   │
 │   │   ├── trades/
-│   │   │   ├── TradeList.tsx      # Trade table
-│   │   │   ├── TradeCard.tsx      # Individual trade card
-│   │   │   ├── TradeFilters.tsx   # Filter controls
-│   │   │   └── TradeChart.tsx     # Trade visualizations
+│   │   │   ├── TradeList.tsx      # Trade table with filtering
+│   │   │   ├── TradePieChart.tsx  # Buy/Sell distribution chart
+│   │   │   └── TradeValueSparkline.tsx # Value trend sparkline
 │   │   │
-│   │   ├── companies/
-│   │   │   ├── CompanyCard.tsx    # Company overview card
-│   │   │   └── CompanyList.tsx    # Company listing
+│   │   ├── stocks/
+│   │   │   ├── MarketOverviewCard.tsx  # Individual stock card
+│   │   │   └── MarketSummaryCard.tsx   # Market summary widget
 │   │   │
-│   │   ├── insiders/
-│   │   │   ├── InsiderCard.tsx    # Insider profile card
-│   │   │   └── InsiderList.tsx    # Insider listing
+│   │   ├── alerts/
+│   │   │   ├── AlertCard.tsx      # Alert display card
+│   │   │   ├── AlertList.tsx      # Alert listing
+│   │   │   ├── CreateAlertModal.tsx # Create alert modal
+│   │   │   └── EditAlertModal.tsx # Edit alert modal
+│   │   │
+│   │   ├── ai/
+│   │   │   ├── AIChat.tsx         # Interactive AI chatbot
+│   │   │   ├── CompanyAnalysis.tsx # AI company analysis
+│   │   │   ├── DailySummaryCard.tsx # AI daily market summary
+│   │   │   └── TradingSignals.tsx # AI trading signals
 │   │   │
 │   │   └── common/
-│   │       ├── Button.tsx         # Button component
-│   │       ├── Card.tsx           # Card wrapper
+│   │       ├── CompanyAutocomplete.tsx # Company search autocomplete
 │   │       ├── LoadingSpinner.tsx # Loading indicator
-│   │       └── Pagination.tsx     # Pagination controls
+│   │       ├── CookieConsent.tsx  # Cookie consent banner
+│   │       ├── DataFreshnessIndicator.tsx # Data age indicator
+│   │       ├── FirstTimeDisclaimerModal.tsx # Legal disclaimer
+│   │       ├── LegalDisclaimer.tsx # Legal footer
+│   │       └── MarketStatusBanner.tsx # Market open/closed banner
 │   │
-│   ├── pages/                     # Page components
-│   │   ├── Dashboard.tsx          # Home dashboard
-│   │   ├── TradesPage.tsx         # All trades view
+│   ├── pages/                     # ✅ Page components
+│   │   ├── Dashboard.tsx          # Home dashboard with stats
+│   │   ├── TradesPage.tsx         # All trades view with filters
 │   │   ├── CompanyPage.tsx        # Company detail view
 │   │   ├── InsiderPage.tsx        # Insider detail view
+│   │   ├── MarketOverviewPage.tsx # Live stock prices (109+ stocks)
+│   │   ├── AIInsightsPage.tsx     # AI insights & chatbot
+│   │   ├── AlertsPage.tsx         # Alert management
+│   │   ├── AboutPage.tsx          # About page
+│   │   ├── PricingPage.tsx        # Pricing/subscription page
+│   │   ├── PrivacyPolicyPage.tsx  # Privacy policy
+│   │   ├── TermsOfServicePage.tsx # Terms of service
 │   │   └── NotFound.tsx           # 404 page
 │   │
-│   ├── hooks/                     # Custom React hooks
-│   │   ├── useTrades.ts           # React Query hook for trades
-│   │   ├── useCompanies.ts        # React Query hook for companies
-│   │   └── useInsiders.ts         # React Query hook for insiders
+│   ├── hooks/                     # ✅ Custom React hooks
+│   │   ├── usePushNotifications.ts # Browser push notifications
+│   │   ├── useRealtimeAlerts.ts   # Real-time alert streaming
+│   │   └── useTradeStream.ts      # WebSocket trade streaming
 │   │
-│   ├── store/                     # State management (Zustand)
-│   │   ├── useFilterStore.ts      # Filter state
-│   │   └── useThemeStore.ts       # Theme state (dark mode)
+│   ├── contexts/                  # ✅ React contexts
+│   │   └── NotificationContext.tsx # Notification state management
 │   │
-│   ├── types/                     # TypeScript type definitions
-│   │   ├── company.ts             # Company types
-│   │   ├── insider.ts             # Insider types
-│   │   ├── trade.ts               # Trade types
-│   │   └── api.ts                 # API response types
+│   ├── types/                     # ✅ TypeScript type definitions
+│   │   └── index.ts               # All type definitions
 │   │
-│   ├── utils/                     # Utility functions
-│   │   ├── formatters.ts          # Number/date formatters
-│   │   ├── validators.ts          # Input validation
+│   ├── utils/                     # ✅ Utility functions
 │   │   └── constants.ts           # App constants
 │   │
-│   ├── App.tsx                    # Root app component
-│   ├── main.tsx                   # App entry point
-│   └── index.css                  # Global styles + Tailwind
+│   ├── test/                      # ✅ Test configuration
+│   │   └── setup.ts               # Vitest setup
+│   │
+│   ├── App.tsx                    # ✅ Root app component with routing
+│   ├── main.tsx                   # ✅ App entry point
+│   └── index.css                  # ✅ Global styles + Tailwind
 │
 ├── public/                        # Static assets
-│   ├── favicon.ico
-│   └── logo.svg
+│   └── vite.svg
 │
-├── package.json                   # Dependencies & scripts
-├── tsconfig.json                  # TypeScript configuration
-├── vite.config.ts                 # Vite bundler config
-├── tailwind.config.js             # Tailwind CSS config
-├── postcss.config.js              # PostCSS config
-├── Dockerfile                     # Docker image definition
+├── package.json                   # ✅ Dependencies & scripts
+├── tsconfig.json                  # ✅ TypeScript configuration
+├── vite.config.ts                 # ✅ Vite bundler config
+├── vitest.config.ts               # ✅ Vitest test config
+├── tailwind.config.js             # ✅ Tailwind CSS config
+├── postcss.config.js              # ✅ PostCSS config
+├── Dockerfile                     # ✅ Docker image definition
 └── README.md                      # This file
 ```
 
-**Note:** This is the planned structure for Phase 3. Currently, only basic files exist (`App.tsx`, `main.tsx`).
+**Status:** ✅ **FULLY IMPLEMENTED** - All phases complete (Phases 1-6.5)
+
+---
+
+## ✨ Key Features Implemented
+
+### 📊 Dashboard & Analytics
+- Real-time insider trade tracking with live updates
+- Market overview with 109+ stocks and live prices (15-second refresh)
+- Top gainers/losers widget
+- Buy/sell ratio charts and sparklines
+- Data freshness indicators
+
+### 🔔 Alerts & Notifications
+- Custom alert creation with flexible filters (ticker, value, transaction type)
+- Real-time WebSocket alert streaming
+- Browser push notifications (with VAPID)
+- Alert management (create, edit, delete, enable/disable)
+- Multi-channel delivery (webhooks, email, push)
+
+### 🤖 AI-Powered Insights
+- Google Gemini 2.0 Flash integration
+- Daily market summaries (news feed style)
+- AI trading signals (bullish/bearish/neutral)
+- Company-specific AI analysis
+- Interactive AI chatbot with real-time data access
+- Smart caching (24-hour TTL)
+
+### 📈 Market Data
+- Live stock prices for 109+ companies
+- Yahoo Finance integration (primary source)
+- Market status banner (open/closed with live indicator)
+- Real-time price updates
+- Top gainers/losers analysis
+- Parallel data fetching for performance
+
+### 🎯 Trade Management
+- Advanced filtering (ticker, date range, value, transaction type)
+- Trade listing with pagination
+- Company and insider detail pages
+- WebSocket live trade streaming
+- Trade statistics and visualizations
+
+### 🔒 Legal & Compliance
+- Cookie consent banner
+- First-time user disclaimer modal
+- Privacy policy & terms of service pages
+- Legal disclaimer footer
+- GDPR compliance features
 
 ---
 
@@ -138,7 +202,7 @@ VITE_WS_URL=ws://localhost:8000/ws
 npm run dev
 ```
 
-Frontend will run at: http://localhost:3000
+Frontend will run at: http://localhost:5174
 
 ---
 
@@ -409,24 +473,24 @@ rm -rf node_modules package-lock.json
 npm install
 ```
 
-### Issue: Port 3000 already in use
+### Issue: Port 5174 already in use
 
 **Solution:**
 
 Mac/Linux:
 ```bash
-lsof -ti:3000 | xargs kill -9
+lsof -ti:5174 | xargs kill -9
 ```
 
 Windows:
 ```bash
-netstat -ano | findstr :3000
+netstat -ano | findstr :5174
 taskkill /PID <PID> /F
 ```
 
 Or use different port:
 ```bash
-npm run dev -- --port 3001
+npm run dev -- --port 5175
 ```
 
 ### Issue: API calls failing (CORS error)

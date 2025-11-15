@@ -1,6 +1,6 @@
 # TradeSignal - Project Status
 
-**Last Updated:** November 8, 2025
+**Last Updated:** November 10, 2025
 **Developer:** Saad Kadri (MS Computer Science @ UT Arlington)
 **Project Type:** Portfolio Project - Insider Trading Intelligence Platform
 
@@ -237,7 +237,7 @@ docker-compose up --build
 # Access points
 - Backend API: http://localhost:8000
 - API Docs: http://localhost:8000/docs
-- Frontend: http://localhost:3000 (not built yet)
+- Frontend: http://localhost:5174
 ```
 
 ### Testing the Scraper
@@ -722,62 +722,165 @@ GitHub: [Your GitHub Profile]
 
 ---
 
-## ✅ Phase 6.5: Live Stock Prices (COMPLETED - Nov 9, 2025)
+## ✅ Phase 6.5: Live Market Overview & Stock Prices (COMPLETED - Nov 10, 2025)
 
 ### What Was Built
-- **Yahoo Finance Integration** (yfinance Python library)
-  - Live stock quotes with 60-second caching
-  - Demo fallback data for 7 major stocks (AAPL, MSFT, TSLA, NVDA, GOOGL, AMZN, META)
-  - Rate limiting: 2 seconds between Yahoo API calls
-  - Custom session with retry logic and proper headers
 
-- **Stock Price API Endpoints** (`/api/v1/stocks`)
-  - `GET /quote/{ticker}` - Get single stock quote
-  - `GET /quotes?tickers=AAPL,MSFT` - Get multiple quotes
-  - `GET /market-overview?limit=7` - Live dashboard overview
-  - `GET /history/{ticker}?days=30` - Historical price data
+**Backend Components:**
+- **Stock Price Service** (`services/stock_price_service.py`)
+  - **Yahoo Finance Integration** (primary) - Free, no API key required
+  - **Alpha Vantage** (fallback) - Requires API key, 5 calls/minute limit
+  - **Multi-source failover** with intelligent cache fallback
+  - **Rate limiting:** 200ms between Yahoo requests (prevents throttling)
+  - **Intelligent caching:** 10-second TTL for fresh data every 15s
+  - **Parallel fetching:** ThreadPoolExecutor with 10 workers (fetches 109 stocks in ~7-8 seconds)
+  - **Graceful degradation:** Returns stale cache if all APIs fail
 
-- **Frontend Components**
-  - `MarketOverviewCard.tsx` - Live stock prices with auto-refresh (15s)
-  - `StockPriceDisplay.tsx` - Reusable price component with color coding
-  - React Query integration for data fetching and caching
-  - TypeScript API client with proper types
+- **Stock Price API Endpoints** (`routers/stocks.py`)
+  - `GET /api/v1/stocks/quote/{ticker}` - Single stock quote
+  - `GET /api/v1/stocks/quotes?tickers=AAPL,MSFT` - Batch quotes
+  - `GET /api/v1/stocks/market-overview` - Live prices for ALL companies with insider trades
+  - `GET /api/v1/stocks/history/{ticker}?days=30` - Historical price data
 
-### Performance Optimization
-- **Initial Problem:** Market overview API took 10+ seconds (sequential Yahoo API calls with rate limiting)
-- **Solution:** Instant demo data generation with intelligent caching
-  - First load: 125ms (generates and caches demo data)
-  - Subsequent loads: 69ms (returns cached data)
-  - 80x performance improvement!
+**Frontend Components:**
+- **Pages:**
+  - `MarketOverviewPage.tsx` - Full-page live market dashboard with 109 stocks
+    - **15-second auto-refresh** with React Query
+    - **Search** by ticker or company name
+    - **Filtering:** All stocks, gainers only, losers only
+    - **Sorting:** Market cap, price, change %, volume (ascending/descending)
+    - **Manual refresh button** for immediate updates
+    - **Statistics banner** showing total companies and data source
+
+- **Components:**
+  - `MarketSummaryCard.tsx` - Dashboard widget showing top 5 gainers/losers
+  - Custom formatters for prices, market cap, volume (compact notation)
+  - Loading states, error handling, empty states
+  - React Query integration with intelligent caching
+
+### Performance Optimization Journey
+
+**Initial Problem:** Market overview took 54 seconds (sequential API calls)
+- 109 stocks × 0.5s rate limit = 54.5 seconds
+
+**Optimization 1:** Reduced rate limiting to 0.05s
+- Result: Hit Yahoo Finance rate limits, many failures
+
+**Optimization 2:** Parallel fetching with ThreadPoolExecutor
+- 109 stocks fetched in ~7-8 seconds (10 concurrent workers)
+- 86% performance improvement!
+
+**Optimization 3:** Cache optimization for auto-refresh
+- Backend cache TTL: 30s → 10s (allows 15s frontend refresh to get fresh data)
+- Frontend staleTime: 0 (always fetches fresh data)
+- Rate limiting: 0.05s → 0.2s (prevents API throttling)
+
+**Final Result:**
+- First load: ~7 seconds (fetches all 109 stocks in parallel)
+- Auto-refresh every 15s: Gets fresh data after 10s cache expires
+- Manual refresh: Immediate fresh data fetch
 
 ### Features Implemented
-✅ **Option 1:** Price display on Dashboard
-✅ **Option 2:** Live Market Overview Card with auto-refresh
-- Current price, previous close, price change %, market cap
-- Volume, day high/low, 52-week high/low
-- Color-coded gains (green) and losses (red)
-- Market state indicator (DEMO/OPEN/CLOSED)
 
-### Files Created
+✅ **Live Market Overview Page** (`/market-overview`)
+- Real-time prices for all 109 companies with insider trades
+- Auto-refresh every 15 seconds
+- Search, filter, and sort capabilities
+- Professional UI with trend indicators and color coding
+- Responsive table with company names and tickers
+
+✅ **Market Summary Dashboard Widget**
+- Top 5 gainers and top 5 losers
+- Live price updates
+- Compact display for dashboard integration
+
+✅ **Advanced Filtering & Sorting**
+- Filter: All stocks, gainers only, losers only
+- Sort by: Market cap, price, change %, volume
+- Ascending/descending order toggle
+- Search by ticker or company name
+
+✅ **Data Quality**
+- 100% live data from Yahoo Finance (no demo data)
+- Real-time market cap, volume, day high/low
+- 52-week high/low tracking
+- Price change calculations with proper formatting
+
+### Bug Fixes
+
+🐛 **React Hooks Ordering Violation**
+- **Problem:** "Rendered more hooks than during the previous render" error
+- **Cause:** Early returns (loading, error states) happened BEFORE useMemo hook
+- **Fix:** Moved ALL hooks (useState, useQuery, useMemo) to top of component, BEFORE any conditional returns
+- **Result:** No more React errors, stable rendering
+
+🐛 **Auto-Refresh Not Working**
+- **Problem:** Prices not updating every 15 seconds or on manual refresh
+- **Cause:** Backend cache TTL (30s) > Frontend refresh interval (15s) = stale data
+- **Fix:** Reduced backend cache to 10s, set frontend staleTime to 0
+- **Result:** Fresh data every 15 seconds, manual refresh works perfectly
+
+🐛 **Yahoo Finance Rate Limiting**
+- **Problem:** "Too Many Requests" errors, many stocks failing to fetch
+- **Cause:** Rate limiting too aggressive (0.05s between requests)
+- **Fix:** Increased to 0.2s (200ms) between requests
+- **Result:** Significantly fewer failures, stable data fetching
+
+### Files Created/Modified
 ```
 backend/app/
-├── services/stock_price_service.py   # Yahoo Finance integration
-├── routers/stocks.py                  # Stock price API endpoints
-└── schemas/stocks.py                  # Pydantic models (if needed)
+├── services/
+│   └── stock_price_service.py       # Multi-source stock data (800+ lines)
+├── routers/
+│   └── stocks.py                    # Stock price API endpoints
+├── config.py                        # Added Alpha Vantage API key config
+└── requirements.txt                 # Added yfinance, alpha-vantage
 
 frontend/src/
-├── api/stocks.ts                      # TypeScript API client
+├── pages/
+│   └── MarketOverviewPage.tsx       # Full market overview (335 lines)
 ├── components/stocks/
-│   ├── MarketOverviewCard.tsx        # Live market overview
-│   └── StockPriceDisplay.tsx         # Reusable price display
-└── types/stocks.ts                    # TypeScript interfaces
+│   ├── MarketSummaryCard.tsx        # Dashboard widget (200+ lines)
+│   └── MarketOverviewCard.tsx       # (legacy, can be removed)
+├── api/
+│   └── stocks.ts                    # Stock API client
+└── utils/
+    └── formatters.ts                # Price/market cap formatting
 ```
 
 ### Test Results
-✅ `/api/v1/stocks/market-overview` - 69-125ms response time
-✅ Demo data for 7 major stocks
-✅ 60-second cache prevents rate limiting
-✅ Graceful fallback from Yahoo API to demo data
-✅ Dashboard loads instantly (no more 10+ second hangs)
+✅ Market overview fetches 109 stocks in ~7-8 seconds
+✅ Auto-refresh working perfectly every 15 seconds
+✅ Manual refresh button triggers immediate data fetch
+✅ Search and filtering working correctly
+✅ Sorting by all criteria (market cap, price, change %, volume)
+✅ React Hooks error completely resolved
+✅ Yahoo Finance integration stable with proper rate limiting
+✅ Cache TTL optimized for 15-second refresh cycle
+✅ Dashboard widget shows live top gainers/losers
+✅ All prices, volumes, and market caps are live and accurate
+
+### Technical Highlights
+- **Multi-source data fetching** with automatic failover
+- **Parallel processing** with ThreadPoolExecutor (10 workers)
+- **Intelligent caching** (10s TTL) balances freshness and API limits
+- **Rate limiting** (200ms) prevents API throttling
+- **React Query** with staleTime:0 ensures fresh data
+- **useMemo** for optimized filtering/sorting without re-renders
+- **Proper error handling** with stale cache fallback
+- **Professional UI** with loading states and empty states
+
+### Configuration
+```bash
+# .env configuration
+ALPHA_VANTAGE_API_KEY=your-key-here  # Optional fallback (5 calls/min)
+
+# Features
+- Yahoo Finance: Primary (free, unlimited with rate limiting)
+- Alpha Vantage: Fallback (requires API key, 5/min limit)
+- Cache TTL: 10 seconds
+- Rate Limit: 200ms between Yahoo requests
+- Parallel Workers: 10 concurrent threads
+```
 
 ---

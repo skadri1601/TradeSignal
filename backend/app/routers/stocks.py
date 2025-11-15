@@ -4,15 +4,21 @@ Stock Price API Router
 Endpoints for fetching live stock prices from Yahoo Finance.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from app.database import get_db
 from app.services.stock_price_service import StockPriceService
+from app.services.market_status_service import MarketStatusService
 from pydantic import BaseModel
 from typing import Optional
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 router = APIRouter(prefix="/stocks", tags=["stocks"])
+
+# Initialize limiter for this router
+limiter = Limiter(key_func=get_remote_address)
 
 
 class StockQuote(BaseModel):
@@ -45,9 +51,12 @@ class PriceHistoryPoint(BaseModel):
 
 
 @router.get("/quote/{ticker}", response_model=StockQuote)
-async def get_stock_quote(ticker: str):
+@limiter.limit("30/minute")
+async def get_stock_quote(request: Request, ticker: str):
     """
     Get current stock quote for a ticker.
+
+    Rate Limit: 30 requests per minute per IP
 
     Args:
         ticker: Stock ticker symbol (e.g., TSLA, AAPL)
@@ -70,11 +79,15 @@ async def get_stock_quote(ticker: str):
 
 
 @router.get("/quotes", response_model=List[StockQuote])
+@limiter.limit("10/minute")
 async def get_multiple_quotes(
+    request: Request,
     tickers: str = Query(..., description="Comma-separated list of ticker symbols")
 ):
     """
     Get quotes for multiple tickers.
+
+    Rate Limit: 10 requests per minute per IP
 
     Args:
         tickers: Comma-separated ticker symbols (e.g., "TSLA,AAPL,GOOGL")
@@ -102,12 +115,16 @@ async def get_multiple_quotes(
 
 
 @router.get("/market-overview", response_model=List[StockQuote])
+@limiter.limit("10/minute")
 async def get_market_overview(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     limit: int = Query(None, ge=1, description="Number of companies to return (default: all)")
 ):
     """
     Get live market data for companies with recent insider trading activity.
+
+    Rate Limit: 10 requests per minute per IP
 
     This endpoint fetches current stock prices for companies that have had
     insider trades in the last 30 days, sorted by most active.
@@ -129,12 +146,16 @@ async def get_market_overview(
 
 
 @router.get("/history/{ticker}", response_model=List[PriceHistoryPoint])
+@limiter.limit("20/minute")
 async def get_price_history(
+    request: Request,
     ticker: str,
     days: int = Query(30, ge=1, le=365, description="Number of days of history")
 ):
     """
     Get historical price data for a ticker.
+
+    Rate Limit: 20 requests per minute per IP
 
     Args:
         ticker: Stock ticker symbol
@@ -155,3 +176,31 @@ async def get_price_history(
         )
 
     return history
+
+
+@router.get("/market/status")
+@limiter.limit("60/minute")
+async def get_market_status(request: Request):
+    """
+    Get current US market status (open/closed).
+
+    Uses pandas-market-calendars to accurately detect:
+    - Regular trading hours (9:30 AM - 4:00 PM ET)
+    - Weekends
+    - Market holidays
+    - Pre-market and after-hours periods
+
+    Rate Limit: 60 requests per minute per IP
+
+    Returns:
+        dict: Market status information including:
+            - is_open: Whether market is currently open
+            - status: 'open' or 'closed'
+            - reason: Reason for current status
+            - next_open/closes_at: Timing information
+            - current_time_et: Current time in ET timezone
+
+    Example:
+        GET /api/v1/stocks/market/status
+    """
+    return MarketStatusService.is_market_open()

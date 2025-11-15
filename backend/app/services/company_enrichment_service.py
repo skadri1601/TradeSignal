@@ -150,11 +150,15 @@ class CompanyEnrichmentService:
             return None
 
         # Check if insider needs enrichment
-        if insider.title and insider.email:
+        if insider.title:
             logger.info(f"Insider {insider.name} already has details, skipping enrichment")
             return insider
 
-        logger.info(f"Enriching insider data for {insider.name} (CIK: {insider.cik})")
+        logger.info(f"Enriching insider data for {insider.name}")
+
+        # Insiders don't have CIK, skip SEC API enrichment for now
+        # TODO: Implement insider-specific enrichment if needed
+        return insider
 
         try:
             # Fetch insider data from SEC
@@ -163,9 +167,9 @@ class CompanyEnrichmentService:
                     "User-Agent": "TradeSignal trade-signal@example.com"
                 }
 
-                # Get insider's filing history
-                cik_padded = insider.cik.zfill(10)
-                url = f"{self.SEC_SUBMISSIONS_BASE}/CIK{cik_padded}.json"
+                # Note: Insiders don't have CIK numbers, companies do
+                # This section needs to be refactored
+                url = None
 
                 response = await client.get(url, headers=headers, follow_redirects=True)
                 response.raise_for_status()

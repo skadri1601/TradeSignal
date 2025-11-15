@@ -287,7 +287,7 @@ export default function TradingSignals() {
       {/* Timestamp */}
       <div className="text-center">
         <p className="text-xs text-gray-500">
-          Signals generated on {new Date(data.timestamp).toLocaleString()}
+          Signals generated on {new Date(data.timestamp || data.generated_at).toLocaleString()}
         </p>
       </div>
     </div>

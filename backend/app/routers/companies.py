@@ -5,8 +5,10 @@ REST API routes for company operations.
 """
 
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.database import get_db
 from app.services import CompanyService, TradeService
@@ -22,10 +24,13 @@ from app.schemas.trade import TradeRead, TradeFilter, TradeWithDetails
 from app.schemas.common import PaginationParams, SortParams, PaginatedResponse
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.get("/", response_model=PaginatedResponse[CompanyRead])
+@limiter.limit("60/minute")
 async def get_companies(
+    request: Request,
     pagination: PaginationParams = Depends(),
     sector: str | None = Query(None, description="Filter by sector"),
     db: AsyncSession = Depends(get_db)
@@ -56,7 +61,9 @@ async def get_companies(
 
 
 @router.get("/search", response_model=PaginatedResponse[CompanyRead])
+@limiter.limit("60/minute")
 async def search_companies(
+    request: Request,
     q: str = Query(..., min_length=1, description="Search query (ticker or name)"),
     pagination: PaginationParams = Depends(),
     db: AsyncSession = Depends(get_db)
@@ -87,7 +94,9 @@ async def search_companies(
 
 
 @router.get("/{ticker}", response_model=CompanyWithStats)
+@limiter.limit("60/minute")
 async def get_company_by_ticker(
+    request: Request,
     ticker: str,
     db: AsyncSession = Depends(get_db)
 ):
@@ -123,7 +132,9 @@ async def get_company_by_ticker(
 
 
 @router.get("/{ticker}/trades", response_model=PaginatedResponse[TradeWithDetails])
+@limiter.limit("60/minute")
 async def get_company_trades(
+    request: Request,
     ticker: str,
     pagination: PaginationParams = Depends(),
     sort: SortParams = Depends(),
@@ -170,7 +181,9 @@ async def get_company_trades(
 
 
 @router.post("/", response_model=CompanyRead, status_code=status.HTTP_201_CREATED)
+@limiter.limit("20/minute")
 async def create_company(
+    request: Request,
     company_data: CompanyCreate,
     db: AsyncSession = Depends(get_db)
 ):
@@ -206,7 +219,9 @@ async def create_company(
 
 
 @router.patch("/{ticker}", response_model=CompanyRead)
+@limiter.limit("20/minute")
 async def update_company(
+    request: Request,
     ticker: str,
     company_data: CompanyUpdate,
     db: AsyncSession = Depends(get_db)
@@ -229,7 +244,9 @@ async def update_company(
 
 
 @router.delete("/{ticker}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("20/minute")
 async def delete_company(
+    request: Request,
     ticker: str,
     db: AsyncSession = Depends(get_db)
 ):

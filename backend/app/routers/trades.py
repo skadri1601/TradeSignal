@@ -5,8 +5,10 @@ REST API routes for trade operations.
 """
 
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, status, Query, WebSocket, WebSocketDisconnect, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.database import get_db
 from app.services import TradeService, trade_event_manager
@@ -21,6 +23,7 @@ from app.schemas.trade import (
 from app.schemas.common import PaginationParams, SortParams, PaginatedResponse
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.websocket("/stream")
@@ -39,7 +42,9 @@ async def trade_stream(websocket: WebSocket):
 
 
 @router.get("/", response_model=PaginatedResponse[TradeWithDetails])
+@limiter.limit("60/minute")
 async def get_trades(
+    request: Request,
     pagination: PaginationParams = Depends(),
     sort: SortParams = Depends(),
     filters: TradeFilter = Depends(),
@@ -83,7 +88,9 @@ async def get_trades(
 
 
 @router.get("/recent", response_model=List[TradeWithDetails])
+@limiter.limit("60/minute")
 async def get_recent_trades(
+    request: Request,
     days: int = Query(7, ge=1, le=90, description="Number of days to look back"),
     limit: int = Query(100, ge=1, le=500, description="Maximum number of trades"),
     db: AsyncSession = Depends(get_db)
@@ -102,7 +109,9 @@ async def get_recent_trades(
 
 
 @router.get("/stats", response_model=TradeStats)
+@limiter.limit("60/minute")
 async def get_trade_statistics(
+    request: Request,
     filters: TradeFilter = Depends(),
     db: AsyncSession = Depends(get_db)
 ):
@@ -122,7 +131,9 @@ async def get_trade_statistics(
 
 
 @router.get("/{trade_id}", response_model=TradeWithDetails)
+@limiter.limit("60/minute")
 async def get_trade(
+    request: Request,
     trade_id: int,
     db: AsyncSession = Depends(get_db)
 ):
@@ -143,7 +154,9 @@ async def get_trade(
 
 
 @router.post("/", response_model=TradeRead, status_code=status.HTTP_201_CREATED)
+@limiter.limit("20/minute")
 async def create_trade(
+    request: Request,
     trade_data: TradeCreate,
     db: AsyncSession = Depends(get_db)
 ):
@@ -182,7 +195,9 @@ async def create_trade(
 
 
 @router.patch("/{trade_id}", response_model=TradeRead)
+@limiter.limit("20/minute")
 async def update_trade(
+    request: Request,
     trade_id: int,
     trade_data: TradeUpdate,
     db: AsyncSession = Depends(get_db)
@@ -205,7 +220,9 @@ async def update_trade(
 
 
 @router.delete("/{trade_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("20/minute")
 async def delete_trade(
+    request: Request,
     trade_id: int,
     db: AsyncSession = Depends(get_db)
 ):

@@ -18,6 +18,10 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+# Data validation constants
+MAX_REASONABLE_TRADE_VALUE = Decimal("10000000000")  # $10 billion
+MAX_REASONABLE_SHARES = Decimal("100000000")  # 100 million shares
+
 
 class Form4Parser:
     """
@@ -213,6 +217,23 @@ class Form4Parser:
 
         # Calculate total value
         total_value = shares * price if shares and price else None
+
+        # Data validation: Flag extreme values
+        if total_value and total_value > MAX_REASONABLE_TRADE_VALUE:
+            logger.warning(
+                f"Extreme trade value detected: ${total_value:,.2f} "
+                f"({shares:,.0f} shares @ ${price:,.2f}). "
+                f"This may be a data error or unusual transaction."
+            )
+            # Skip trades over $10B - likely data errors
+            return None
+
+        if shares > MAX_REASONABLE_SHARES:
+            logger.warning(
+                f"Extreme share count detected: {shares:,.0f} shares. "
+                f"This may be post-transaction holdings, not transaction amount. Skipping."
+            )
+            return None
 
         # Post-transaction shares owned
         post_txn_amounts = txn.find(".//postTransactionAmounts")

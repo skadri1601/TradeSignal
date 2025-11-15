@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { tradesApi } from '../api/trades';
@@ -10,6 +10,7 @@ import TradePieChart from '../components/trades/TradePieChart';
 import MarketSummaryCard from '../components/stocks/MarketSummaryCard';
 import useTradeStream from '../hooks/useTradeStream';
 import type { Trade } from '../types';
+import { LegalDisclaimer } from '../components/LegalDisclaimer';
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
@@ -23,8 +24,11 @@ export default function Dashboard() {
   // Fetch trade stats (last 7 days)
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['tradeStats', 'last7days'],
-    queryFn: () => tradesApi.getTradeStats({ transaction_date_from: dateFrom }),
-    onSuccess: () => setLastUpdated(new Date()),
+    queryFn: async () => {
+      const result = await tradesApi.getTradeStats({ transaction_date_from: dateFrom });
+      setLastUpdated(new Date());
+      return result;
+    },
   });
 
   // Fetch recent trades
@@ -88,6 +92,8 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      <LegalDisclaimer />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
