@@ -39,6 +39,7 @@ export function useCustomConfirm() {
         onConfirm();
       }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const hideConfirm = useCallback(() => {
