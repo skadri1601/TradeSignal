@@ -23,6 +23,7 @@ limiter = Limiter(key_func=get_remote_address)
 
 class StockQuote(BaseModel):
     """Stock quote response model."""
+
     ticker: str
     company_name: Optional[str] = None
     current_price: float
@@ -42,6 +43,7 @@ class StockQuote(BaseModel):
 
 class PriceHistoryPoint(BaseModel):
     """Single price history data point."""
+
     date: str
     open: float
     high: float
@@ -71,8 +73,7 @@ async def get_stock_quote(request: Request, ticker: str):
 
     if not quote:
         raise HTTPException(
-            status_code=404,
-            detail=f"Could not fetch quote for ticker {ticker}"
+            status_code=404, detail=f"Could not fetch quote for ticker {ticker}"
         )
 
     return quote
@@ -82,7 +83,7 @@ async def get_stock_quote(request: Request, ticker: str):
 @limiter.limit("10/minute")
 async def get_multiple_quotes(
     request: Request,
-    tickers: str = Query(..., description="Comma-separated list of ticker symbols")
+    tickers: str = Query(..., description="Comma-separated list of ticker symbols"),
 ):
     """
     Get quotes for multiple tickers.
@@ -102,8 +103,7 @@ async def get_multiple_quotes(
 
     if len(ticker_list) > 50:
         raise HTTPException(
-            status_code=400,
-            detail="Maximum 50 tickers allowed per request"
+            status_code=400, detail="Maximum 50 tickers allowed per request"
         )
 
     quotes_dict = StockPriceService.get_multiple_quotes(ticker_list)
@@ -119,7 +119,9 @@ async def get_multiple_quotes(
 async def get_market_overview(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    limit: int = Query(None, ge=1, description="Number of companies to return (default: all)")
+    limit: int = Query(
+        None, ge=1, description="Number of companies to return (default: all)"
+    ),
 ):
     """
     Get live market data for companies with recent insider trading activity.
@@ -150,7 +152,7 @@ async def get_market_overview(
 async def get_price_history(
     request: Request,
     ticker: str,
-    days: int = Query(30, ge=1, le=365, description="Number of days of history")
+    days: int = Query(30, ge=1, le=365, description="Number of days of history"),
 ):
     """
     Get historical price data for a ticker.
@@ -171,8 +173,7 @@ async def get_price_history(
 
     if not history:
         raise HTTPException(
-            status_code=404,
-            detail=f"Could not fetch price history for ticker {ticker}"
+            status_code=404, detail=f"Could not fetch price history for ticker {ticker}"
         )
 
     return history

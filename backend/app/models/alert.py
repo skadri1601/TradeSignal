@@ -5,7 +5,17 @@ Stores user-defined alert rules that trigger notifications when
 matching insider trades are detected.
 """
 
-from sqlalchemy import Column, Integer, String, Boolean, DECIMAL, ARRAY, Text, TIMESTAMP
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Boolean,
+    DECIMAL,
+    Text,
+    TIMESTAMP,
+    ForeignKey,
+    JSON,
+)
 from sqlalchemy.sql import func
 from app.database import Base
 
@@ -17,17 +27,19 @@ class Alert(Base):
     Defines conditions for triggering notifications when insider trades occur.
     Supports multiple notification channels (webhook, email, push).
     """
+
     __tablename__ = "alerts"
 
     # Primary Key
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
 
     # Alert Configuration
     name = Column(String(255), nullable=False, comment="User-friendly alert name")
     alert_type = Column(
         String(50),
         nullable=False,
-        comment="Alert type: large_trade, company_watch, insider_role, volume_spike"
+        comment="Alert type: large_trade, company_watch, insider_role, volume_spike",
     )
 
     # Filter Criteria
@@ -35,44 +47,36 @@ class Alert(Base):
         String(10),
         nullable=True,
         index=True,
-        comment="Filter by specific ticker (e.g., NVDA, TSLA)"
+        comment="Filter by specific ticker (e.g., NVDA, TSLA)",
     )
     min_value = Column(
-        DECIMAL(20, 2),
-        nullable=True,
-        comment="Minimum trade value in USD"
+        DECIMAL(20, 2), nullable=True, comment="Minimum trade value in USD"
     )
     max_value = Column(
-        DECIMAL(20, 2),
-        nullable=True,
-        comment="Maximum trade value in USD"
+        DECIMAL(20, 2), nullable=True, comment="Maximum trade value in USD"
     )
     transaction_type = Column(
-        String(10),
-        nullable=True,
-        comment="Filter by BUY or SELL"
+        String(10), nullable=True, comment="Filter by BUY or SELL"
     )
     insider_roles = Column(
-        ARRAY(Text),
+        JSON,
         nullable=True,
-        comment="Filter by insider roles (CEO, CFO, Director, etc.)"
+        comment="Filter by insider roles (CEO, CFO, Director, etc.) - stored as JSON array",
     )
 
     # Notification Configuration
     notification_channels = Column(
-        ARRAY(Text),
+        JSON,
         nullable=False,
-        comment="Channels to send notifications: webhook, email, push"
+        comment="Channels to send notifications: webhook, email, push - stored as JSON array",
     )
     webhook_url = Column(
         Text,
         nullable=True,
-        comment="Slack/Discord webhook URL or custom HTTPS endpoint"
+        comment="Slack/Discord webhook URL or custom HTTPS endpoint",
     )
     email = Column(
-        String(255),
-        nullable=True,
-        comment="Email address to send notifications"
+        String(255), nullable=True, comment="Email address to send notifications"
     )
 
     # Status
@@ -81,7 +85,7 @@ class Alert(Base):
         default=True,
         nullable=False,
         index=True,
-        comment="Whether alert is enabled"
+        comment="Whether alert is enabled",
     )
 
     # Timestamps
@@ -89,14 +93,14 @@ class Alert(Base):
         TIMESTAMP(timezone=True),
         nullable=False,
         server_default=func.now(),
-        comment="When alert was created"
+        comment="When alert was created",
     )
     updated_at = Column(
         TIMESTAMP(timezone=True),
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
-        comment="When alert was last updated"
+        comment="When alert was last updated",
     )
 
     def __repr__(self) -> str:

@@ -1,18 +1,17 @@
 import os
 import json
 import redis
-from typing import Any, Optional, List, Union
+from typing import Optional, List
 
 
 class RedisCache:
     def __init__(self):
         self._enabled = True
-        self.redis: Optional[redis.Redis] = None
         try:
             self.redis = redis.Redis(
                 host=os.getenv("REDIS_HOST", "redis"),
-                port=int(os.getenv("REDIS_PORT", "6379")),
-                db=int(os.getenv("REDIS_DB", "0")),
+                port=int(os.getenv("REDIS_PORT", 6379)),
+                db=int(os.getenv("REDIS_DB", 0)),
                 decode_responses=True,
                 socket_timeout=5,
                 socket_connect_timeout=5,
@@ -28,18 +27,16 @@ class RedisCache:
         return self._enabled and self.redis is not None
 
     def get(self, key: str) -> Optional[dict]:
-        if not self.enabled() or self.redis is None:
+        if not self.enabled():
             return None
         try:
             value = self.redis.get(key)
-            if value is not None:
-                return json.loads(value)  # type: ignore
-            return None
+            return json.loads(value) if value else None
         except Exception:
             return None
 
     def set(self, key: str, value: dict, ttl: int = 10) -> None:
-        if not self.enabled() or self.redis is None:
+        if not self.enabled():
             return
         try:
             self.redis.setex(key, ttl, json.dumps(value))
@@ -47,22 +44,16 @@ class RedisCache:
             return
 
     def mget(self, keys: List[str]) -> List[Optional[dict]]:
-        if not self.enabled() or self.redis is None:
+        if not self.enabled():
             return [None] * len(keys)
         try:
-            values = self.redis.mget(keys)  # type: ignore
-            result: List[Optional[dict]] = []
-            for v in values:  # type: ignore
-                if v is not None:
-                    result.append(json.loads(v))  # type: ignore
-                else:
-                    result.append(None)
-            return result
+            values = self.redis.mget(keys)
+            return [json.loads(v) if v else None for v in values]
         except Exception:
             return [None] * len(keys)
 
     def delete(self, key: str) -> None:
-        if not self.enabled() or self.redis is None:
+        if not self.enabled():
             return
         try:
             self.redis.delete(key)
@@ -70,11 +61,10 @@ class RedisCache:
             return
 
     def exists(self, key: str) -> bool:
-        if not self.enabled() or self.redis is None:
+        if not self.enabled():
             return False
         try:
-            result = self.redis.exists(key)  # type: ignore
-            return result > 0  # type: ignore
+            return self.redis.exists(key) > 0
         except Exception:
             return False
 

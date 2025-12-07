@@ -64,4 +64,19 @@ export const companiesApi = {
     const response = await apiClient.get('/api/v1/companies/stats');
     return response.data;
   },
+
+  // Get company logo URL
+  getCompanyLogo: async (ticker: string): Promise<string | null> => {
+    try {
+      const response = await apiClient.get(`/api/v1/companies/${ticker}/logo`);
+      return response.data?.logo_url || null;
+    } catch (error: any) {
+      // Logo endpoint returns 404 if not found, which is fine
+      if (error.response?.status === 404) {
+        return null;
+      }
+      console.warn(`Failed to fetch logo for ${ticker}:`, error);
+      return null;
+    }
+  },
 };

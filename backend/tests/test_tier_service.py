@@ -132,7 +132,7 @@ async def test_check_ai_limit_exceeded(test_db: AsyncSession):
         await TierService.check_ai_limit(user.id, test_db)
 
     assert exc_info.value.status_code == 429
-    assert "limit exceeded" in exc_info.value.detail.lower()
+    assert "limit exhausted" in exc_info.value.detail.lower()
 
 
 @pytest.mark.asyncio

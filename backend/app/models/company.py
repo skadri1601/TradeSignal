@@ -15,6 +15,7 @@ from app.database import Base
 if TYPE_CHECKING:
     from app.models.insider import Insider
     from app.models.trade import Trade
+    from app.models.congressional_trade import CongressionalTrade
 
 
 class Company(Base):
@@ -41,9 +42,13 @@ class Company(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
 
     # Core Fields
-    ticker: Mapped[str] = mapped_column(String(10), unique=True, nullable=False, index=True)
+    ticker: Mapped[str] = mapped_column(
+        String(10), unique=True, nullable=False, index=True
+    )
     name: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    cik: Mapped[str] = mapped_column(String(10), unique=True, nullable=False, index=True)
+    cik: Mapped[str] = mapped_column(
+        String(10), unique=True, nullable=False, index=True
+    )
 
     # Classification
     sector: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
@@ -55,30 +60,25 @@ class Company(Base):
     # Additional Info
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     website: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow,
-        nullable=False
+        DateTime, default=datetime.utcnow, nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
-        nullable=False
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
 
     # Relationships
     insiders: Mapped[List["Insider"]] = relationship(
-        "Insider",
-        back_populates="company",
-        cascade="all, delete-orphan"
+        "Insider", back_populates="company", cascade="all, delete-orphan"
     )
     trades: Mapped[List["Trade"]] = relationship(
-        "Trade",
-        back_populates="company",
-        cascade="all, delete-orphan"
+        "Trade", back_populates="company", cascade="all, delete-orphan"
+    )
+    congressional_trades: Mapped[List["CongressionalTrade"]] = relationship(
+        "CongressionalTrade", back_populates="company", cascade="all, delete-orphan"
     )
 
     def __repr__(self) -> str:
@@ -102,6 +102,7 @@ class Company(Base):
             "market_cap": self.market_cap,
             "description": self.description,
             "website": self.website,
+            "logo_url": self.logo_url,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

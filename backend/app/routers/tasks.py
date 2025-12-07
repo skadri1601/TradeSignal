@@ -27,21 +27,15 @@ async def trigger_stock_refresh() -> Dict[str, Any]:
             "task_id": str(task.id),
             "status": "queued",
             "message": "Stock refresh task queued. Check progress at http://localhost:5555",
-            "flower_url": f"http://localhost:5555/task/{task.id}"
+            "flower_url": f"http://localhost:5555/task/{task.id}",
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to queue task: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to queue task: {str(e)}")
 
 
 @router.post("/alerts/send")
 async def trigger_price_alert(
-    user_id: int,
-    ticker: str,
-    price: float,
-    alert_type: str = "above"
+    user_id: int, ticker: str, price: float, alert_type: str = "above"
 ) -> Dict[str, Any]:
     """
     Trigger background price alert notification.
@@ -61,13 +55,10 @@ async def trigger_price_alert(
             "task_id": str(task.id),
             "status": "queued",
             "message": f"Alert task queued for {ticker} @ ${price}",
-            "flower_url": f"http://localhost:5555/task/{task.id}"
+            "flower_url": f"http://localhost:5555/task/{task.id}",
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to queue alert: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to queue alert: {str(e)}")
 
 
 @router.get("/status/{task_id}")
@@ -90,10 +81,9 @@ async def get_task_status(task_id: str) -> Dict[str, Any]:
             "task_id": task_id,
             "status": task.status,
             "result": task.result if task.ready() else None,
-            "info": task.info if task.status == "FAILURE" else None
+            "info": task.info if task.status == "FAILURE" else None,
         }
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get task status: {str(e)}"
+            status_code=500, detail=f"Failed to get task status: {str(e)}"
         )

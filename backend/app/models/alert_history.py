@@ -7,7 +7,7 @@ Prevents duplicate notifications and provides audit trail.
 
 from sqlalchemy import Column, Integer, String, Text, TIMESTAMP, ForeignKey
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
+
 from app.database import Base
 
 
@@ -18,6 +18,7 @@ class AlertHistory(Base):
     Records when alerts are triggered, which trades matched,
     which notification channels were used, and delivery status.
     """
+
     __tablename__ = "alert_history"
 
     # Primary Key
@@ -29,31 +30,25 @@ class AlertHistory(Base):
         ForeignKey("alerts.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
-        comment="Reference to the alert that was triggered"
+        comment="Reference to the alert that was triggered",
     )
     trade_id = Column(
         Integer,
         ForeignKey("trades.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
-        comment="Reference to the trade that triggered the alert"
+        comment="Reference to the trade that triggered the alert",
     )
 
     # Notification Details
     notification_channel = Column(
-        String(50),
-        nullable=False,
-        comment="Channel used: webhook, email, push"
+        String(50), nullable=False, comment="Channel used: webhook, email, push"
     )
     notification_status = Column(
-        String(50),
-        nullable=False,
-        comment="Delivery status: sent, failed, retrying"
+        String(50), nullable=False, comment="Delivery status: sent, failed, retrying"
     )
     error_message = Column(
-        Text,
-        nullable=True,
-        comment="Error details if notification failed"
+        Text, nullable=True, comment="Error details if notification failed"
     )
 
     # Timestamp
@@ -62,7 +57,7 @@ class AlertHistory(Base):
         nullable=False,
         server_default=func.now(),
         index=True,
-        comment="When the notification was sent"
+        comment="When the notification was sent",
     )
 
     # Relationships (optional, for ORM queries)

@@ -1,10 +1,26 @@
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { companiesApi } from '../api/companies';
+import { earningsApi } from '../api/earnings';
+import { congressionalTradesApi } from '../api/congressionalTrades';
+import { patternsApi } from '../api/patterns';
 import TradeList from '../components/trades/TradeList';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { LegalDisclaimer } from '../components/LegalDisclaimer';
 import { formatCurrency } from '../utils/formatters';
-import { Building2, ExternalLink } from 'lucide-react';
+import {
+  Building2,
+  ExternalLink,
+  Calendar,
+  TrendingUp,
+  TrendingDown,
+  Landmark,
+  BarChart3,
+  ArrowRight,
+  AlertCircle,
+  CheckCircle,
+  MinusCircle
+} from 'lucide-react';
 
 export default function CompanyPage() {
   const { ticker } = useParams<{ ticker: string }>();
@@ -18,6 +34,27 @@ export default function CompanyPage() {
   const { data: trades, isLoading: tradesLoading } = useQuery({
     queryKey: ['companyTrades', ticker],
     queryFn: () => companiesApi.getCompanyTrades(ticker!),
+    enabled: !!ticker,
+  });
+
+  // Earnings data
+  const { data: earnings, isLoading: earningsLoading } = useQuery({
+    queryKey: ['companyEarnings', ticker],
+    queryFn: () => earningsApi.getCompanyEarnings(ticker!, 8),
+    enabled: !!ticker,
+  });
+
+  // Congressional trades for this company
+  const { data: congressionalTrades, isLoading: congressionalLoading } = useQuery({
+    queryKey: ['congressionalTrades', ticker],
+    queryFn: () => congressionalTradesApi.getTrades({ ticker, limit: 5 }),
+    enabled: !!ticker,
+  });
+
+  // Pattern analysis
+  const { data: patternAnalysis, isLoading: patternLoading } = useQuery({
+    queryKey: ['patternAnalysis', ticker],
+    queryFn: () => patternsApi.analyzeCompany(ticker!, 90),
     enabled: !!ticker,
   });
 
@@ -39,6 +76,8 @@ export default function CompanyPage() {
 
   return (
     <div className="space-y-6">
+      <LegalDisclaimer />
+      
       {/* Company Header */}
       <div className="card">
         <div className="flex items-start justify-between">
@@ -85,7 +124,251 @@ export default function CompanyPage() {
         )}
       </div>
 
-      {/* Recent Trades */}
+      {/* Pattern Analysis Summary */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-2">
+            <BarChart3 className="h-5 w-5 text-purple-600" />
+            <h2 className="text-xl font-bold text-gray-900">AI Pattern Analysis</h2>
+          </div>
+          <Link
+            to={`/patterns?ticker=${ticker}`}
+            className="text-blue-600 hover:text-blue-800 text-sm flex items-center"
+          >
+            Full Analysis <ArrowRight className="h-4 w-4 ml-1" />
+          </Link>
+        </div>
+        {patternLoading ? (
+          <div className="flex items-center justify-center h-24">
+            <LoadingSpinner />
+          </div>
+        ) : patternAnalysis ? (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-sm text-gray-600">Pattern</p>
+              <p className={`text-lg font-semibold ${
+                patternAnalysis.trend === 'BULLISH' ? 'text-green-600' :
+                patternAnalysis.trend === 'BEARISH' ? 'text-red-600' : 'text-gray-600'
+              }`}>
+                {patternAnalysis.pattern.replace('_', ' ')}
+              </p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-sm text-gray-600">Trend</p>
+              <div className="flex items-center">
+                {patternAnalysis.trend === 'BULLISH' ? (
+                  <TrendingUp className="h-5 w-5 text-green-600 mr-1" />
+                ) : patternAnalysis.trend === 'BEARISH' ? (
+                  <TrendingDown className="h-5 w-5 text-red-600 mr-1" />
+                ) : (
+                  <MinusCircle className="h-5 w-5 text-gray-500 mr-1" />
+                )}
+                <span className={`text-lg font-semibold ${
+                  patternAnalysis.trend === 'BULLISH' ? 'text-green-600' :
+                  patternAnalysis.trend === 'BEARISH' ? 'text-red-600' : 'text-gray-600'
+                }`}>
+                  {patternAnalysis.trend}
+                </span>
+              </div>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-sm text-gray-600">Recommendation</p>
+              <p className={`text-lg font-semibold ${
+                patternAnalysis.recommendation === 'BUY' || patternAnalysis.recommendation === 'CONSIDER_BUY' ? 'text-green-600' :
+                patternAnalysis.recommendation === 'SELL' || patternAnalysis.recommendation === 'CONSIDER_SELL' ? 'text-red-600' : 'text-gray-600'
+              }`}>
+                {patternAnalysis.recommendation.replace('_', ' ')}
+              </p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-sm text-gray-600">Confidence</p>
+              <div className="flex items-center">
+                <div className="w-full bg-gray-200 rounded-full h-2 mr-2">
+                  <div
+                    className={`h-2 rounded-full ${
+                      patternAnalysis.confidence > 0.7 ? 'bg-green-500' :
+                      patternAnalysis.confidence > 0.4 ? 'bg-yellow-500' : 'bg-red-500'
+                    }`}
+                    style={{ width: `${patternAnalysis.confidence * 100}%` }}
+                  />
+                </div>
+                <span className="text-sm font-medium">{Math.round(patternAnalysis.confidence * 100)}%</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="text-gray-500 text-center py-4">No pattern data available</p>
+        )}
+      </div>
+
+      {/* Earnings Section */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-2">
+            <Calendar className="h-5 w-5 text-blue-600" />
+            <h2 className="text-xl font-bold text-gray-900">Earnings</h2>
+          </div>
+          <Link
+            to={`/earnings/${ticker}`}
+            className="text-blue-600 hover:text-blue-800 text-sm flex items-center"
+          >
+            View Details <ArrowRight className="h-4 w-4 ml-1" />
+          </Link>
+        </div>
+        {earningsLoading ? (
+          <div className="flex items-center justify-center h-24">
+            <LoadingSpinner />
+          </div>
+        ) : earnings ? (
+          <div className="space-y-4">
+            {/* Next Earnings Date */}
+            {earnings.next_earnings_date && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-blue-700 font-medium">Next Earnings Date</p>
+                    <p className="text-xl font-bold text-blue-900">
+                      {new Date(earnings.next_earnings_date).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </p>
+                  </div>
+                  {earnings.upcoming_earnings[0] && (
+                    <div className="text-right">
+                      <p className="text-sm text-blue-700">Days Until</p>
+                      <p className="text-2xl font-bold text-blue-900">
+                        {earnings.upcoming_earnings[0].days_until}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Recent Earnings History */}
+            {earnings.earnings_history.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Recent Earnings History</h3>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Estimate</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actual</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Surprise</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {earnings.earnings_history.slice(0, 4).map((earning, idx) => (
+                        <tr key={idx}>
+                          <td className="px-4 py-2 text-sm text-gray-900">
+                            {new Date(earning.date).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-600">
+                            {earning.estimate !== null ? `$${earning.estimate.toFixed(2)}` : '-'}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-900 font-medium">
+                            {earning.actual !== null ? `$${earning.actual.toFixed(2)}` : '-'}
+                          </td>
+                          <td className="px-4 py-2">
+                            {earning.surprise !== null ? (
+                              <span className={`inline-flex items-center text-sm font-medium ${
+                                earning.surprise > 0 ? 'text-green-600' : earning.surprise < 0 ? 'text-red-600' : 'text-gray-600'
+                              }`}>
+                                {earning.surprise > 0 ? (
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                ) : earning.surprise < 0 ? (
+                                  <AlertCircle className="h-4 w-4 mr-1" />
+                                ) : null}
+                                {earning.surprise > 0 ? '+' : ''}{(earning.surprise * 100).toFixed(1)}%
+                              </span>
+                            ) : '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-gray-500 text-center py-4">No earnings data available</p>
+        )}
+      </div>
+
+      {/* Congressional Trades Section */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-2">
+            <Landmark className="h-5 w-5 text-indigo-600" />
+            <h2 className="text-xl font-bold text-gray-900">Congressional Trades</h2>
+          </div>
+          <Link
+            to={`/congressional-trades?ticker=${ticker}`}
+            className="text-blue-600 hover:text-blue-800 text-sm flex items-center"
+          >
+            View All <ArrowRight className="h-4 w-4 ml-1" />
+          </Link>
+        </div>
+        {congressionalLoading ? (
+          <div className="flex items-center justify-center h-24">
+            <LoadingSpinner />
+          </div>
+        ) : congressionalTrades && congressionalTrades.items.length > 0 ? (
+          <div className="space-y-3">
+            {congressionalTrades.items.map((trade) => (
+              <div
+                key={trade.id}
+                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+              >
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2">
+                    <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                      trade.transaction_type === 'BUY'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {trade.transaction_type}
+                    </span>
+                    <span className="font-medium text-gray-900">
+                      {trade.congressperson?.display_name || trade.congressperson?.name || 'Unknown'}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      ({trade.congressperson?.chamber || 'N/A'})
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {trade.amount_range_display || 'Amount not disclosed'} • {new Date(trade.transaction_date).toLocaleDateString()}
+                  </p>
+                </div>
+                {trade.congressperson?.party && (
+                  <span className={`px-2 py-1 text-xs font-medium rounded ${
+                    trade.congressperson.party === 'DEMOCRAT' ? 'bg-blue-100 text-blue-800' :
+                    trade.congressperson.party === 'REPUBLICAN' ? 'bg-red-100 text-red-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {trade.congressperson.party.charAt(0)}
+                  </span>
+                )}
+              </div>
+            ))}
+            {congressionalTrades.total > 5 && (
+              <p className="text-sm text-gray-500 text-center pt-2">
+                + {congressionalTrades.total - 5} more trades
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="text-gray-500 text-center py-4">No congressional trades found for this company</p>
+        )}
+      </div>
+
+      {/* Recent Insider Trades */}
       <div className="card">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Insider Trades</h2>
         {tradesLoading ? (

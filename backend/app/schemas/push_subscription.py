@@ -10,7 +10,9 @@ class PushSubscriptionCreate(BaseModel):
     """Schema for creating a new push subscription."""
 
     endpoint: str = Field(..., description="Push service endpoint URL")
-    p256dh_key: str = Field(..., description="Client public key for encryption (base64)")
+    p256dh_key: str = Field(
+        ..., description="Client public key for encryption (base64)"
+    )
     auth_key: str = Field(..., description="Authentication secret (base64)")
     user_agent: str | None = Field(None, description="Browser/device info")
 

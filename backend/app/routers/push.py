@@ -13,7 +13,7 @@ from app.services.push_subscription_service import PushSubscriptionService
 from app.schemas.push_subscription import (
     PushSubscriptionCreate,
     PushSubscriptionResponse,
-    PushSubscriptionDelete
+    PushSubscriptionDelete,
 )
 from app.config import settings
 
@@ -36,18 +36,15 @@ async def get_vapid_public_key():
     if not settings.vapid_public_key_base64:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Push notifications not configured"
+            detail="Push notifications not configured",
         )
 
-    return {
-        "publicKey": settings.vapid_public_key_base64
-    }
+    return {"publicKey": settings.vapid_public_key_base64}
 
 
 @router.post("/subscribe", response_model=PushSubscriptionResponse)
 async def subscribe_to_push(
-    subscription_data: PushSubscriptionCreate,
-    db: AsyncSession = Depends(get_db)
+    subscription_data: PushSubscriptionCreate, db: AsyncSession = Depends(get_db)
 ):
     """
     Register a new push subscription.
@@ -63,7 +60,7 @@ async def subscribe_to_push(
     if not settings.enable_push_notifications:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Push notifications are disabled"
+            detail="Push notifications are disabled",
         )
 
     service = PushSubscriptionService(db)
@@ -75,8 +72,7 @@ async def subscribe_to_push(
 
 @router.post("/unsubscribe")
 async def unsubscribe_from_push(
-    data: PushSubscriptionDelete,
-    db: AsyncSession = Depends(get_db)
+    data: PushSubscriptionDelete, db: AsyncSession = Depends(get_db)
 ):
     """
     Remove a push subscription.
@@ -91,8 +87,7 @@ async def unsubscribe_from_push(
 
     if not deleted:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Subscription not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found"
         )
 
     logger.info(f"Push subscription removed: {data.endpoint[:50]}...")
@@ -100,9 +95,7 @@ async def unsubscribe_from_push(
 
 
 @router.get("/subscriptions", response_model=list[PushSubscriptionResponse])
-async def get_active_subscriptions(
-    db: AsyncSession = Depends(get_db)
-):
+async def get_active_subscriptions(db: AsyncSession = Depends(get_db)):
     """
     Get all active push subscriptions.
 

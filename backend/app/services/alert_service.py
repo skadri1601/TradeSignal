@@ -16,6 +16,8 @@ from app.models.trade import Trade
 from app.models.company import Company
 from app.models.insider import Insider
 from app.services.notification_service import NotificationService
+from app.services.alert_prioritization_service import AlertPrioritizationService
+from app.services.multi_channel_alert_service import MultiChannelAlertService
 from app.schemas.alert import AlertCreate, AlertUpdate
 
 logger = logging.getLogger(__name__)
@@ -36,42 +38,73 @@ class AlertService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.notification_service = NotificationService()
+        self.prioritization_service = AlertPrioritizationService(db)
+        self.multi_channel_service = MultiChannelAlertService(db)
 
-    async def create_alert(self, alert_data: AlertCreate) -> Alert:
+    async def create_alert(self, alert_data: AlertCreate, user_id: int) -> Alert:
         """Create a new alert."""
-        alert = Alert(
-            name=alert_data.name,
-            alert_type=alert_data.alert_type,
-            ticker=alert_data.ticker,
-            min_value=alert_data.min_value,
-            max_value=alert_data.max_value,
-            transaction_type=alert_data.transaction_type,
-            insider_roles=alert_data.insider_roles or [],
-            notification_channels=alert_data.notification_channels,
-            webhook_url=alert_data.webhook_url,
-            email=alert_data.email,
-            is_active=alert_data.is_active,
-        )
+        try:
+            # Validate notification channels match provided URLs/emails
+            if (
+                "webhook" in alert_data.notification_channels
+                and not alert_data.webhook_url
+            ):
+                raise ValueError(
+                    "webhook_url is required when 'webhook' is in notification_channels"
+                )
+            if "email" in alert_data.notification_channels and not alert_data.email:
+                raise ValueError(
+                    "email is required when 'email' is in notification_channels"
+                )
 
-        self.db.add(alert)
-        await self.db.commit()
-        await self.db.refresh(alert)
+            # Validate value range
+            if alert_data.min_value is not None and alert_data.max_value is not None:
+                if alert_data.min_value > alert_data.max_value:
+                    raise ValueError("min_value cannot be greater than max_value")
 
-        logger.info(f"Created alert: {alert.name} (id={alert.id})")
-        return alert
+            # Validate ticker format if provided
+            if alert_data.ticker:
+                alert_data.ticker = alert_data.ticker.upper().strip()
+                if len(alert_data.ticker) > 10:
+                    raise ValueError("Ticker symbol must be 10 characters or less")
+
+            alert = Alert(
+                user_id=user_id,
+                name=alert_data.name,
+                alert_type=alert_data.alert_type,
+                ticker=alert_data.ticker,
+                min_value=alert_data.min_value,
+                max_value=alert_data.max_value,
+                transaction_type=alert_data.transaction_type,
+                insider_roles=alert_data.insider_roles or [],
+                notification_channels=alert_data.notification_channels,
+                webhook_url=alert_data.webhook_url,
+                email=alert_data.email,
+                is_active=alert_data.is_active,
+            )
+
+            self.db.add(alert)
+            await self.db.commit()
+            await self.db.refresh(alert)
+
+            logger.info(f"Created alert: {alert.name} (id={alert.id})")
+            return alert
+        except ValueError as e:
+            await self.db.rollback()
+            logger.error(f"Validation error creating alert: {e}")
+            raise
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Error creating alert: {e}", exc_info=True)
+            raise
 
     async def get_alert(self, alert_id: int) -> Optional[Alert]:
         """Get alert by ID."""
-        result = await self.db.execute(
-            select(Alert).where(Alert.id == alert_id)
-        )
+        result = await self.db.execute(select(Alert).where(Alert.id == alert_id))
         return result.scalar_one_or_none()
 
     async def get_alerts(
-        self,
-        skip: int = 0,
-        limit: int = 100,
-        is_active: Optional[bool] = None
+        self, skip: int = 0, limit: int = 100, is_active: Optional[bool] = None
     ) -> tuple[list[Alert], int]:
         """Get all alerts with pagination."""
         # Build query
@@ -91,7 +124,9 @@ class AlertService:
 
         return list(alerts), total
 
-    async def update_alert(self, alert_id: int, alert_data: AlertUpdate) -> Optional[Alert]:
+    async def update_alert(
+        self, alert_id: int, alert_data: AlertUpdate
+    ) -> Optional[Alert]:
         """Update an existing alert."""
         alert = await self.get_alert(alert_id)
         if not alert:
@@ -132,7 +167,9 @@ class AlertService:
         await self.db.commit()
         await self.db.refresh(alert)
 
-        logger.info(f"Toggled alert {alert.name} (id={alert_id}): is_active={is_active}")
+        logger.info(
+            f"Toggled alert {alert.name} (id={alert_id}): is_active={is_active}"
+        )
         return alert
 
     async def check_trade_against_alerts(self, trade: Trade) -> None:
@@ -158,6 +195,20 @@ class AlertService:
         company_name = company.name
         company_ticker = company.ticker
         insider_name = insider.name
+
+        # Check if trade is significant (noise filtering)
+        # Only process if trade meets significance threshold
+        significant_trades = (
+            await self.prioritization_service.filter_significant_trades(
+                [trade], target_percentage=0.05  # Top 5%
+            )
+        )
+
+        if not significant_trades or len(significant_trades) == 0:
+            logger.debug(
+                f"Trade {trade.id} filtered out by prioritization (not significant enough)"
+            )
+            return
 
         # Check each alert
         for alert in alerts:
@@ -215,10 +266,7 @@ class AlertService:
         return True
 
     async def _recently_notified(
-        self,
-        alert_id: int,
-        trade_id: int,
-        cooldown_hours: int = 1
+        self, alert_id: int, trade_id: int, cooldown_hours: int = 1
     ) -> bool:
         """
         Check if we've already sent a notification for this alert/trade combo recently.
@@ -228,12 +276,11 @@ class AlertService:
         cutoff_time = datetime.utcnow() - timedelta(hours=cooldown_hours)
 
         result = await self.db.execute(
-            select(AlertHistory)
-            .where(
+            select(AlertHistory).where(
                 and_(
                     AlertHistory.alert_id == alert_id,
                     AlertHistory.trade_id == trade_id,
-                    AlertHistory.created_at > cutoff_time
+                    AlertHistory.created_at > cutoff_time,
                 )
             )
         )
@@ -246,7 +293,7 @@ class AlertService:
         trade: Trade,
         company_name: str,
         insider_name: str,
-        company_ticker: str = None
+        company_ticker: str = None,
     ) -> None:
         """
         Send notifications for a matched alert via all configured channels.
@@ -264,32 +311,62 @@ class AlertService:
 
             # Format message for in-app notification
             action = "buys" if trade.transaction_type == "BUY" else "sells"
-            value_formatted = f"${trade.total_value:,.0f}" if trade.total_value else "N/A"
+            value_formatted = (
+                f"${trade.total_value:,.0f}" if trade.total_value else "N/A"
+            )
 
-            await alert_manager.broadcast({
-                "id": f"alert_{alert.id}_{trade.id}_{datetime.now().timestamp()}",
-                "title": f"🔔 {alert.name}",
-                "message": f"{insider_name} {action} {value_formatted} of {company_ticker}",
-                "kind": "success",
-                "duration": 8000,
-                "meta": {
-                    "alert_id": alert.id,
-                    "trade_id": trade.id,
-                    "link": f"/alerts"
+            await alert_manager.broadcast(
+                {
+                    "id": f"alert_{alert.id}_{trade.id}_{datetime.now().timestamp()}",
+                    "title": f"🔔 {alert.name}",
+                    "message": f"{insider_name} {action} {value_formatted} of {company_ticker}",
+                    "kind": "success",
+                    "duration": 8000,
+                    "meta": {
+                        "alert_id": alert.id,
+                        "trade_id": trade.id,
+                        "link": "/alerts",
+                    },
                 }
-            })
+            )
         except Exception as e:
             logger.error(f"Failed to send in-app notification: {e}")
+
+        # Prepare alert data for multi-channel service
+        alert_data = {
+            "ticker": company_ticker,
+            "company_name": company_name,
+            "insider": insider_name,
+            "transaction_type": trade.transaction_type,
+            "total_value": float(trade.total_value) if trade.total_value else 0,
+            "transaction_date": trade.transaction_date.isoformat()
+            if trade.transaction_date
+            else None,
+            "shares": float(trade.shares) if trade.shares else 0,
+        }
+
+        # Send via multi-channel service (Discord, Slack, SMS)
+        try:
+            multi_channel_results = await self.multi_channel_service.send_alert(
+                alert_data,
+                channels=[
+                    "discord",
+                    "slack",
+                    "sms",
+                ],  # Add email/push to existing channels
+            )
+            logger.info(f"Multi-channel alert results: {multi_channel_results}")
+        except Exception as e:
+            logger.error(f"Error sending multi-channel alerts: {e}")
 
         # Send notifications for each configured channel
         for channel in alert.notification_channels:
             if channel == "webhook" and alert.webhook_url:
-                success, error = await self.notification_service.send_webhook_notification(
-                    alert.webhook_url,
-                    alert,
-                    trade,
-                    company_name,
-                    insider_name
+                (
+                    success,
+                    error,
+                ) = await self.notification_service.send_webhook_notification(
+                    alert.webhook_url, alert, trade, company_name, insider_name
                 )
 
                 # Log to alert_history
@@ -298,16 +375,16 @@ class AlertService:
                     trade_id=trade.id,
                     notification_channel="webhook",
                     notification_status="sent" if success else "failed",
-                    error_message=error
+                    error_message=error,
                 )
                 self.db.add(history)
 
             elif channel == "email" and alert.email:
-                success, error = await self.notification_service.send_email_notification(
-                    alert,
-                    trade,
-                    company_name,
-                    insider_name
+                (
+                    success,
+                    error,
+                ) = await self.notification_service.send_email_notification(
+                    alert, trade, company_name, insider_name
                 )
 
                 # Log to alert_history
@@ -316,28 +393,31 @@ class AlertService:
                     trade_id=trade.id,
                     notification_channel="email",
                     notification_status="sent" if success else "failed",
-                    error_message=error
+                    error_message=error,
                 )
                 self.db.add(history)
 
             elif channel == "push":
                 # Send push notifications to all active subscriptions
-                from app.services.push_subscription_service import PushSubscriptionService
+                from app.services.push_subscription_service import (
+                    PushSubscriptionService,
+                )
 
                 push_service = PushSubscriptionService(self.db)
                 subscriptions = await push_service.get_active_subscriptions()
 
                 if not subscriptions:
-                    logger.warning(f"No active push subscriptions for alert {alert.name}")
+                    logger.warning(
+                        f"No active push subscriptions for alert {alert.name}"
+                    )
                     continue
 
                 for subscription in subscriptions:
-                    success, error = await self.notification_service.send_push_notification(
-                        subscription,
-                        alert,
-                        trade,
-                        company_name,
-                        insider_name
+                    (
+                        success,
+                        error,
+                    ) = await self.notification_service.send_push_notification(
+                        subscription, alert, trade, company_name, insider_name
                     )
 
                     # Log to alert_history
@@ -346,14 +426,16 @@ class AlertService:
                         trade_id=trade.id,
                         notification_channel="push",
                         notification_status="sent" if success else "failed",
-                        error_message=error
+                        error_message=error,
                     )
                     self.db.add(history)
 
                     # Deactivate expired subscriptions (410 Gone)
                     if error and "410" in error:
                         await push_service.mark_subscription_inactive(subscription.id)
-                        logger.info(f"Deactivated expired push subscription {subscription.id}")
+                        logger.info(
+                            f"Deactivated expired push subscription {subscription.id}"
+                        )
                     elif success:
                         await push_service.update_last_notified(subscription.id)
 
@@ -376,8 +458,7 @@ class AlertService:
         # Send webhook test if configured
         if "webhook" in alert.notification_channels and alert.webhook_url:
             success, error = await self.notification_service.send_test_notification(
-                alert.webhook_url,
-                alert.name
+                alert.webhook_url, alert.name
             )
             if success:
                 sent_any = True
@@ -386,9 +467,11 @@ class AlertService:
 
         # Send email test if configured
         if "email" in alert.notification_channels and alert.email:
-            success, error = await self.notification_service.send_test_email_notification(
-                alert.email,
-                alert.name
+            (
+                success,
+                error,
+            ) = await self.notification_service.send_test_email_notification(
+                alert.email, alert.name
             )
             if success:
                 sent_any = True
@@ -404,9 +487,11 @@ class AlertService:
 
             if subscriptions:
                 for subscription in subscriptions:
-                    success, error = await self.notification_service.send_test_push_notification(
-                        subscription,
-                        alert.name
+                    (
+                        success,
+                        error,
+                    ) = await self.notification_service.send_test_push_notification(
+                        subscription, alert.name
                     )
                     if success:
                         sent_any = True
@@ -423,10 +508,7 @@ class AlertService:
         return True, None
 
     async def get_alert_history(
-        self,
-        alert_id: Optional[int] = None,
-        skip: int = 0,
-        limit: int = 100
+        self, alert_id: Optional[int] = None, skip: int = 0, limit: int = 100
     ) -> tuple[list[AlertHistory], int]:
         """Get alert trigger history with pagination."""
         query = select(AlertHistory)
@@ -453,7 +535,7 @@ class AlertService:
 
         # Active alerts
         active_result = await self.db.execute(
-            select(func.count(Alert.id)).where(Alert.is_active == True)
+            select(func.count(Alert.id)).where(Alert.is_active.is_(True))
         )
         active_alerts = active_result.scalar() or 0
 
@@ -466,18 +548,18 @@ class AlertService:
         # Notifications in last 24h
         cutoff_24h = datetime.utcnow() - timedelta(hours=24)
         recent_result = await self.db.execute(
-            select(func.count(AlertHistory.id))
-            .where(AlertHistory.created_at > cutoff_24h)
+            select(func.count(AlertHistory.id)).where(
+                AlertHistory.created_at > cutoff_24h
+            )
         )
         notifications_24h = recent_result.scalar() or 0
 
         # Failed notifications in last 24h
         failed_result = await self.db.execute(
-            select(func.count(AlertHistory.id))
-            .where(
+            select(func.count(AlertHistory.id)).where(
                 and_(
                     AlertHistory.created_at > cutoff_24h,
-                    AlertHistory.notification_status == "failed"
+                    AlertHistory.notification_status == "failed",
                 )
             )
         )

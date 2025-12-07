@@ -1,11 +1,19 @@
-import { Link, useLocation } from 'react-router-dom';
-import { TrendingUp } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { TrendingUp, User, LogOut } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function Header() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, isAuthenticated, logout } = useAuth();
 
   const isActive = (path: string) => {
     return location.pathname === path ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600 hover:text-gray-900';
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
   };
 
   return (
@@ -19,7 +27,7 @@ export default function Header() {
           </Link>
 
           {/* Navigation */}
-          <nav className="flex space-x-8">
+          <nav className="flex items-center space-x-8">
             <Link
               to="/"
               className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${isActive('/')}`}
@@ -51,11 +59,63 @@ export default function Header() {
               Alerts
             </Link>
             <Link
+              to="/pricing"
+              className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${isActive('/pricing')}`}
+            >
+              Pricing
+            </Link>
+            <Link
               to="/about"
               className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${isActive('/about')}`}
             >
               About
             </Link>
+
+            {/* Auth Section */}
+            <div className="flex items-center space-x-4 ml-4 pl-4 border-l border-gray-300">
+              {isAuthenticated ? (
+                <>
+                  <Link
+                    to="/profile"
+                    className="flex items-center space-x-2 text-sm text-gray-700 hover:text-blue-600 transition-colors"
+                    title="View Profile"
+                  >
+                    <User className="h-4 w-4" />
+                    <span>{user?.username}</span>
+                  </Link>
+                  {user?.is_superuser && (
+                    <Link
+                      to="/admin"
+                      className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-medium hover:bg-purple-200"
+                    >
+                      Admin
+                    </Link>
+                  )}
+                  <button
+                    onClick={handleLogout}
+                    className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                  >
+                    <LogOut className="h-4 w-4 mr-1" />
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="inline-flex items-center px-4 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                  >
+                    Sign Up Free
+                  </Link>
+                </>
+              )}
+            </div>
           </nav>
         </div>
       </div>

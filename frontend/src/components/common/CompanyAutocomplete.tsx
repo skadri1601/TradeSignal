@@ -80,10 +80,24 @@ export default function CompanyAutocomplete({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (disabled) return;
+    e.preventDefault();
+    e.stopPropagation();
     const newValue = e.target.value;
     setSearchTerm(newValue);
     setIsOpen(newValue.length > 0);
     onChange(newValue);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Prevent navigation on backspace when input is empty
+    if (e.key === 'Backspace' && searchTerm.length === 0) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    // Close dropdown on Escape
+    if (e.key === 'Escape') {
+      setIsOpen(false);
+    }
   };
 
   return (
@@ -96,6 +110,7 @@ export default function CompanyAutocomplete({
           type="text"
           value={searchTerm}
           onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
           onFocus={() => !disabled && searchTerm.length > 0 && setIsOpen(true)}
           placeholder={placeholder}
           className="input pl-10 pr-10 disabled:opacity-50 disabled:cursor-not-allowed"

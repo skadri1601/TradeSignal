@@ -8,7 +8,6 @@ import logging
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
-from sqlalchemy.orm import selectinload
 
 from app.models import Company
 from app.schemas.company import CompanyCreate, CompanyUpdate, CompanyWithStats
@@ -31,9 +30,7 @@ class CompanyService:
         Returns:
             Company instance or None
         """
-        result = await db.execute(
-            select(Company).where(Company.id == company_id)
-        )
+        result = await db.execute(select(Company).where(Company.id == company_id))
         return result.scalar_one_or_none()
 
     @staticmethod
@@ -65,17 +62,12 @@ class CompanyService:
         Returns:
             Company instance or None
         """
-        result = await db.execute(
-            select(Company).where(Company.cik == cik)
-        )
+        result = await db.execute(select(Company).where(Company.cik == cik))
         return result.scalar_one_or_none()
 
     @staticmethod
     async def get_all(
-        db: AsyncSession,
-        skip: int = 0,
-        limit: int = 20,
-        sector: Optional[str] = None
+        db: AsyncSession, skip: int = 0, limit: int = 20, sector: Optional[str] = None
     ) -> tuple[List[Company], int]:
         """
         Get all companies with optional filtering.
@@ -110,10 +102,7 @@ class CompanyService:
 
     @staticmethod
     async def search(
-        db: AsyncSession,
-        query: str,
-        skip: int = 0,
-        limit: int = 20
+        db: AsyncSession, query: str, skip: int = 0, limit: int = 20
     ) -> tuple[List[Company], int]:
         """
         Search companies by ticker or name.
@@ -130,7 +119,7 @@ class CompanyService:
         # Search by ticker or name (case-insensitive)
         search_filter = or_(
             func.upper(Company.ticker).contains(query.upper()),
-            func.upper(Company.name).contains(query.upper())
+            func.upper(Company.name).contains(query.upper()),
         )
 
         # Build query
@@ -169,9 +158,7 @@ class CompanyService:
 
     @staticmethod
     async def update(
-        db: AsyncSession,
-        company: Company,
-        company_data: CompanyUpdate
+        db: AsyncSession, company: Company, company_data: CompanyUpdate
     ) -> Company:
         """
         Update an existing company.
@@ -208,10 +195,7 @@ class CompanyService:
 
     @staticmethod
     async def get_or_create(
-        db: AsyncSession,
-        ticker: str,
-        cik: str,
-        name: Optional[str] = None
+        db: AsyncSession, ticker: str, cik: str, name: Optional[str] = None
     ) -> Company:
         """
         Get existing company or create if doesn't exist.
@@ -242,17 +226,12 @@ class CompanyService:
             return company
 
         # Create new company
-        company_data = CompanyCreate(
-            ticker=ticker.upper(),
-            cik=cik,
-            name=name
-        )
+        company_data = CompanyCreate(ticker=ticker.upper(), cik=cik, name=name)
         return await CompanyService.create(db, company_data)
 
     @staticmethod
     async def get_with_stats(
-        db: AsyncSession,
-        company_id: int
+        db: AsyncSession, company_id: int
     ) -> Optional[CompanyWithStats]:
         """
         Get company with trading statistics.
@@ -288,6 +267,7 @@ class CompanyService:
 
         # Recent buys/sells (last 30 days)
         from datetime import date, timedelta
+
         thirty_days_ago = date.today() - timedelta(days=30)
 
         recent_buys_result = await db.execute(
@@ -312,5 +292,5 @@ class CompanyService:
             total_trades=total_trades,
             total_insiders=total_insiders,
             recent_buy_count=recent_buy_count,
-            recent_sell_count=recent_sell_count
+            recent_sell_count=recent_sell_count,
         )

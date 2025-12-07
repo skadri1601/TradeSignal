@@ -16,9 +16,8 @@ services:
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_SERVER_ROOT_URL=http://localhost:3500
     ports:
-      - "3500:3000"
+      - "3001:3000"
     volumes:
       - grafana_data:/var/lib/grafana
     depends_on:
@@ -29,7 +28,7 @@ services:
     image: louislam/uptime-kuma:1
     container_name: tradesignal-uptime-kuma
     ports:
-      - "3100:3001"
+      - "3002:3001"
     volumes:
       - uptime_kuma_data:/app/data
     restart: unless-stopped

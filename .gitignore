@@ -11,11 +11,18 @@ ENV/
 pip-log.txt
 pip-delete-this-directory.txt
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .coverage
+.coverage.*
 htmlcov/
 *.egg-info/
 dist/
 build/
+.turbo/
+.parcel-cache/
+.vite/
+.next/
 
 # Node
 node_modules/
@@ -57,6 +64,8 @@ backend/.env
 *.db
 *.sqlite
 *.sqlite3
+celerybeat-schedule
+*.sql
 
 # Misc
 .cache/
@@ -135,33 +144,66 @@ scratch/
 playground/
 experiments/
 
-# Documentation (keep only essential docs)
-PROJECT_STATUS.md
-PHASE*.md
-phase*.md
-port.md
-*_COMPLETE.md
-IMPLEMENTATION*.md
-SETUP*.md
-Truth*.md
-QUICK_START.md
-QUICKSTART*.md
-session_summary*.md
-project_status*.md
+# Documentation / Markdown
+# *.md  <-- Unignored to allow README and docs
+
+# Tests
+tests/
+e2e/
+playwright.config.ts
+vitest.config.ts
+backend/tests/
+backend/test_*.py
+backend/check_tests.py
+backend/run_tests_debug.py
+backend/run_tests_verbose.py
+backend/run_tests.py
+
+# Database migrations
+backend/migrations/
 
 # Claude Code settings (local)
 .claude/
 
 # Temporary database/test files
 .tmp_*.py
-backend/test_*.py
-backend/seed_db.py
-backend/test_*.py
-backend/*_test.py
+# backend/test_*.py <-- Unignored
+# backend/seed_db.py <-- Unignored if needed, but keeping ignored if purely local seed
+# backend/test_*.py
+# backend/*_test.py
 
 # One-time scripts (already executed)
-backend/generate_*.py
+backend/scripts/create_*.py
+backend/scripts/fix_*.py
+backend/scripts/migrate_*.py
+backend/scripts/populate_all_data.py
+backend/scripts/reset_user_password.py
+backend/scripts/run_migration.py
+backend/scripts/run_role_migration.py
+backend/scripts/seed_*.py
+backend/scripts/set_pro_subscription.py
+backend/scripts/setup_supabase_scraping.py
+backend/scripts/test_*.py
 backend/scripts/add_*.py
+backend/scripts/check_*.py
+backend/scripts/diagnose_*.py
+backend/scripts/generate_*.py
+backend/scripts/make_*.py
+backend/scripts/scrape_*.py
+backend/scripts/verify_*.py
+
+# Frontend Test Components
+frontend/src/components/__tests__/
+
+# Package lock files
+package-lock.json
+
+# Migration script
+run_migration.bat
+
+# Assets directory
+assets/
+
 
 # Temporary analysis files
 backend/scripts/analyze_*.py
@@ -174,3 +216,9 @@ tickers.txt
 
 # ESLint config (if auto-generated)
 frontend/.eslintrc.cjs
+
+# Temporary fix/check scripts (one-time use)
+backend/fix_*.py
+backend/check_*.py
+backend/test_*.py
+backend/run_tests*.py

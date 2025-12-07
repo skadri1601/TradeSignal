@@ -34,7 +34,7 @@ async def basic_health_check() -> Dict[str, Any]:
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
         "version": os.getenv("GIT_COMMIT_SHA", "unknown"),
-        "environment": os.getenv("ENVIRONMENT", "development")
+        "environment": os.getenv("ENVIRONMENT", "development"),
     }
 
 
@@ -57,7 +57,7 @@ async def detailed_health_check() -> tuple[Dict[str, Any], int]:
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
         "version": os.getenv("GIT_COMMIT_SHA", "unknown"),
-        "services": {}
+        "services": {},
     }
 
     # Check database
@@ -66,19 +66,16 @@ async def detailed_health_check() -> tuple[Dict[str, Any], int]:
         if db_healthy:
             health["services"]["database"] = {
                 "status": "healthy",
-                "message": "PostgreSQL connection OK"
+                "message": "PostgreSQL connection OK",
             }
         else:
             health["services"]["database"] = {
                 "status": "unhealthy",
-                "message": "PostgreSQL connection failed"
+                "message": "PostgreSQL connection failed",
             }
             health["status"] = "degraded"
     except Exception as e:
-        health["services"]["database"] = {
-            "status": "unhealthy",
-            "error": str(e)
-        }
+        health["services"]["database"] = {"status": "unhealthy", "error": str(e)}
         health["status"] = "degraded"
         logger.error(f"Database health check failed: {e}")
 
@@ -94,25 +91,22 @@ async def detailed_health_check() -> tuple[Dict[str, Any], int]:
             if result and result.get("test") == "ok":
                 health["services"]["redis"] = {
                     "status": "healthy",
-                    "message": "Redis connection OK"
+                    "message": "Redis connection OK",
                 }
             else:
                 health["services"]["redis"] = {
                     "status": "degraded",
-                    "message": "Redis responding but data inconsistent"
+                    "message": "Redis responding but data inconsistent",
                 }
                 health["status"] = "degraded"
         else:
             health["services"]["redis"] = {
                 "status": "unavailable",
-                "message": "Redis not configured or disabled (using in-memory fallback)"
+                "message": "Redis not configured or disabled (using in-memory fallback)",
             }
             # Not critical - we have fallback
     except Exception as e:
-        health["services"]["redis"] = {
-            "status": "unhealthy",
-            "error": str(e)
-        }
+        health["services"]["redis"] = {"status": "unhealthy", "error": str(e)}
         health["status"] = "degraded"
         logger.error(f"Redis health check failed: {e}")
 
@@ -121,22 +115,26 @@ async def detailed_health_check() -> tuple[Dict[str, Any], int]:
         from app.services.stock_price_service import (
             _yahoo_consecutive_failures,
             _finnhub_consecutive_failures,
-            _alpha_vantage_consecutive_failures
+            _alpha_vantage_consecutive_failures,
         )
 
         health["services"]["data_sources"] = {
             "yahoo_finance": {
                 "status": "healthy" if _yahoo_consecutive_failures < 3 else "unhealthy",
-                "consecutive_failures": _yahoo_consecutive_failures
+                "consecutive_failures": _yahoo_consecutive_failures,
             },
             "finnhub": {
-                "status": "healthy" if _finnhub_consecutive_failures < 3 else "unhealthy",
-                "consecutive_failures": _finnhub_consecutive_failures
+                "status": "healthy"
+                if _finnhub_consecutive_failures < 3
+                else "unhealthy",
+                "consecutive_failures": _finnhub_consecutive_failures,
             },
             "alpha_vantage": {
-                "status": "healthy" if _alpha_vantage_consecutive_failures < 3 else "unhealthy",
-                "consecutive_failures": _alpha_vantage_consecutive_failures
-            }
+                "status": "healthy"
+                if _alpha_vantage_consecutive_failures < 3
+                else "unhealthy",
+                "consecutive_failures": _alpha_vantage_consecutive_failures,
+            },
         }
 
         # If primary source (Yahoo) is down, mark as degraded
@@ -144,10 +142,7 @@ async def detailed_health_check() -> tuple[Dict[str, Any], int]:
             health["status"] = "degraded"
 
     except Exception as e:
-        health["services"]["data_sources"] = {
-            "status": "unknown",
-            "error": str(e)
-        }
+        health["services"]["data_sources"] = {"status": "unknown", "error": str(e)}
         logger.error(f"Data sources health check failed: {e}")
 
     # Determine HTTP status code
@@ -176,22 +171,19 @@ async def readiness_check() -> Dict[str, Any]:
         db_healthy = await db_manager.check_connection()
 
         if db_healthy:
-            return {
-                "ready": True,
-                "timestamp": datetime.now().isoformat()
-            }
+            return {"ready": True, "timestamp": datetime.now().isoformat()}
         else:
             return {
                 "ready": False,
                 "reason": "Database not accessible",
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
     except Exception as e:
         logger.error(f"Readiness check failed: {e}")
         return {
             "ready": False,
             "reason": str(e),
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
 
@@ -206,7 +198,4 @@ async def liveness_check() -> Dict[str, Any]:
     Returns:
         dict: Liveness status (always returns 200 if app is running)
     """
-    return {
-        "alive": True,
-        "timestamp": datetime.now().isoformat()
-    }
+    return {"alive": True, "timestamp": datetime.now().isoformat()}

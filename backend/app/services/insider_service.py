@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from sqlalchemy.orm import selectinload
 
-from app.models import Insider, Company
+from app.models import Insider
 from app.schemas.insider import InsiderCreate, InsiderUpdate
 
 logger = logging.getLogger(__name__)
@@ -40,9 +40,7 @@ class InsiderService:
 
     @staticmethod
     async def get_by_name_and_company(
-        db: AsyncSession,
-        name: str,
-        company_id: int
+        db: AsyncSession, name: str, company_id: int
     ) -> Optional[Insider]:
         """
         Get insider by name and company.
@@ -57,10 +55,7 @@ class InsiderService:
         """
         result = await db.execute(
             select(Insider).where(
-                and_(
-                    Insider.name == name,
-                    Insider.company_id == company_id
-                )
+                and_(Insider.name == name, Insider.company_id == company_id)
             )
         )
         return result.scalar_one_or_none()
@@ -70,7 +65,7 @@ class InsiderService:
         db: AsyncSession,
         skip: int = 0,
         limit: int = 20,
-        company_id: Optional[int] = None
+        company_id: Optional[int] = None,
     ) -> tuple[List[Insider], int]:
         """
         Get all insiders with optional filtering.
@@ -105,10 +100,7 @@ class InsiderService:
 
     @staticmethod
     async def search(
-        db: AsyncSession,
-        query: str,
-        skip: int = 0,
-        limit: int = 20
+        db: AsyncSession, query: str, skip: int = 0, limit: int = 20
     ) -> tuple[List[Insider], int]:
         """
         Search insiders by name.
@@ -126,7 +118,9 @@ class InsiderService:
         search_filter = func.upper(Insider.name).contains(query.upper())
 
         # Build query
-        search_query = select(Insider).options(selectinload(Insider.company)).where(search_filter)
+        search_query = (
+            select(Insider).options(selectinload(Insider.company)).where(search_filter)
+        )
 
         # Get total count
         count_query = select(func.count()).select_from(search_query.subquery())
@@ -161,9 +155,7 @@ class InsiderService:
 
     @staticmethod
     async def update(
-        db: AsyncSession,
-        insider: Insider,
-        insider_data: InsiderUpdate
+        db: AsyncSession, insider: Insider, insider_data: InsiderUpdate
     ) -> Insider:
         """
         Update an existing insider.
@@ -207,7 +199,7 @@ class InsiderService:
         is_director: bool = False,
         is_officer: bool = False,
         is_ten_percent_owner: bool = False,
-        is_other: bool = False
+        is_other: bool = False,
     ) -> Insider:
         """
         Get existing insider or create if doesn't exist.
@@ -261,6 +253,6 @@ class InsiderService:
             is_director=is_director,
             is_officer=is_officer,
             is_ten_percent_owner=is_ten_percent_owner,
-            is_other=is_other
+            is_other=is_other,
         )
         return await InsiderService.create(db, insider_data)

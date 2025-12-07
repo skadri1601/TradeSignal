@@ -1,5 +1,89 @@
 // Base types for the application
 
+// Congressional Trading Types (Phase 7)
+export interface Congressperson {
+  id: number;
+  name: string;
+  first_name: string | null;
+  last_name: string;
+  chamber: 'HOUSE' | 'SENATE';
+  state: string;
+  district: string | null;
+  party: 'DEMOCRAT' | 'REPUBLICAN' | 'INDEPENDENT' | 'OTHER';
+  display_name: string;
+  party_abbrev: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CongressionalTrade {
+  id: number;
+  congressperson_id: number;
+  company_id: number | null;
+  transaction_date: string;
+  disclosure_date: string;
+  transaction_type: 'BUY' | 'SELL';
+  ticker: string | null;
+  asset_description: string;
+  amount_min: number | null;
+  amount_max: number | null;
+  amount_estimated: number | null;
+  is_range_estimate: boolean;
+  owner_type: string;
+  asset_type: string | null;
+  disclosure_url: string | null;
+  source: string;
+  is_buy: boolean;
+  is_sell: boolean;
+  is_significant: boolean;
+  filing_delay_days: number | null;
+  estimated_value: number | null;
+  amount_range_display: string;
+  created_at: string;
+  updated_at: string;
+  // Optional nested details
+  congressperson?: Congressperson;
+  company?: Company;
+}
+
+export interface CongressionalTradeFilters {
+  congressperson_id?: number;
+  company_id?: number;
+  ticker?: string;
+  chamber?: 'HOUSE' | 'SENATE';
+  state?: string;
+  party?: string;
+  transaction_type?: 'BUY' | 'SELL';
+  owner_type?: string;
+  transaction_date_from?: string;
+  transaction_date_to?: string;
+  min_value?: number;
+  max_value?: number;
+  significant_only?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+export interface CongressionalTradeStats {
+  total_trades: number;
+  total_buys: number;
+  total_sells: number;
+  total_value: number;
+  total_buy_value: number;
+  total_sell_value: number;
+  average_trade_size: number;
+  largest_trade: number | null;
+  most_active_congressperson: string | null;
+  most_active_company: string | null;
+  house_trade_count: number;
+  senate_trade_count: number;
+  democrat_buy_count: number;
+  democrat_sell_count: number;
+  republican_buy_count: number;
+  republican_sell_count: number;
+}
+
 export interface Company {
   id: number;
   ticker: string;
@@ -118,7 +202,7 @@ export interface APIError {
 }
 
 export type AlertType = "large_trade" | "company_watch" | "insider_role" | "volume_spike";
-export type NotificationChannel = "webhook" | "email" | "push";
+export type NotificationChannel = "webhook" | "email" | "push" | "discord" | "slack" | "sms";
 
 export interface Alert {
   id: number;
@@ -132,6 +216,9 @@ export interface Alert {
   notification_channels: NotificationChannel[];
   webhook_url: string | null;
   email: string | null;
+  discord_webhook_url: string | null;
+  slack_webhook_url: string | null;
+  sms_phone_number: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -160,4 +247,23 @@ export interface AlertFilters {
   is_active?: boolean;
   page?: number;
   limit?: number;
+}
+
+// News Types
+export interface NewsArticle {
+  id: number;
+  headline: string;
+  summary: string;
+  source: string;
+  datetime: number; // Unix timestamp
+  url: string;
+  image: string | null;
+  category: string;
+  related: string | null; // Comma-separated tickers
+}
+
+export interface NewsResponse {
+  articles: NewsArticle[];
+  total: number;
+  limit: number;
 }

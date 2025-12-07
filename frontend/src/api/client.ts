@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { getAccessToken } from '../contexts/AuthContext';
 
-const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT ?? '120000');
+const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT ?? '60000'); // Reduced from 120s to 60s
 
 // Create axios instance with base configuration
 const apiClient = axios.create({
@@ -11,14 +12,31 @@ const apiClient = axios.create({
   },
 });
 
+// Helper function to validate JWT token format
+const isValidJWT = (token: string | null | undefined): boolean => {
+  if (!token || typeof token !== 'string') {
+    return false;
+  }
+  
+  // JWT tokens have 3 parts separated by dots: header.payload.signature
+  const parts = token.split('.');
+  if (parts.length !== 3) {
+    return false;
+  }
+  
+  // Check that all parts are non-empty
+  return parts.every(part => part.trim().length > 0);
+};
+
 // Request interceptor
 apiClient.interceptors.request.use(
   (config) => {
-    // Add any auth tokens here if needed in future
-    // const token = localStorage.getItem('token');
-    // if (token) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
+    // Add auth token to all requests only if token is valid
+    const token = getAccessToken();
+    if (token && isValidJWT(token)) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    // If token exists but is invalid, don't add it (let backend handle missing token)
     return config;
   },
   (error) => {

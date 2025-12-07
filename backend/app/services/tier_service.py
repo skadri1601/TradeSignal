@@ -4,7 +4,7 @@ Tier limit enforcement service.
 Checks user subscription tier and enforces usage limits.
 """
 
-from datetime import date
+from datetime import date, datetime, timedelta
 from typing import Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -50,6 +50,10 @@ class TierService:
         Returns:
             Dictionary of limits
         """
+        # Map "basic" to "plus" for backward compatibility
+        if tier == "basic":
+            tier = "plus"
+
         return TIER_LIMITS.get(tier, TIER_LIMITS[SubscriptionTier.FREE.value])
 
     @staticmethod
@@ -68,8 +72,7 @@ class TierService:
 
         result = await db.execute(
             select(UsageTracking).where(
-                UsageTracking.user_id == user_id,
-                UsageTracking.date == today
+                UsageTracking.user_id == user_id, UsageTracking.date == today
             )
         )
         usage = result.scalar_one_or_none()
@@ -105,9 +108,22 @@ class TierService:
             return True
 
         if usage.ai_requests >= ai_limit:
+            # Calculate time until next reset (midnight UTC)
+            now = datetime.utcnow()
+            tomorrow = (now + timedelta(days=1)).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+            seconds_remaining = int((tomorrow - now).total_seconds())
+            hours = seconds_remaining // 3600
+            minutes = (seconds_remaining % 3600) // 60
+
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=f"Daily AI request limit exceeded ({ai_limit} requests). Upgrade to get more requests."
+                detail=(
+                    f"Daily AI request limit exhausted ({ai_limit}/{ai_limit}). "
+                    f"Limit resets in {hours}h {minutes}m. Upgrade your plan for more."
+                ),
+                headers={"Retry-After": str(seconds_remaining)},
             )
 
         return True
@@ -137,14 +153,14 @@ class TierService:
 
         # Count user's active alerts
         result = await db.execute(
-            select(Alert).where(Alert.user_id == user_id, Alert.is_active == True)
+            select(Alert).where(Alert.user_id == user_id, Alert.is_active.is_(True))
         )
         alert_count = len(result.scalars().all())
 
         if alert_count >= alert_limit:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Alert limit reached ({alert_limit} alerts). Upgrade to create more alerts."
+                detail=f"Alert limit reached ({alert_limit} alerts). Upgrade to create more alerts.",
             )
 
         return True
@@ -176,6 +192,139 @@ class TierService:
         await db.commit()
 
     @staticmethod
+    async def check_historical_data_access(
+        user_id: int, requested_days: int, db: AsyncSession
+    ) -> int:
+        """
+        Check if user can access historical data for requested days.
+
+        Args:
+            user_id: User ID
+            requested_days: Number of days user wants to access
+            db: Database session
+
+        Returns:
+            Max allowed days for user's tier (-1 for unlimited)
+
+        Raises:
+            HTTPException(403) if requested days exceed limit
+        """
+        tier = await TierService.get_user_tier(user_id, db)
+        limits = await TierService.get_tier_limits(tier)
+        max_days = limits["historical_data_days"]
+
+        # -1 means unlimited
+        if max_days == -1:
+            return -1
+
+        if requested_days > max_days:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    f"Historical data access limited to {max_days} days for {tier} "
+                    f"tier. Requested: {requested_days} days. Upgrade to Pro or "
+                    "Enterprise for unlimited access."
+                ),
+            )
+
+        return max_days
+
+    @staticmethod
+    async def check_real_time_access(user_id: int, db: AsyncSession) -> bool:
+        """
+        Check if user has access to real-time updates.
+
+        Args:
+            user_id: User ID
+            db: Database session
+
+        Returns:
+            True if user has real-time access
+
+        Raises:
+            HTTPException(403) if access denied
+        """
+        tier = await TierService.get_user_tier(user_id, db)
+        limits = await TierService.get_tier_limits(tier)
+
+        if not limits["real_time_updates"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    "Real-time updates require Plus tier or higher. Upgrade at "
+                    "/pricing to enable real-time data streaming."
+                ),
+            )
+
+        return True
+
+    @staticmethod
+    async def check_api_access(user_id: int, db: AsyncSession) -> bool:
+        """
+        Check if user has API access.
+
+        Args:
+            user_id: User ID
+            db: Database session
+
+        Returns:
+            True if user has API access
+
+        Raises:
+            HTTPException(403) if access denied
+        """
+        tier = await TierService.get_user_tier(user_id, db)
+        limits = await TierService.get_tier_limits(tier)
+
+        if not limits["api_access"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    "API access requires Pro tier or higher. Upgrade at /pricing "
+                    "to enable API access."
+                ),
+            )
+
+        return True
+
+    @staticmethod
+    async def check_companies_tracked_limit(
+        user_id: int, current_count: int, db: AsyncSession
+    ) -> bool:
+        """
+        Check if user can track more companies.
+
+        Args:
+            user_id: User ID
+            current_count: Current number of companies being tracked
+            db: Database session
+
+        Returns:
+            True if user can track more companies
+
+        Raises:
+            HTTPException(403) if limit exceeded
+        """
+        tier = await TierService.get_user_tier(user_id, db)
+        limits = await TierService.get_tier_limits(tier)
+        max_companies = limits["companies_tracked"]
+
+        # -1 means unlimited
+        if max_companies == -1:
+            return True
+
+        if current_count >= max_companies:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    f"Company tracking limit reached ({max_companies} companies for "
+                    f"{tier} tier). Upgrade to Pro or Enterprise for unlimited tracking."
+                ),
+            )
+
+        return True
+
+    @staticmethod
     async def get_usage_stats(user_id: int, db: AsyncSession) -> Dict[str, Any]:
         """
         Get user's current usage stats and limits.
@@ -201,6 +350,8 @@ class TierService:
                 "companies_viewed": usage.companies_viewed,
             },
             "remaining": {
-                "ai_requests": limits["ai_requests_per_day"] - usage.ai_requests if limits["ai_requests_per_day"] != -1 else -1,
-            }
+                "ai_requests": limits["ai_requests_per_day"] - usage.ai_requests
+                if limits["ai_requests_per_day"] != -1
+                else -1,
+            },
         }

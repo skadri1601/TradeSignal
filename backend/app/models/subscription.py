@@ -4,22 +4,25 @@ Subscription model for freemium/premium tier management.
 
 from datetime import datetime
 from enum import Enum
-from sqlalchemy import String, Integer, Boolean, DateTime, ForeignKey, Numeric
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import String, Integer, Boolean, DateTime, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
 
 
 class SubscriptionTier(str, Enum):
     """Subscription tier levels."""
+
     FREE = "free"
-    BASIC = "basic"
+    BASIC = "basic"  # Kept for backward compatibility
+    PLUS = "plus"  # New primary name for Plus tier
     PRO = "pro"
     ENTERPRISE = "enterprise"
 
 
 class SubscriptionStatus(str, Enum):
     """Subscription status."""
+
     ACTIVE = "active"
     CANCELED = "canceled"
     PAST_DUE = "past_due"
@@ -47,18 +50,28 @@ class Subscription(Base):
     __tablename__ = "subscriptions"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True
+    )
 
-    tier: Mapped[str] = mapped_column(String(20), nullable=False, default=SubscriptionTier.FREE.value)
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default=SubscriptionStatus.ACTIVE.value)
+    tier: Mapped[str] = mapped_column(
+        String(20), nullable=False, default=SubscriptionTier.FREE.value
+    )
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default=SubscriptionStatus.ACTIVE.value
+    )
 
     # Stripe integration
     stripe_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    stripe_subscription_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    stripe_subscription_id: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
     stripe_price_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Billing period
-    current_period_start: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    current_period_start: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True
+    )
     current_period_end: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     cancel_at_period_end: Mapped[bool] = mapped_column(Boolean, default=False)
 
@@ -70,8 +83,12 @@ class Subscription(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Timestamps
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
     def __repr__(self) -> str:
         return f"<Subscription(user_id={self.user_id}, tier={self.tier}, status={self.status})>"
@@ -79,7 +96,12 @@ class Subscription(Base):
     @property
     def is_premium(self) -> bool:
         """Check if user has any paid tier."""
-        return self.tier in [SubscriptionTier.BASIC.value, SubscriptionTier.PRO.value, SubscriptionTier.ENTERPRISE.value]
+        return self.tier in [
+            SubscriptionTier.BASIC.value,
+            SubscriptionTier.PLUS.value,
+            SubscriptionTier.PRO.value,
+            SubscriptionTier.ENTERPRISE.value,
+        ]
 
 
 # Tier limits configuration
@@ -93,6 +115,14 @@ TIER_LIMITS = {
         "historical_data_days": 30,
     },
     SubscriptionTier.BASIC.value: {
+        "ai_requests_per_day": 50,
+        "alerts_max": 20,
+        "real_time_updates": True,
+        "api_access": False,
+        "companies_tracked": 50,
+        "historical_data_days": 365,
+    },
+    SubscriptionTier.PLUS.value: {
         "ai_requests_per_day": 50,
         "alerts_max": 20,
         "real_time_updates": True,

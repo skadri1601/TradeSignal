@@ -46,14 +46,14 @@ class Form4Parser:
         """
         try:
             # Try parsing with lxml XMLParser (preserves XML structure)
-            if hasattr(ET, 'XMLParser'):
+            if hasattr(ET, "XMLParser"):
                 try:
                     # lxml is available - use XML parser with recovery mode
-                    parser = ET.XMLParser(recover=True, encoding='utf-8')
-                    root = ET.fromstring(xml_content.encode('utf-8'), parser)
+                    parser = ET.XMLParser(recover=True, encoding="utf-8")
+                    root = ET.fromstring(xml_content.encode("utf-8"), parser)
                 except Exception:
                     # Fallback to standard parsing
-                    root = ET.fromstring(xml_content.encode('utf-8'))
+                    root = ET.fromstring(xml_content.encode("utf-8"))
             else:
                 # Standard library xml.etree
                 root = ET.fromstring(xml_content)
@@ -64,7 +64,7 @@ class Form4Parser:
         result = {
             "issuer": Form4Parser._parse_issuer(root),
             "reporting_owner": Form4Parser._parse_reporting_owner(root),
-            "transactions": []
+            "transactions": [],
         }
 
         # Parse non-derivative transactions (regular stock trades)
@@ -93,11 +93,7 @@ class Form4Parser:
         name = Form4Parser._get_text(issuer, ".//issuerName", "")
         ticker = Form4Parser._get_text(issuer, ".//issuerTradingSymbol", "")
 
-        return {
-            "cik": cik.zfill(10) if cik else "",
-            "name": name,
-            "ticker": ticker
-        }
+        return {"cik": cik.zfill(10) if cik else "", "name": name, "ticker": ticker}
 
     @staticmethod
     def _parse_reporting_owner(root: ET.Element) -> Dict[str, Any]:
@@ -110,7 +106,9 @@ class Form4Parser:
         relationship = owner.find(".//reportingOwnerRelationship")
 
         cik = Form4Parser._get_text(owner_id, ".//rptOwnerCik", "") if owner_id else ""
-        name = Form4Parser._get_text(owner_id, ".//rptOwnerName", "") if owner_id else ""
+        name = (
+            Form4Parser._get_text(owner_id, ".//rptOwnerName", "") if owner_id else ""
+        )
 
         result = {
             "cik": cik.zfill(10) if cik else "",
@@ -118,11 +116,21 @@ class Form4Parser:
         }
 
         if relationship is not None:
-            result["is_director"] = Form4Parser._get_text(relationship, ".//isDirector") == "1"
-            result["is_officer"] = Form4Parser._get_text(relationship, ".//isOfficer") == "1"
-            result["is_ten_percent_owner"] = Form4Parser._get_text(relationship, ".//isTenPercentOwner") == "1"
-            result["is_other"] = Form4Parser._get_text(relationship, ".//isOther") == "1"
-            result["officer_title"] = Form4Parser._get_text(relationship, ".//officerTitle")
+            result["is_director"] = (
+                Form4Parser._get_text(relationship, ".//isDirector") == "1"
+            )
+            result["is_officer"] = (
+                Form4Parser._get_text(relationship, ".//isOfficer") == "1"
+            )
+            result["is_ten_percent_owner"] = (
+                Form4Parser._get_text(relationship, ".//isTenPercentOwner") == "1"
+            )
+            result["is_other"] = (
+                Form4Parser._get_text(relationship, ".//isOther") == "1"
+            )
+            result["officer_title"] = Form4Parser._get_text(
+                relationship, ".//officerTitle"
+            )
             result["other_text"] = Form4Parser._get_text(relationship, ".//otherText")
 
         return result
@@ -168,7 +176,9 @@ class Form4Parser:
         return transactions
 
     @staticmethod
-    def _parse_transaction(txn: ET.Element, is_derivative: bool) -> Optional[Dict[str, Any]]:
+    def _parse_transaction(
+        txn: ET.Element, is_derivative: bool
+    ) -> Optional[Dict[str, Any]]:
         """Parse a single transaction."""
         # Security title
         security_title = Form4Parser._get_text(txn, ".//securityTitle/value")
@@ -191,7 +201,9 @@ class Form4Parser:
 
         # Map transaction code to type
         # P = Purchase, S = Sale, A = Award, G = Gift, etc.
-        txn_type = "BUY" if txn_code in ["P", "A"] else "SELL" if txn_code == "S" else "OTHER"
+        txn_type = (
+            "BUY" if txn_code in ["P", "A"] else "SELL" if txn_code == "S" else "OTHER"
+        )
 
         # Transaction amounts
         amounts = txn.find(".//transactionAmounts")
@@ -199,8 +211,12 @@ class Form4Parser:
             return None
 
         shares_str = Form4Parser._get_text(amounts, "transactionShares/value", "0")
-        price_str = Form4Parser._get_text(amounts, "transactionPricePerShare/value", "0")
-        acquired_disposed = Form4Parser._get_text(amounts, "transactionAcquiredDisposedCode/value")
+        price_str = Form4Parser._get_text(
+            amounts, "transactionPricePerShare/value", "0"
+        )
+        acquired_disposed = Form4Parser._get_text(
+            amounts, "transactionAcquiredDisposedCode/value"
+        )
 
         try:
             shares = Decimal(shares_str) if shares_str else Decimal("0")
@@ -237,20 +253,28 @@ class Form4Parser:
 
         # Post-transaction shares owned
         post_txn_amounts = txn.find(".//postTransactionAmounts")
-        shares_owned_str = Form4Parser._get_text(
-            post_txn_amounts,
-            "sharesOwnedFollowingTransaction/value",
-            "0"
-        ) if post_txn_amounts else "0"
+        shares_owned_str = (
+            Form4Parser._get_text(
+                post_txn_amounts, "sharesOwnedFollowingTransaction/value", "0"
+            )
+            if post_txn_amounts
+            else "0"
+        )
 
         try:
-            shares_owned = Decimal(shares_owned_str) if shares_owned_str else Decimal("0")
+            shares_owned = (
+                Decimal(shares_owned_str) if shares_owned_str else Decimal("0")
+            )
         except (ValueError, TypeError):
             shares_owned = Decimal("0")
 
         # Ownership nature
         ownership = txn.find(".//ownershipNature")
-        ownership_type = Form4Parser._get_text(ownership, "directOrIndirectOwnership/value", "D") if ownership else "D"
+        ownership_type = (
+            Form4Parser._get_text(ownership, "directOrIndirectOwnership/value", "D")
+            if ownership
+            else "D"
+        )
         ownership_type = "Direct" if ownership_type == "D" else "Indirect"
 
         return {
@@ -263,7 +287,7 @@ class Form4Parser:
             "total_value": float(total_value) if total_value else None,
             "shares_owned_after": float(shares_owned),
             "ownership_type": ownership_type,
-            "derivative_transaction": is_derivative
+            "derivative_transaction": is_derivative,
         }
 
     @staticmethod
@@ -282,7 +306,11 @@ class Form4Parser:
         if element is None:
             return default
 
-        found = element.find(path) if "/" in path or "." in path else element.find(f".//{path}")
+        found = (
+            element.find(path)
+            if "/" in path or "." in path
+            else element.find(f".//{path}")
+        )
 
         if found is not None and found.text:
             return found.text.strip()

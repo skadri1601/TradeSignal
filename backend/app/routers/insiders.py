@@ -4,7 +4,6 @@ Insider API endpoints.
 REST API routes for insider operations.
 """
 
-from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from slowapi import Limiter
@@ -17,9 +16,8 @@ from app.schemas.insider import (
     InsiderRead,
     InsiderCreate,
     InsiderUpdate,
-    InsiderWithCompany,
 )
-from app.schemas.trade import TradeRead, TradeFilter, TradeWithDetails
+from app.schemas.trade import TradeFilter, TradeWithDetails
 from app.schemas.common import PaginationParams, SortParams, PaginatedResponse
 
 router = APIRouter()
@@ -32,7 +30,7 @@ async def get_insiders(
     request: Request,
     pagination: PaginationParams = Depends(),
     company_id: int | None = Query(None, description="Filter by company"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Get all insiders with pagination.
@@ -45,17 +43,14 @@ async def get_insiders(
     Returns list of insiders sorted by name.
     """
     insiders, total = await InsiderService.get_all(
-        db=db,
-        skip=pagination.skip,
-        limit=pagination.limit,
-        company_id=company_id
+        db=db, skip=pagination.skip, limit=pagination.limit, company_id=company_id
     )
 
     return PaginatedResponse.create(
         items=[InsiderRead.model_validate(insider) for insider in insiders],
         total=total,
         page=pagination.page,
-        limit=pagination.limit
+        limit=pagination.limit,
     )
 
 
@@ -65,7 +60,7 @@ async def search_insiders(
     request: Request,
     q: str = Query(..., min_length=1, description="Search query (name)"),
     pagination: PaginationParams = Depends(),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Search insiders by name.
@@ -78,26 +73,21 @@ async def search_insiders(
     Example: `/api/v1/insiders/search?q=tim` matches "Tim Cook", "Timothy Apple", etc.
     """
     insiders, total = await InsiderService.search(
-        db=db,
-        query=q,
-        skip=pagination.skip,
-        limit=pagination.limit
+        db=db, query=q, skip=pagination.skip, limit=pagination.limit
     )
 
     return PaginatedResponse.create(
         items=[InsiderRead.model_validate(insider) for insider in insiders],
         total=total,
         page=pagination.page,
-        limit=pagination.limit
+        limit=pagination.limit,
     )
 
 
 @router.get("/{insider_id}", response_model=InsiderRead)
 @limiter.limit("60/minute")
 async def get_insider(
-    request: Request,
-    insider_id: int,
-    db: AsyncSession = Depends(get_db)
+    request: Request, insider_id: int, db: AsyncSession = Depends(get_db)
 ):
     """
     Get insider by ID.
@@ -115,7 +105,7 @@ async def get_insider(
     if not insider:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Insider with ID {insider_id} not found"
+            detail=f"Insider with ID {insider_id} not found",
         )
 
     # Auto-enrich insider data if missing details
@@ -133,7 +123,7 @@ async def get_insider_trades(
     insider_id: int,
     pagination: PaginationParams = Depends(),
     sort: SortParams = Depends(),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Get all trades for a specific insider.
@@ -153,7 +143,7 @@ async def get_insider_trades(
     if not insider:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Insider with ID {insider_id} not found"
+            detail=f"Insider with ID {insider_id} not found",
         )
 
     # Get trades for this insider
@@ -164,23 +154,21 @@ async def get_insider_trades(
         limit=pagination.limit,
         filters=filters,
         sort_by=sort.sort_by,
-        order=sort.order
+        order=sort.order,
     )
 
     return PaginatedResponse.create(
         items=[TradeWithDetails.model_validate(trade) for trade in trades],
         total=total,
         page=pagination.page,
-        limit=pagination.limit
+        limit=pagination.limit,
     )
 
 
 @router.post("/", response_model=InsiderRead, status_code=status.HTTP_201_CREATED)
 @limiter.limit("20/minute")
 async def create_insider(
-    request: Request,
-    insider_data: InsiderCreate,
-    db: AsyncSession = Depends(get_db)
+    request: Request, insider_data: InsiderCreate, db: AsyncSession = Depends(get_db)
 ):
     """
     Create a new insider.
@@ -197,15 +185,13 @@ async def create_insider(
     # Check if insider already exists for this company
     if insider_data.company_id:
         existing = await InsiderService.get_by_name_and_company(
-            db=db,
-            name=insider_data.name,
-            company_id=insider_data.company_id
+            db=db, name=insider_data.name, company_id=insider_data.company_id
         )
 
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"Insider '{insider_data.name}' already exists for this company"
+                detail=f"Insider '{insider_data.name}' already exists for this company",
             )
 
     insider = await InsiderService.create(db=db, insider_data=insider_data)
@@ -218,7 +204,7 @@ async def update_insider(
     request: Request,
     insider_id: int,
     insider_data: InsiderUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Update an existing insider.
@@ -230,19 +216,19 @@ async def update_insider(
     if not insider:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Insider with ID {insider_id} not found"
+            detail=f"Insider with ID {insider_id} not found",
         )
 
-    updated_insider = await InsiderService.update(db=db, insider=insider, insider_data=insider_data)
+    updated_insider = await InsiderService.update(
+        db=db, insider=insider, insider_data=insider_data
+    )
     return InsiderRead.model_validate(updated_insider)
 
 
 @router.delete("/{insider_id}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("20/minute")
 async def delete_insider(
-    request: Request,
-    insider_id: int,
-    db: AsyncSession = Depends(get_db)
+    request: Request, insider_id: int, db: AsyncSession = Depends(get_db)
 ):
     """
     Delete an insider.
@@ -255,7 +241,7 @@ async def delete_insider(
     if not insider:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Insider with ID {insider_id} not found"
+            detail=f"Insider with ID {insider_id} not found",
         )
 
     await InsiderService.delete(db=db, insider=insider)

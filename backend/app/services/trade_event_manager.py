@@ -60,4 +60,3 @@ class TradeEventManager:
 
 
 trade_event_manager = TradeEventManager()
-

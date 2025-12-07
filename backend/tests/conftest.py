@@ -4,14 +4,18 @@ Phase 6: Testing infrastructure.
 """
 
 import pytest
+import pytest_asyncio
 import asyncio
 from typing import AsyncGenerator
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.pool import NullPool
+from sqlalchemy.pool import StaticPool
 
 from app.main import app
 from app.database import Base, get_db
+from app.core.security import get_current_active_user
+# Import all models to ensure they are registered with Base.metadata
+from app.models import *  # noqa: F401, F403
 
 # Test database URL (in-memory SQLite for fast tests)
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -25,7 +29,7 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function")
 async def test_db() -> AsyncGenerator[AsyncSession, None]:
     """
     Create test database session.
@@ -36,7 +40,7 @@ async def test_db() -> AsyncGenerator[AsyncSession, None]:
     # Create async engine
     engine = create_async_engine(
         TEST_DATABASE_URL,
-        poolclass=NullPool,
+        poolclass=StaticPool,
         echo=False,
     )
 
@@ -62,17 +66,49 @@ async def test_db() -> AsyncGenerator[AsyncSession, None]:
     await engine.dispose()
 
 
+@pytest_asyncio.fixture
+async def test_user(test_db: AsyncSession) -> User:
+    """Create a test user for authentication."""
+    user = User(
+        email="test@example.com",
+        username="testuser",
+        hashed_password="$2b$12$dummy",  # Dummy hash for testing
+        is_active=True,
+        is_verified=True
+    )
+    test_db.add(user)
+    await test_db.commit()
+    await test_db.refresh(user)
+    return user
+
+
 @pytest.fixture
 def client(test_db: AsyncSession):
     """
     Create FastAPI test client.
 
     Overrides the database dependency to use test database.
+    Overrides authentication to use a mock user.
     """
     async def override_get_db():
         yield test_db
 
+    # Create a mock user for authentication
+    # We'll create it synchronously since TestClient is sync
+    mock_user = User(
+        id=1,
+        email="test@example.com",
+        username="testuser",
+        hashed_password="$2b$12$dummy",
+        is_active=True,
+        is_verified=True
+    )
+
+    async def override_get_current_user():
+        return mock_user
+
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_active_user] = override_get_current_user
 
     with TestClient(app) as test_client:
         yield test_client

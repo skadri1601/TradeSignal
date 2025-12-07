@@ -51,7 +51,7 @@ class SECClient:
         self.headers = {
             "User-Agent": self.user_agent,
             "Accept-Encoding": "gzip, deflate",
-            "Host": "www.sec.gov"
+            "Host": "www.sec.gov",
         }
 
         self._last_request_time = 0.0
@@ -112,7 +112,7 @@ class SECClient:
         cik: Optional[str] = None,
         ticker: Optional[str] = None,
         start_date: Optional[datetime] = None,
-        count: int = 100
+        count: int = 100,
     ) -> List[Dict[str, Any]]:
         """
         Fetch recent Form 4 filings from SEC EDGAR.
@@ -133,7 +133,9 @@ class SECClient:
         if ticker and not cik:
             cik = await self.lookup_cik_by_ticker(ticker)
             if not cik:
-                logger.warning(f"Could not find CIK for ticker {ticker}, search may return no results")
+                logger.warning(
+                    f"Could not find CIK for ticker {ticker}, search may return no results"
+                )
 
         params = {
             "action": "getcompany",
@@ -141,7 +143,7 @@ class SECClient:
             "dateb": "",  # End date (empty = today)
             "owner": "include",
             "output": "atom",  # Get results in ATOM feed format
-            "count": min(count, 100)  # SEC max is 100
+            "count": min(count, 100),  # SEC max is 100
         }
 
         if cik:
@@ -192,16 +194,16 @@ class SECClient:
             root = ET.fromstring(atom_xml)
 
             # ATOM namespace
-            ns = {'atom': 'http://www.w3.org/2005/Atom'}
+            ns = {"atom": "http://www.w3.org/2005/Atom"}
 
-            for entry in root.findall('atom:entry', ns):
-                title = entry.find('atom:title', ns)
-                link = entry.find('atom:link', ns)
-                updated = entry.find('atom:updated', ns)
+            for entry in root.findall("atom:entry", ns):
+                title = entry.find("atom:title", ns)
+                link = entry.find("atom:link", ns)
+                updated = entry.find("atom:updated", ns)
 
                 filing = {
                     "title": title.text if title is not None else "",
-                    "filing_url": link.get('href') if link is not None else "",
+                    "filing_url": link.get("href") if link is not None else "",
                     "filing_date": updated.text if updated is not None else "",
                 }
 
@@ -252,7 +254,7 @@ class SECClient:
 
                 # Filter: get raw XML (NOT in xslF345X subfolder)
                 # The raw XML has no path prefix, styled one has "xslF345X05/" prefix
-                xml_matches = [m for m in all_matches if '/xslF345X' not in m]
+                xml_matches = [m for m in all_matches if "/xslF345X" not in m]
 
                 if not xml_matches:
                     logger.error(f"No raw XML document found in filing: {filing_url}")
@@ -293,7 +295,7 @@ class SECClient:
             "action": "getcompany",
             "company": ticker,
             "output": "atom",
-            "count": 1
+            "count": 1,
         }
 
         url = f"{self.EDGAR_SEARCH_URL}?{urlencode(params)}"
@@ -306,15 +308,16 @@ class SECClient:
                 response.raise_for_status()
 
                 import xml.etree.ElementTree as ET
+
                 root = ET.fromstring(response.text)
 
-                ns = {'atom': 'http://www.w3.org/2005/Atom'}
-                entry = root.find('atom:entry', ns)
+                ns = {"atom": "http://www.w3.org/2005/Atom"}
+                entry = root.find("atom:entry", ns)
 
                 if entry is None:
                     return None
 
-                title = entry.find('atom:title', ns)
+                title = entry.find("atom:title", ns)
 
                 # Title format: "CIK (TICKER) - Company Name"
                 if title is not None and title.text:
@@ -329,7 +332,7 @@ class SECClient:
                         return {
                             "cik": cik.zfill(10),  # Pad to 10 digits
                             "name": name,
-                            "ticker": ticker.upper()
+                            "ticker": ticker.upper(),
                         }
 
                 return None

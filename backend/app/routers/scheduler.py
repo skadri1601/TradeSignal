@@ -40,7 +40,7 @@ async def get_scheduler_status(db: AsyncSession = Depends(get_db)):
     # Get last scrape from history
     last_scrape_result = await db.execute(
         select(ScrapeHistory.completed_at)
-        .where(ScrapeHistory.status == 'success')
+        .where(ScrapeHistory.status == "success")
         .order_by(ScrapeHistory.completed_at.desc())
         .limit(1)
     )
@@ -57,7 +57,7 @@ async def get_scheduler_status(db: AsyncSession = Depends(get_db)):
         running=is_running,
         jobs_count=len(jobs),
         last_scrape=last_scrape,
-        next_scrape=next_scrape
+        next_scrape=next_scrape,
     )
 
 
@@ -72,14 +72,14 @@ async def start_scheduler():
     if scheduler_service.is_running():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Scheduler is already running"
+            detail="Scheduler is already running",
         )
 
     await scheduler_service.start()
 
     return {
         "message": "Scheduler started successfully",
-        "jobs": len(scheduler_service.get_jobs())
+        "jobs": len(scheduler_service.get_jobs()),
     }
 
 
@@ -92,8 +92,7 @@ async def stop_scheduler():
     """
     if not scheduler_service.is_running():
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Scheduler is not running"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Scheduler is not running"
         )
 
     await scheduler_service.stop()
@@ -103,8 +102,7 @@ async def stop_scheduler():
 
 @router.post("/scrape/{ticker}", response_model=ManualScrapeResponse)
 async def manual_scrape_company(
-    ticker: str,
-    request: ManualScrapeRequest = ManualScrapeRequest()
+    ticker: str, request: ManualScrapeRequest = ManualScrapeRequest()
 ):
     """
     Manually trigger scrape for a specific company.
@@ -120,9 +118,7 @@ async def manual_scrape_company(
     ticker = ticker.upper()
 
     result = await scheduler_service.scrape_company(
-        ticker=ticker,
-        days_back=request.days_back,
-        max_filings=request.max_filings
+        ticker=ticker, days_back=request.days_back, max_filings=request.max_filings
     )
 
     return ManualScrapeResponse(**result)
@@ -141,10 +137,7 @@ async def manual_scrape_all():
     """
     result = await scheduler_service.trigger_manual_scrape_all()
 
-    return {
-        "message": "Manual scrape completed",
-        **result
-    }
+    return {"message": "Manual scrape completed", **result}
 
 
 @router.get("/history", response_model=PaginatedResponse[ScrapeHistoryRead])
@@ -152,7 +145,7 @@ async def get_scrape_history(
     pagination: PaginationParams = Depends(),
     ticker: str = None,
     status_filter: str = None,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Get scrape history with pagination.
@@ -176,9 +169,7 @@ async def get_scrape_history(
         query = query.where(ScrapeHistory.status == status_filter)
 
     # Get total count
-    count_result = await db.execute(
-        select(func.count()).select_from(query.subquery())
-    )
+    count_result = await db.execute(select(func.count()).select_from(query.subquery()))
     total = count_result.scalar_one()
 
     # Get paginated results
@@ -192,15 +183,13 @@ async def get_scrape_history(
         items=[ScrapeHistoryRead.model_validate(record) for record in history_records],
         total=total,
         page=pagination.page,
-        limit=pagination.limit
+        limit=pagination.limit,
     )
 
 
 @router.get("/history/{ticker}", response_model=List[ScrapeHistoryRead])
 async def get_company_scrape_history(
-    ticker: str,
-    limit: int = 10,
-    db: AsyncSession = Depends(get_db)
+    ticker: str, limit: int = 10, db: AsyncSession = Depends(get_db)
 ):
     """
     Get scrape history for a specific company.
@@ -226,7 +215,7 @@ async def get_company_scrape_history(
     if not history_records:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No scrape history found for {ticker}"
+            detail=f"No scrape history found for {ticker}",
         )
 
     return [ScrapeHistoryRead.model_validate(record) for record in history_records]
@@ -251,24 +240,22 @@ async def get_scrape_stats(db: AsyncSession = Depends(get_db)):
 
     # Get success count
     success_result = await db.execute(
-        select(func.count(ScrapeHistory.id))
-        .where(ScrapeHistory.status == 'success')
+        select(func.count(ScrapeHistory.id)).where(ScrapeHistory.status == "success")
     )
     success_count = success_result.scalar_one()
 
     # Get failed count
     failed_result = await db.execute(
-        select(func.count(ScrapeHistory.id))
-        .where(ScrapeHistory.status == 'failed')
+        select(func.count(ScrapeHistory.id)).where(ScrapeHistory.status == "failed")
     )
     failed_count = failed_result.scalar_one()
 
     # Get aggregates
     agg_result = await db.execute(
         select(
-            func.avg(ScrapeHistory.duration_seconds).label('avg_duration'),
-            func.sum(ScrapeHistory.filings_found).label('total_filings'),
-            func.sum(ScrapeHistory.trades_created).label('total_trades')
+            func.avg(ScrapeHistory.duration_seconds).label("avg_duration"),
+            func.sum(ScrapeHistory.filings_found).label("total_filings"),
+            func.sum(ScrapeHistory.trades_created).label("total_trades"),
         )
     )
     agg = agg_result.one()
@@ -279,5 +266,5 @@ async def get_scrape_stats(db: AsyncSession = Depends(get_db)):
         failed_count=failed_count,
         avg_duration=float(agg.avg_duration or 0.0),
         total_filings_found=agg.total_filings or 0,
-        total_trades_created=agg.total_trades or 0
+        total_trades_created=agg.total_trades or 0,
     )

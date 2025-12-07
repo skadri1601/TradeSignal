@@ -8,6 +8,8 @@ with SQLAlchemy metadata.
 from app.models.company import Company
 from app.models.insider import Insider
 from app.models.trade import Trade, TransactionType, TransactionCode
+from app.models.congressperson import Congressperson, Chamber, Party
+from app.models.congressional_trade import CongressionalTrade, OwnerType
 from app.models.alert import Alert
 from app.models.alert_history import AlertHistory
 from app.models.scrape_job import ScrapeJob
@@ -16,6 +18,9 @@ from app.models.push_subscription import PushSubscription
 from app.models.subscription import Subscription, SubscriptionTier, SubscriptionStatus
 from app.models.usage import UsageTracking
 from app.models.user import User
+from app.models.payment import Payment, PaymentStatus, PaymentType
+from app.models.job import Job
+from app.models.job_application import JobApplication, ApplicationStatus
 
 __all__ = [
     "Company",
@@ -23,6 +28,11 @@ __all__ = [
     "Trade",
     "TransactionType",
     "TransactionCode",
+    "Congressperson",
+    "Chamber",
+    "Party",
+    "CongressionalTrade",
+    "OwnerType",
     "Alert",
     "AlertHistory",
     "ScrapeJob",
@@ -33,4 +43,10 @@ __all__ = [
     "SubscriptionStatus",
     "UsageTracking",
     "User",
+    "Payment",
+    "PaymentStatus",
+    "PaymentType",
+    "Job",
+    "JobApplication",
+    "ApplicationStatus",
 ]

@@ -9,6 +9,7 @@ import logging
 from typing import AsyncGenerator
 from contextlib import asynccontextmanager
 
+from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import (
     create_async_engine,
     AsyncSession,
@@ -58,27 +59,19 @@ class DatabaseManager:
         if self._engine is None:
             try:
                 # Determine pool class based on environment
-                pool_class = NullPool if settings.environment == "testing" else QueuePool
+                pool_class = (
+                    NullPool if settings.environment == "testing" else QueuePool
+                )
 
                 # Create async engine with asyncpg driver
                 self._engine = create_async_engine(
                     settings.database_url_async,
                     echo=settings.debug,  # Log SQL queries in debug mode
                     pool_pre_ping=True,  # Verify connections before using
-                    pool_size=20,  # Increased from 10 for better concurrency
-                    max_overflow=40,  # Increased from 20 for burst traffic
+                    pool_size=10,  # Number of persistent connections to maintain
+                    max_overflow=20,  # Allow additional burst connections when pool is full
                     pool_recycle=3600,  # Recycle connections after 1 hour
-                    pool_timeout=30,  # Wait 30s for connection from pool
-                    pool_use_lifo=True,  # Use most recent connections (better for connection health)
                     poolclass=pool_class,
-                    connect_args={
-                        "server_settings": {
-                            "application_name": "tradesignal",
-                            "jit": "off",  # Disable JIT for faster simple queries
-                        },
-                        "command_timeout": 60,  # 60 second query timeout
-                        "timeout": 10,  # 10 second connection timeout
-                    },
                 )
                 logger.info(
                     f"Database engine created successfully (environment: {settings.environment})"
@@ -190,18 +183,53 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         - Automatic commit on success
         - Automatic rollback on error
         - Automatic cleanup after request
+        - Proper error handling for connection failures
     """
-    session_factory = db_manager.get_session_factory()
-    async with session_factory() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception as e:
-            await session.rollback()
-            logger.error(f"Database transaction error: {e}")
-            raise
-        finally:
-            await session.close()
+    try:
+        session_factory = db_manager.get_session_factory()
+    except Exception as e:
+        logger.error(f"Failed to get session factory: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database service unavailable. Please try again later.",
+        )
+
+    session = None
+    try:
+        async with session_factory() as session:
+            try:
+                yield session
+                await session.commit()
+            except SQLAlchemyError as db_error:
+                await session.rollback()
+                logger.error(f"Database transaction error: {db_error}", exc_info=True)
+                # Re-raise to let route handlers deal with it
+                raise
+            except Exception as e:
+                await session.rollback()
+                logger.error(
+                    f"Unexpected error in database transaction: {e}", exc_info=True
+                )
+                raise
+            finally:
+                if session:
+                    await session.close()
+    except HTTPException:
+        # Allow HTTPException (like 401 Unauthorized) to propagate without modification
+        # This ensures authentication errors return proper status codes instead of 500
+        raise
+    except SQLAlchemyError as db_error:
+        logger.error(f"Database connection error in get_db: {db_error}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database connection error. Please try again later.",
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error in get_db: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An internal error occurred. Please try again later.",
+        )
 
 
 async def init_db() -> None:

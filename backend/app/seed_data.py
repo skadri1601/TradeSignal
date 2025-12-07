@@ -15,10 +15,8 @@ import logging
 import platform
 
 from app.database import db_manager
-from app.models import Company, Insider, Trade
+from app.models import Company
 from app.services import CompanyService, InsiderService, TradeService
-from app.schemas.company import CompanyCreate
-from app.schemas.insider import InsiderCreate
 from app.schemas.trade import TradeCreate
 from app.config import settings
 
@@ -35,7 +33,7 @@ SAMPLE_COMPANIES = [
         "sector": "Technology",
         "industry": "Consumer Electronics",
         "market_cap": 3000000000000,  # $3T
-        "website": "https://www.apple.com"
+        "website": "https://www.apple.com",
     },
     {
         "ticker": "TSLA",
@@ -44,7 +42,7 @@ SAMPLE_COMPANIES = [
         "sector": "Automotive",
         "industry": "Electric Vehicles",
         "market_cap": 800000000000,  # $800B
-        "website": "https://www.tesla.com"
+        "website": "https://www.tesla.com",
     },
     {
         "ticker": "MSFT",
@@ -53,7 +51,7 @@ SAMPLE_COMPANIES = [
         "sector": "Technology",
         "industry": "Software",
         "market_cap": 2800000000000,  # $2.8T
-        "website": "https://www.microsoft.com"
+        "website": "https://www.microsoft.com",
     },
     {
         "ticker": "NVDA",
@@ -62,7 +60,7 @@ SAMPLE_COMPANIES = [
         "sector": "Technology",
         "industry": "Semiconductors",
         "market_cap": 1200000000000,  # $1.2T
-        "website": "https://www.nvidia.com"
+        "website": "https://www.nvidia.com",
     },
     {
         "ticker": "GOOGL",
@@ -71,7 +69,7 @@ SAMPLE_COMPANIES = [
         "sector": "Technology",
         "industry": "Internet Services",
         "market_cap": 1700000000000,  # $1.7T
-        "website": "https://www.google.com"
+        "website": "https://www.google.com",
     },
 ]
 
@@ -83,13 +81,13 @@ SAMPLE_INSIDERS = [
         "title": "Chief Executive Officer",
         "ticker": "AAPL",
         "is_director": True,
-        "is_officer": True
+        "is_officer": True,
     },
     {
         "name": "Luca Maestri",
         "title": "Chief Financial Officer",
         "ticker": "AAPL",
-        "is_officer": True
+        "is_officer": True,
     },
     # Tesla insiders
     {
@@ -98,13 +96,13 @@ SAMPLE_INSIDERS = [
         "ticker": "TSLA",
         "is_director": True,
         "is_officer": True,
-        "is_ten_percent_owner": True
+        "is_ten_percent_owner": True,
     },
     {
         "name": "Zachary Kirkhorn",
         "title": "Chief Financial Officer",
         "ticker": "TSLA",
-        "is_officer": True
+        "is_officer": True,
     },
     # Microsoft insiders
     {
@@ -112,13 +110,13 @@ SAMPLE_INSIDERS = [
         "title": "Chief Executive Officer",
         "ticker": "MSFT",
         "is_director": True,
-        "is_officer": True
+        "is_officer": True,
     },
     {
         "name": "Amy Hood",
         "title": "Chief Financial Officer",
         "ticker": "MSFT",
-        "is_officer": True
+        "is_officer": True,
     },
     # NVIDIA insiders
     {
@@ -126,7 +124,7 @@ SAMPLE_INSIDERS = [
         "title": "Chief Executive Officer",
         "ticker": "NVDA",
         "is_director": True,
-        "is_officer": True
+        "is_officer": True,
     },
     # Google insiders
     {
@@ -134,7 +132,7 @@ SAMPLE_INSIDERS = [
         "title": "Chief Executive Officer",
         "ticker": "GOOGL",
         "is_director": True,
-        "is_officer": True
+        "is_officer": True,
     },
 ]
 
@@ -155,7 +153,7 @@ async def seed_database():
                     db=db,
                     ticker=company_data["ticker"],
                     cik=company_data["cik"],
-                    name=company_data["name"]
+                    name=company_data["name"],
                 )
 
                 # Update additional fields
@@ -170,7 +168,9 @@ async def seed_database():
                 companies_map[company_data["ticker"]] = company
                 logger.info(f"   ✓ Created/Updated: {company.ticker} - {company.name}")
             except Exception as e:
-                logger.error(f"   ✗ Error creating company {company_data['ticker']}: {e}")
+                logger.error(
+                    f"   ✗ Error creating company {company_data['ticker']}: {e}"
+                )
 
         # Create insiders
         logger.info("\n2. Creating insiders...")
@@ -181,7 +181,9 @@ async def seed_database():
                 company = companies_map.get(ticker)
 
                 if not company:
-                    logger.warning(f"   ⚠ Company {ticker} not found for insider {insider_data['name']}")
+                    logger.warning(
+                        f"   ⚠ Company {ticker} not found for insider {insider_data['name']}"
+                    )
                     continue
 
                 insider = await InsiderService.get_or_create(
@@ -191,7 +193,9 @@ async def seed_database():
                     title=insider_data.get("title"),
                     is_director=insider_data.get("is_director", False),
                     is_officer=insider_data.get("is_officer", False),
-                    is_ten_percent_owner=insider_data.get("is_ten_percent_owner", False)
+                    is_ten_percent_owner=insider_data.get(
+                        "is_ten_percent_owner", False
+                    ),
                 )
 
                 insiders_list.append(insider)
@@ -217,7 +221,9 @@ async def seed_database():
                     # Random date in last 30 days
                     days_ago = (i + 1) * 7  # 7, 14, 21 days ago
                     transaction_date = today - timedelta(days=days_ago)
-                    filing_date = transaction_date + timedelta(days=2)  # Filed 2 days later
+                    filing_date = transaction_date + timedelta(
+                        days=2
+                    )  # Filed 2 days later
 
                     # Alternate between BUY and SELL
                     transaction_type = "BUY" if i % 2 == 0 else "SELL"
@@ -234,7 +240,7 @@ async def seed_database():
                         insider_id=insider.id,
                         transaction_date=transaction_date,
                         shares=shares,
-                        price_per_share=price_per_share
+                        price_per_share=price_per_share,
                     )
 
                     if is_duplicate:
@@ -256,10 +262,10 @@ async def seed_database():
                         ownership_type="Direct",
                         derivative_transaction=False,
                         sec_filing_url=f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={company.cik}&type=4",
-                        form_type="Form 4"
+                        form_type="Form 4",
                     )
 
-                    trade = await TradeService.create(db=db, trade_data=trade_data)
+                    await TradeService.create(db=db, trade_data=trade_data)
                     trade_count += 1
 
                     logger.info(
@@ -281,9 +287,9 @@ async def seed_database():
 
 if __name__ == "__main__":
     """Run seeding script."""
-    
+
     # Fix for Windows async event loop
-    if platform.system() == 'Windows':
+    if platform.system() == "Windows":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
     # ⚠️ PRODUCTION SAFETY CHECK
@@ -291,9 +297,13 @@ if __name__ == "__main__":
         logger.error("=" * 80)
         logger.error("❌ BLOCKED: Cannot run seed_data.py in PRODUCTION environment!")
         logger.error("=" * 80)
-        logger.error("This script creates dummy/test data and should NEVER be run in production.")
+        logger.error(
+            "This script creates dummy/test data and should NEVER be run in production."
+        )
         logger.error("Current environment: %s", settings.environment)
-        logger.error("To run this script, set ENVIRONMENT=development in your .env file")
+        logger.error(
+            "To run this script, set ENVIRONMENT=development in your .env file"
+        )
         logger.error("=" * 80)
         sys.exit(1)
 
@@ -302,7 +312,12 @@ if __name__ == "__main__":
     logger.warning("⚠️  WARNING: This will create DUMMY DATA in your database!")
     logger.warning("=" * 80)
     logger.warning("Environment: %s", settings.environment)
-    logger.warning("Database: %s", settings.database_url.split('@')[-1] if '@' in settings.database_url else settings.database_url)
+    db_url = (
+        settings.database_url.split("@")[-1]
+        if "@" in settings.database_url
+        else settings.database_url
+    )
+    logger.warning("Database: %s", db_url)
     logger.warning("")
     logger.warning("This script will create:")
     logger.warning("  - Sample companies (AAPL, TSLA, MSFT, NVDA, GOOGL)")
@@ -312,7 +327,7 @@ if __name__ == "__main__":
 
     response = input("Type 'yes' to continue or 'no' to cancel: ").strip().lower()
 
-    if response != 'yes':
+    if response != "yes":
         logger.info("Seeding cancelled by user.")
         sys.exit(0)
 

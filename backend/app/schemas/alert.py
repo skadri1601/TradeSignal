@@ -11,19 +11,32 @@ from datetime import datetime
 
 class AlertBase(BaseModel):
     """Base schema with common alert fields."""
+
     name: str = Field(..., min_length=1, max_length=255, description="Alert name")
     alert_type: str = Field(
         ...,
-        description="Alert type: large_trade, company_watch, insider_role, volume_spike"
+        description="Alert type: large_trade, company_watch, insider_role, volume_spike",
     )
     ticker: Optional[str] = Field(None, max_length=10, description="Filter by ticker")
-    min_value: Optional[float] = Field(None, ge=0, description="Minimum trade value USD")
-    max_value: Optional[float] = Field(None, ge=0, description="Maximum trade value USD")
+    min_value: Optional[float] = Field(
+        None, ge=0, description="Minimum trade value USD"
+    )
+    max_value: Optional[float] = Field(
+        None, ge=0, description="Maximum trade value USD"
+    )
     transaction_type: Optional[str] = Field(None, description="BUY or SELL")
-    insider_roles: list[str] = Field(default_factory=list, description="Insider role filters")
-    notification_channels: list[str] = Field(..., min_length=1, description="webhook, email, push")
-    webhook_url: Optional[str] = Field(None, description="Webhook URL for notifications")
-    email: Optional[str] = Field(None, max_length=255, description="Email for notifications")
+    insider_roles: list[str] = Field(
+        default_factory=list, description="Insider role filters"
+    )
+    notification_channels: list[str] = Field(
+        ..., min_length=1, description="webhook, email, push"
+    )
+    webhook_url: Optional[str] = Field(
+        None, description="Webhook URL for notifications"
+    )
+    email: Optional[str] = Field(
+        None, max_length=255, description="Email for notifications"
+    )
     is_active: bool = Field(default=True, description="Whether alert is enabled")
 
     @field_validator("alert_type")
@@ -50,7 +63,9 @@ class AlertBase(BaseModel):
         allowed = ["webhook", "email", "push"]
         for channel in v:
             if channel not in allowed:
-                raise ValueError(f"Invalid channel '{channel}'. Must be one of: {', '.join(allowed)}")
+                raise ValueError(
+                    f"Invalid channel '{channel}'. Must be one of: {', '.join(allowed)}"
+                )
         return v
 
     @field_validator("min_value", "max_value")
@@ -73,11 +88,13 @@ class AlertBase(BaseModel):
 
 class AlertCreate(AlertBase):
     """Schema for creating a new alert."""
+
     pass
 
 
 class AlertUpdate(BaseModel):
     """Schema for updating an existing alert (all fields optional)."""
+
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     alert_type: Optional[str] = None
     ticker: Optional[str] = Field(None, max_length=10)
@@ -111,6 +128,7 @@ class AlertUpdate(BaseModel):
 
 class AlertResponse(AlertBase):
     """Schema for alert API responses."""
+
     id: int
     created_at: datetime
     updated_at: datetime
@@ -121,16 +139,19 @@ class AlertResponse(AlertBase):
 
 class AlertToggle(BaseModel):
     """Schema for toggling alert active status."""
+
     is_active: bool
 
 
 class AlertTestNotification(BaseModel):
     """Schema for sending test notifications."""
+
     pass  # No fields needed, just triggers a test
 
 
 class AlertHistoryResponse(BaseModel):
     """Schema for alert history responses."""
+
     id: int
     alert_id: int
     trade_id: int
@@ -145,6 +166,7 @@ class AlertHistoryResponse(BaseModel):
 
 class AlertStatsResponse(BaseModel):
     """Schema for alert statistics."""
+
     total_alerts: int
     active_alerts: int
     inactive_alerts: int

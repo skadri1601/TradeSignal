@@ -7,6 +7,7 @@ Analyzes insider trading patterns and generates natural language summaries.
 
 import logging
 import json
+import asyncio
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -45,6 +46,7 @@ class AIService:
         if settings.gemini_api_key:
             try:
                 import google.generativeai as genai
+
                 genai.configure(api_key=settings.gemini_api_key)
                 gemini_model_name = settings.gemini_model
                 if gemini_model_name and not gemini_model_name.startswith("models/"):
@@ -58,6 +60,7 @@ class AIService:
         if settings.openai_api_key:
             try:
                 from openai import AsyncOpenAI
+
                 self.openai_client = AsyncOpenAI(api_key=settings.openai_api_key)
                 logger.info(f"OpenAI initialized: {settings.openai_model}")
             except Exception as e:
@@ -115,9 +118,7 @@ class AIService:
         return sequence
 
     async def analyze_company(
-        self,
-        ticker: str,
-        days_back: int = 30
+        self, ticker: str, days_back: int = 30
     ) -> Optional[Dict[str, Any]]:
         """
         Analyze recent insider trading activity for a company.
@@ -149,8 +150,7 @@ class AIService:
                 .join(Insider, Trade.insider_id == Insider.id)
                 .where(
                     and_(
-                        Trade.company_id == company.id,
-                        Trade.filing_date >= cutoff_date
+                        Trade.company_id == company.id, Trade.filing_date >= cutoff_date
                     )
                 )
                 .order_by(desc(Trade.filing_date))
@@ -165,18 +165,17 @@ class AIService:
                     "analysis": f"No insider trading activity found for {company.name} in the last {days_back} days.",
                     "sentiment": "NEUTRAL",
                     "total_trades": 0,
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": datetime.utcnow().isoformat(),
                 }
 
             # Prepare trade data for AI
-            trade_summary = self._format_trades_for_ai(trades_with_insiders, company)
+            trade_summary = await self._format_trades_for_ai(
+                trades_with_insiders, company
+            )
 
             # Generate AI analysis
             analysis = await self._generate_company_analysis(
-                company.name,
-                ticker,
-                trade_summary,
-                days_back
+                company.name, ticker, trade_summary, days_back
             )
 
             return {
@@ -184,8 +183,8 @@ class AIService:
                 "company_name": company.name,
                 "days_analyzed": days_back,
                 "total_trades": len(trades_with_insiders),
-                 "timestamp": datetime.utcnow().isoformat(),
-                **analysis
+                "timestamp": datetime.utcnow().isoformat(),
+                **analysis,
             }
 
         except Exception as e:
@@ -220,7 +219,7 @@ class AIService:
                     "company_summaries": [],
                     "total_trades": 0,
                     "generated_at": datetime.utcnow().isoformat(),
-                    "period": "last 7 days"
+                    "period": "last 7 days",
                 }
 
             # Group trades by company
@@ -235,18 +234,20 @@ class AIService:
                         "total_value": 0,
                         "buy_count": 0,
                         "sell_count": 0,
-                        "insiders": set()
+                        "insiders": set(),
                     }
 
-                trade_value = self._get_trade_value(trade)
-                companies_map[ticker]["trades"].append({
-                    "insider": insider.name,
-                    "role": insider.title or "Insider",
-                    "type": trade.transaction_type,
-                    "shares": self._get_trade_shares(trade),
-                    "value": trade_value,
-                    "date": trade.filing_date.isoformat()
-                })
+                trade_value = await self._get_trade_value(trade)
+                companies_map[ticker]["trades"].append(
+                    {
+                        "insider": insider.name,
+                        "role": insider.title or "Insider",
+                        "type": trade.transaction_type,
+                        "shares": self._get_trade_shares(trade),
+                        "value": trade_value,
+                        "date": trade.filing_date.isoformat(),
+                    }
+                )
                 companies_map[ticker]["total_value"] += trade_value
                 companies_map[ticker]["insiders"].add(insider.name)
                 if trade.transaction_type == "BUY":
@@ -256,35 +257,70 @@ class AIService:
 
             # Sort companies by total trade value - show top 10 to stay within free API limits
             sorted_companies = sorted(
-                companies_map.values(),
-                key=lambda x: x["total_value"],
-                reverse=True
-            )[:10]  # Top 10 companies (optimized for Gemini free tier)
+                companies_map.values(), key=lambda x: x["total_value"], reverse=True
+            )[
+                :10
+            ]  # Top 10 companies (optimized for Gemini free tier)
 
-            # Generate AI summary for each company
+            # Generate AI summary for each company with timeout
             company_summaries = []
             for company_data in sorted_companies:
                 # Convert set to list for JSON serialization
                 company_data["insiders"] = list(company_data["insiders"])
 
-                summary = await self._generate_company_news_summary(company_data)
-                company_summaries.append({
-                    "ticker": company_data["ticker"],
-                    "company_name": company_data["company_name"],
-                    "summary": summary,
-                    "total_value": company_data["total_value"],
-                    "trade_count": len(company_data["trades"]),
-                    "buy_count": company_data["buy_count"],
-                    "sell_count": company_data["sell_count"],
-                    "insider_count": len(company_data["insiders"]),
-                    "latest_date": company_data["trades"][0]["date"]
-                })
+                try:
+                    # Add timeout of 15 seconds per company summary
+                    summary = await asyncio.wait_for(
+                        self._generate_company_news_summary(company_data), timeout=15.0
+                    )
+                except asyncio.TimeoutError:
+                    logger.warning(
+                        f"Timeout generating summary for {company_data['ticker']}, using fallback"
+                    )
+                    sentiment = (
+                        "buying"
+                        if company_data["buy_count"] > company_data["sell_count"]
+                        else "selling"
+                    )
+                    summary = (
+                        f"{company_data['ticker']} insiders showed {sentiment} "
+                        f"activity with {len(company_data['trades'])} transactions "
+                        f"totaling ${company_data['total_value']:,.0f}."
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Error generating summary for {company_data['ticker']}: {e}"
+                    )
+                    sentiment = (
+                        "buying"
+                        if company_data["buy_count"] > company_data["sell_count"]
+                        else "selling"
+                    )
+                    summary = (
+                        f"{company_data['ticker']} insiders showed {sentiment} "
+                        f"activity with {len(company_data['trades'])} transactions "
+                        f"totaling ${company_data['total_value']:,.0f}."
+                    )
+
+                company_summaries.append(
+                    {
+                        "ticker": company_data["ticker"],
+                        "company_name": company_data["company_name"],
+                        "summary": summary,
+                        "total_value": company_data["total_value"],
+                        "trade_count": len(company_data["trades"]),
+                        "buy_count": company_data["buy_count"],
+                        "sell_count": company_data["sell_count"],
+                        "insider_count": len(company_data["insiders"]),
+                        "latest_date": company_data["trades"][0]["date"],
+                    }
+                )
 
             return {
                 "company_summaries": company_summaries,
                 "total_trades": len(trades_data),
                 "generated_at": datetime.utcnow().isoformat(),
-                "period": "last 7 days"
+                "period": "last 7 days",
             }
 
         except Exception as e:
@@ -314,7 +350,7 @@ class AIService:
             return {
                 "question": question,
                 "answer": answer,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
             }
 
         except Exception as e:
@@ -343,17 +379,11 @@ class AIService:
                     Company.name,
                     func.count(Trade.id).label("trade_count"),
                     func.sum(
-                        case(
-                            (Trade.transaction_type == "BUY", Trade.shares),
-                            else_=0
-                        )
+                        case((Trade.transaction_type == "BUY", Trade.shares), else_=0)
                     ).label("buy_volume"),
                     func.sum(
-                        case(
-                            (Trade.transaction_type == "SELL", Trade.shares),
-                            else_=0
-                        )
-                    ).label("sell_volume")
+                        case((Trade.transaction_type == "SELL", Trade.shares), else_=0)
+                    ).label("sell_volume"),
                 )
                 .join(Trade, Company.id == Trade.company_id)
                 .where(Trade.filing_date >= cutoff_date)
@@ -369,7 +399,7 @@ class AIService:
                     "signals": [],
                     "message": "No significant insider trading activity detected in the last 7 days.",
                     "generated_at": datetime.utcnow().isoformat(),
-                    "period": "7 days"
+                    "period": "7 days",
                 }
 
             # Generate signals
@@ -378,7 +408,7 @@ class AIService:
             return {
                 "signals": signals,
                 "generated_at": datetime.utcnow().isoformat(),
-                "period": "7 days"
+                "period": "7 days",
             }
 
         except Exception as e:
@@ -393,13 +423,27 @@ class AIService:
         shares = getattr(trade, "shares", None)
         return float(shares) if shares is not None else 0.0
 
-    @staticmethod
-    def _get_trade_value(trade: Trade) -> float:
-        """Return trade value using stored total or calculated fallback."""
+    async def _get_trade_value(self, trade: Trade) -> float:
+        """Return trade value using stored total, estimation, or calculated fallback."""
         total_value = getattr(trade, "total_value", None)
-        if total_value is not None:
+        if total_value is not None and total_value > 0:
             return float(total_value)
 
+        # Try estimation service for missing values
+        try:
+            from app.services.trade_value_estimation_service import (
+                TradeValueEstimationService,
+            )
+
+            value_service = TradeValueEstimationService(self.db)
+            estimates = await value_service.estimate_missing_trade_value(trade)
+            estimated_value = estimates.get("total_value", 0)
+            if estimated_value > 0:
+                return estimated_value
+        except Exception as e:
+            logger.debug(f"Could not estimate trade value: {e}")
+
+        # Fallback: calculate from shares and price
         shares = getattr(trade, "shares", None)
         price = getattr(trade, "price_per_share", None)
         if shares is not None and price is not None:
@@ -407,10 +451,8 @@ class AIService:
 
         return 0.0
 
-    def _format_trades_for_ai(
-        self,
-        trades_with_insiders: List[tuple],
-        company: Company
+    async def _format_trades_for_ai(
+        self, trades_with_insiders: List[tuple], company: Company
     ) -> str:
         """Format trades into a summary for AI analysis."""
         buy_trades = []
@@ -420,13 +462,13 @@ class AIService:
 
         for trade, insider in trades_with_insiders:
             shares = self._get_trade_shares(trade)
-            value = self._get_trade_value(trade)
+            value = await self._get_trade_value(trade)
             trade_info = {
                 "insider": insider.name,
                 "role": insider.title or "Insider",
                 "shares": shares,
                 "value": value,
-                "date": trade.filing_date.strftime("%Y-%m-%d")
+                "date": trade.filing_date.strftime("%Y-%m-%d"),
             }
 
             if trade.transaction_type == "BUY":
@@ -438,17 +480,25 @@ class AIService:
 
         summary = f"Company: {company.name} ({company.ticker})\n\n"
         summary += f"Total Buy Trades: {len(buy_trades)} (${total_buy_value:,.0f})\n"
-        summary += f"Total Sell Trades: {len(sell_trades)} (${total_sell_value:,.0f})\n\n"
+        summary += (
+            f"Total Sell Trades: {len(sell_trades)} (${total_sell_value:,.0f})\n\n"
+        )
 
         if buy_trades:
             summary += "Recent BUY Trades:\n"
             for t in buy_trades[:5]:
-                summary += f"- {t['insider']} ({t['role']}): {t['shares']:,.0f} shares, ${t['value']:,.0f} on {t['date']}\n"
+                summary += (
+                    f"- {t['insider']} ({t['role']}): {t['shares']:,.0f} shares, "
+                    f"${t['value']:,.0f} on {t['date']}\n"
+                )
 
         if sell_trades:
             summary += "\nRecent SELL Trades:\n"
             for t in sell_trades[:5]:
-                summary += f"- {t['insider']} ({t['role']}): {t['shares']:,.0f} shares, ${t['value']:,.0f} on {t['date']}\n"
+                summary += (
+                    f"- {t['insider']} ({t['role']}): {t['shares']:,.0f} shares, "
+                    f"${t['value']:,.0f} on {t['date']}\n"
+                )
 
         return summary
 
@@ -478,47 +528,63 @@ INSIDERS INVOLVED:
 
 Write a 2-3 sentence news summary highlighting the most important aspects."""
 
-        # Call AI directly
+        # Call AI directly with timeout
         errors = []
         for provider in self._provider_sequence():
             try:
                 if provider == "gemini" and self.gemini_client:
                     full_prompt = f"{system_prompt}\n\n{user_prompt}"
-                    response = await self.gemini_client.generate_content_async(
-                        full_prompt,
-                        generation_config={
-                            "temperature": 0.7,
-                            "max_output_tokens": 200,
-                        }
+                    # Add 10 second timeout per AI call
+                    response = await asyncio.wait_for(
+                        self.gemini_client.generate_content_async(
+                            full_prompt,
+                            generation_config={
+                                "temperature": 0.7,
+                                "max_output_tokens": 200,
+                            },
+                        ),
+                        timeout=10.0,
                     )
                     return response.text.strip()
 
                 if provider == "openai" and self.openai_client:
-                    response = await self.openai_client.chat.completions.create(
-                        model=settings.openai_model,
-                        messages=[
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": user_prompt}
-                        ],
-                        temperature=0.7,
-                        max_tokens=200
+                    # Add 10 second timeout per AI call
+                    response = await asyncio.wait_for(
+                        self.openai_client.chat.completions.create(
+                            model=settings.openai_model,
+                            messages=[
+                                {"role": "system", "content": system_prompt},
+                                {"role": "user", "content": user_prompt},
+                            ],
+                            temperature=0.7,
+                            max_tokens=200,
+                        ),
+                        timeout=10.0,
                     )
                     return response.choices[0].message.content.strip()
+            except asyncio.TimeoutError:
+                logger.warning(f"AI timeout for {provider} generating company summary")
+                errors.append(f"{provider}: timeout")
+                continue
             except Exception as e:
                 logger.error(f"AI error generating company summary ({provider}): {e}")
-                errors.append(str(e))
+                errors.append(f"{provider}: {str(e)}")
                 continue
 
         # Fallback if AI fails
-        sentiment = "buying" if company_data['buy_count'] > company_data['sell_count'] else "selling"
-        return f"{company_data['ticker']} insiders showed {sentiment} activity with {len(company_data['trades'])} transactions totaling ${company_data['total_value']:,.0f}."
+        sentiment = (
+            "buying"
+            if company_data["buy_count"] > company_data["sell_count"]
+            else "selling"
+        )
+        return (
+            f"{company_data['ticker']} insiders showed {sentiment} activity with "
+            f"{len(company_data['trades'])} transactions totaling "
+            f"${company_data['total_value']:,.0f}."
+        )
 
     async def _generate_company_analysis(
-        self,
-        company_name: str,
-        ticker: str,
-        trade_summary: str,
-        days_back: int
+        self, company_name: str, ticker: str, trade_summary: str, days_back: int
     ) -> Dict[str, Any]:
         """Generate deep AI-powered analysis for a company."""
         system_prompt = """You are a senior financial analyst and insider trading expert with deep market knowledge.
@@ -546,11 +612,12 @@ Respond ONLY in this exact JSON format:
   "insights": ["insight 1", "insight 2", "insight 3", "insight 4"]
 }"""
 
-        user_prompt = f"""Provide a deep analysis of insider trading activity for {company_name} ({ticker}) over the past {days_back} days:
-
-{trade_summary}
-
-Remember: Be analytical and insightful, not just descriptive. What do these trades really tell us?"""
+        user_prompt = (
+            f"Provide a deep analysis of insider trading activity for {company_name} "
+            f"({ticker}) over the past {days_back} days:\n\n{trade_summary}\n\n"
+            "Remember: Be analytical and insightful, not just descriptive. "
+            "What do these trades really tell us?"
+        )
 
         errors: List[str] = []
 
@@ -558,12 +625,16 @@ Remember: Be analytical and insightful, not just descriptive. What do these trad
             try:
                 if provider == "gemini" and self.gemini_client:
                     full_prompt = f"{system_prompt}\n\n{user_prompt}"
-                    response = await self.gemini_client.generate_content_async(
-                        full_prompt,
-                        generation_config={
-                            "temperature": settings.ai_temperature,
-                            "max_output_tokens": settings.ai_max_tokens,
-                        }
+                    # Add 20 second timeout for company analysis
+                    response = await asyncio.wait_for(
+                        self.gemini_client.generate_content_async(
+                            full_prompt,
+                            generation_config={
+                                "temperature": settings.ai_temperature,
+                                "max_output_tokens": settings.ai_max_tokens,
+                            },
+                        ),
+                        timeout=20.0,
                     )
                     parsed = self._parse_json_response(response.text)
                     if parsed is None:
@@ -572,21 +643,31 @@ Remember: Be analytical and insightful, not just descriptive. What do these trad
                     return parsed
 
                 if provider == "openai" and self.openai_client:
-                    response = await self.openai_client.chat.completions.create(
-                        model=settings.openai_model,
-                        messages=[
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": user_prompt}
-                        ],
-                        temperature=settings.ai_temperature,
-                        max_tokens=settings.ai_max_tokens,
-                        response_format={"type": "json_object"}
+                    # Add 20 second timeout for company analysis
+                    response = await asyncio.wait_for(
+                        self.openai_client.chat.completions.create(
+                            model=settings.openai_model,
+                            messages=[
+                                {"role": "system", "content": system_prompt},
+                                {"role": "user", "content": user_prompt},
+                            ],
+                            temperature=settings.ai_temperature,
+                            max_tokens=settings.ai_max_tokens,
+                            response_format={"type": "json_object"},
+                        ),
+                        timeout=20.0,
                     )
-                    parsed = self._parse_json_response(response.choices[0].message.content)
+                    parsed = self._parse_json_response(
+                        response.choices[0].message.content
+                    )
                     if parsed is None:
                         raise ValueError("OpenAI response was not valid JSON")
                     self.provider = provider
                     return parsed
+            except asyncio.TimeoutError:
+                logger.warning(f"AI timeout for {provider} generating company analysis")
+                errors.append(f"{provider}: timeout")
+                continue
             except Exception as e:
                 logger.error(f"AI API error ({provider}): {e}", exc_info=True)
                 errors.append(f"{provider}: {e}")
@@ -596,24 +677,26 @@ Remember: Be analytical and insightful, not just descriptive. What do these trad
             "analysis": "Unable to generate AI analysis at this time.",
             "sentiment": "NEUTRAL",
             "insights": [],
-            "error": "; ".join(errors) if errors else "No AI provider available"
+            "error": "; ".join(errors) if errors else "No AI provider available",
         }
 
     async def _generate_daily_summary(
-        self,
-        top_trades: List[Dict],
-        total_count: int
+        self, top_trades: List[Dict], total_count: int
     ) -> str:
         """Generate daily summary text with rich AI-powered insights."""
-        system_prompt = """You are an expert financial analyst specializing in insider trading analysis.
-Write an insightful daily summary that goes beyond simple facts. Consider:
-- Transaction patterns (clustering, timing, unusual activity)
-- Insider roles and their significance (C-suite vs directors)
-- Trade sizes relative to typical activity
-- Sector trends or concentrations
-- Potential market implications
-
-Be concise (4-5 sentences) but analytical. Use professional yet engaging language that provides real value to investors."""
+        system_prompt = (
+            "You are an expert financial analyst specializing in insider trading "
+            "analysis.\n"
+            "Write an insightful daily summary that goes beyond simple facts. "
+            "Consider:\n"
+            "- Transaction patterns (clustering, timing, unusual activity)\n"
+            "- Insider roles and their significance (C-suite vs directors)\n"
+            "- Trade sizes relative to typical activity\n"
+            "- Sector trends or concentrations\n"
+            "- Potential market implications\n\n"
+            "Be concise (4-5 sentences) but analytical. Use professional yet "
+            "engaging language that provides real value to investors."
+        )
 
         # Enrich trade data with context
         trades_by_company = {}
@@ -622,33 +705,40 @@ Be concise (4-5 sentences) but analytical. Use professional yet engaging languag
         c_suite_trades = []
 
         for t in top_trades:
-            ticker = t['ticker']
+            ticker = t["ticker"]
             if ticker not in trades_by_company:
-                trades_by_company[ticker] = {'buy': 0, 'sell': 0, 'insiders': []}
+                trades_by_company[ticker] = {"buy": 0, "sell": 0, "insiders": []}
 
-            if t['type'] == 'BUY':
-                total_buy_value += t['value']
-                trades_by_company[ticker]['buy'] += t['value']
+            if t["type"] == "BUY":
+                total_buy_value += t["value"]
+                trades_by_company[ticker]["buy"] += t["value"]
             else:
-                total_sell_value += t['value']
-                trades_by_company[ticker]['sell'] += t['value']
+                total_sell_value += t["value"]
+                trades_by_company[ticker]["sell"] += t["value"]
 
-            role = t['role'].upper()
-            if any(title in role for title in ['CEO', 'CFO', 'COO', 'PRESIDENT', 'CHIEF']):
+            role = t["role"].upper()
+            if any(
+                title in role for title in ["CEO", "CFO", "COO", "PRESIDENT", "CHIEF"]
+            ):
                 c_suite_trades.append(f"{t['ticker']} {t['insider']} ({t['role']})")
 
-            trades_by_company[ticker]['insiders'].append(t['insider'])
+            trades_by_company[ticker]["insiders"].append(t["insider"])
 
         # Calculate insights
-        buy_sell_ratio = (total_buy_value / total_sell_value * 100) if total_sell_value > 0 else 100
+        buy_sell_ratio = (
+            (total_buy_value / total_sell_value * 100) if total_sell_value > 0 else 100
+        )
         companies_with_activity = len(trades_by_company)
 
         # Format detailed trade information
-        trades_text = "\n".join([
-            f"{t['ticker']} - {t['company']}: {t['insider']} ({t['role']}) {t['type']} "
-            f"{t['shares']:,.0f} shares @ ${t['value']:,.0f} on {t['date']}"
-            for t in top_trades[:10]
-        ])
+        trades_text = "\n".join(
+            [
+                f"{t['ticker']} - {t['company']}: {t['insider']} ({t['role']}) "
+                f"{t['type']} {t['shares']:,.0f} shares @ ${t['value']:,.0f} "
+                f"on {t['date']}"
+                for t in top_trades[:10]
+            ]
+        )
 
         user_prompt = f"""Analyze today's insider trading activity and write an insightful summary:
 
@@ -674,41 +764,61 @@ Write a 4-5 sentence analysis that identifies patterns, highlights significant t
             try:
                 if provider == "gemini" and self.gemini_client:
                     full_prompt = f"{system_prompt}\n\n{user_prompt}"
-                    response = await self.gemini_client.generate_content_async(
-                        full_prompt,
-                        generation_config={
-                            "temperature": settings.ai_temperature,
-                            "max_output_tokens": 300,
-                        }
+                    # Add 20 second timeout for daily summary
+                    response = await asyncio.wait_for(
+                        self.gemini_client.generate_content_async(
+                            full_prompt,
+                            generation_config={
+                                "temperature": settings.ai_temperature,
+                                "max_output_tokens": 300,
+                            },
+                        ),
+                        timeout=20.0,
                     )
                     self.provider = provider
                     return response.text.strip()
 
                 if provider == "openai" and self.openai_client:
-                    response = await self.openai_client.chat.completions.create(
-                        model=settings.openai_model,
-                        messages=[
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": user_prompt}
-                        ],
-                        temperature=settings.ai_temperature,
-                        max_tokens=300
+                    # Add 20 second timeout for daily summary
+                    response = await asyncio.wait_for(
+                        self.openai_client.chat.completions.create(
+                            model=settings.openai_model,
+                            messages=[
+                                {"role": "system", "content": system_prompt},
+                                {"role": "user", "content": user_prompt},
+                            ],
+                            temperature=settings.ai_temperature,
+                            max_tokens=300,
+                        ),
+                        timeout=20.0,
                     )
                     self.provider = provider
                     return response.choices[0].message.content.strip()
+            except asyncio.TimeoutError:
+                logger.warning(f"AI timeout for {provider} generating daily summary")
+                errors.append(f"{provider}: timeout")
+                continue
             except Exception as e:
                 logger.error(f"AI API error ({provider}): {e}", exc_info=True)
                 errors.append(f"{provider}: {e}")
                 continue
 
-        highlighted = [trade["ticker"] for trade in top_trades[:2] if trade.get("ticker")]
+        highlighted = [
+            trade["ticker"] for trade in top_trades[:2] if trade.get("ticker")
+        ]
         if highlighted:
-            joined = " and ".join(highlighted) if len(highlighted) > 1 else highlighted[0]
-            return (
-                f"Today saw {total_count} insider trades, including notable activity in {joined}. "
-                f"(AI unavailable: { '; '.join(errors) if errors else 'no provider' })"
+            joined = (
+                " and ".join(highlighted) if len(highlighted) > 1 else highlighted[0]
             )
-        return f"Today saw {total_count} insider trades. (AI unavailable: { '; '.join(errors) if errors else 'no provider' })"
+            return (
+                f"Today saw {total_count} insider trades, including notable activity "
+                f"in {joined}. (AI unavailable: "
+                f"{ '; '.join(errors) if errors else 'no provider' })"
+            )
+        return (
+            f"Today saw {total_count} insider trades. (AI unavailable: "
+            f"{ '; '.join(errors) if errors else 'no provider' })"
+        )
 
     @staticmethod
     def _parse_json_response(raw_text: Optional[str]) -> Optional[Dict[str, Any]]:
@@ -720,7 +830,7 @@ Write a 4-5 sentence analysis that identifies patterns, highlights significant t
         lower_text = text.lower()
         for fence in ("```json", "```"):
             if lower_text.startswith(fence):
-                text = text[len(fence):].strip()
+                text = text[len(fence) :].strip()
                 break
         if text.endswith("```"):
             text = text[:-3].strip()
@@ -738,20 +848,13 @@ Write a 4-5 sentence analysis that identifies patterns, highlights significant t
         result = await self.db.execute(
             select(
                 func.count(Trade.id).label("total_trades"),
-                func.sum(
-                    case(
-                        (Trade.transaction_type == "BUY", 1),
-                        else_=0
-                    )
-                ).label("buy_trades"),
-                func.sum(
-                    case(
-                        (Trade.transaction_type == "SELL", 1),
-                        else_=0
-                    )
-                ).label("sell_trades")
-            )
-            .where(Trade.filing_date >= cutoff_date)
+                func.sum(case((Trade.transaction_type == "BUY", 1), else_=0)).label(
+                    "buy_trades"
+                ),
+                func.sum(case((Trade.transaction_type == "SELL", 1), else_=0)).label(
+                    "sell_trades"
+                ),
+            ).where(Trade.filing_date >= cutoff_date)
         )
         stats = result.first()
 
@@ -759,17 +862,21 @@ Write a 4-5 sentence analysis that identifies patterns, highlights significant t
             "total_trades": stats.total_trades or 0,
             "buy_trades": stats.buy_trades or 0,
             "sell_trades": stats.sell_trades or 0,
-            "period_days": 30
+            "period_days": 30,
         }
 
     async def _generate_chatbot_response(
-        self,
-        question: str,
-        stats: Dict[str, Any]
+        self, question: str, stats: Dict[str, Any]
     ) -> str:
         """Generate intelligent, context-aware chatbot responses with real data."""
-        buy_sell_ratio = (stats['buy_trades'] / max(stats['sell_trades'], 1)) * 100
-        market_sentiment = "bullish" if buy_sell_ratio > 60 else "bearish" if buy_sell_ratio < 40 else "neutral"
+        buy_sell_ratio = (stats["buy_trades"] / max(stats["sell_trades"], 1)) * 100
+        market_sentiment = (
+            "bullish"
+            if buy_sell_ratio > 60
+            else "bearish"
+            if buy_sell_ratio < 40
+            else "neutral"
+        )
 
         cutoff_date = datetime.utcnow() - timedelta(days=30)
 
@@ -791,18 +898,19 @@ Write a 4-5 sentence analysis that identifies patterns, highlights significant t
                 Insider.relationship,
                 func.count(Trade.id).label("buy_count"),
                 func.sum(
-                    case(
-                        (Trade.transaction_type == "BUY", Trade.total_value),
-                        else_=0
-                    )
-                ).label("total_buy_value")
+                    case((Trade.transaction_type == "BUY", Trade.total_value), else_=0)
+                ).label("total_buy_value"),
             )
             .join(Trade, Company.id == Trade.company_id)
             .join(Insider, Trade.insider_id == Insider.id)
             .where(Trade.filing_date >= cutoff_date)
             .where(Trade.transaction_type == "BUY")
             .group_by(Company.ticker, Company.name, Insider.name, Insider.relationship)
-            .order_by(func.sum(case((Trade.transaction_type == "BUY", Trade.total_value), else_=0)).desc())
+            .order_by(
+                func.sum(
+                    case((Trade.transaction_type == "BUY", Trade.total_value), else_=0)
+                ).desc()
+            )
             .limit(20)
         )
         top_buyers = top_buyers_result.all()
@@ -816,18 +924,19 @@ Write a 4-5 sentence analysis that identifies patterns, highlights significant t
                 Insider.relationship,
                 func.count(Trade.id).label("sell_count"),
                 func.sum(
-                    case(
-                        (Trade.transaction_type == "SELL", Trade.total_value),
-                        else_=0
-                    )
-                ).label("total_sell_value")
+                    case((Trade.transaction_type == "SELL", Trade.total_value), else_=0)
+                ).label("total_sell_value"),
             )
             .join(Trade, Company.id == Trade.company_id)
             .join(Insider, Trade.insider_id == Insider.id)
             .where(Trade.filing_date >= cutoff_date)
             .where(Trade.transaction_type == "SELL")
             .group_by(Company.ticker, Company.name, Insider.name, Insider.relationship)
-            .order_by(func.sum(case((Trade.transaction_type == "SELL", Trade.total_value), else_=0)).desc())
+            .order_by(
+                func.sum(
+                    case((Trade.transaction_type == "SELL", Trade.total_value), else_=0)
+                ).desc()
+            )
             .limit(20)
         )
         top_sellers = top_sellers_result.all()
@@ -840,7 +949,7 @@ Write a 4-5 sentence analysis that identifies patterns, highlights significant t
                 Insider.relationship,
                 func.count(Trade.id).label("buy_count"),
                 func.sum(Trade.shares).label("total_shares"),
-                func.sum(Trade.total_value).label("total_value")
+                func.sum(Trade.total_value).label("total_value"),
             )
             .join(Trade, Company.id == Trade.company_id)
             .join(Insider, Trade.insider_id == Insider.id)
@@ -859,8 +968,12 @@ Write a 4-5 sentence analysis that identifies patterns, highlights significant t
                 Insider.name.label("insider_name"),
                 Insider.relationship,
                 func.count(Trade.id).label("trade_count"),
-                func.sum(case((Trade.transaction_type == "BUY", 1), else_=0)).label("buy_count"),
-                func.sum(case((Trade.transaction_type == "SELL", 1), else_=0)).label("sell_count")
+                func.sum(case((Trade.transaction_type == "BUY", 1), else_=0)).label(
+                    "buy_count"
+                ),
+                func.sum(case((Trade.transaction_type == "SELL", 1), else_=0)).label(
+                    "sell_count"
+                ),
             )
             .join(Trade, Company.id == Trade.company_id)
             .join(Insider, Trade.insider_id == Insider.id)
@@ -876,7 +989,7 @@ Write a 4-5 sentence analysis that identifies patterns, highlights significant t
             select(
                 Insider.relationship,
                 func.count(func.distinct(Insider.id)).label("insider_count"),
-                func.count(Trade.id).label("trade_count")
+                func.count(Trade.id).label("trade_count"),
             )
             .join(Trade, Insider.id == Trade.insider_id)
             .where(Trade.filing_date >= cutoff_date)
@@ -893,56 +1006,114 @@ Write a 4-5 sentence analysis that identifies patterns, highlights significant t
             return f"${value:,.0f}"
 
         # List ALL companies with activity
-        all_companies_list = ", ".join([row.ticker for row in all_companies[:50]])  # Show first 50
+        all_companies_list = ", ".join(
+            [row.ticker for row in all_companies[:50]]
+        )  # Show first 50
         if len(all_companies) > 50:
             all_companies_list += f" (and {len(all_companies) - 50} more)"
 
         if top_buyers:
-            top_buyers_list = "\n".join([
-                f"- {row.ticker}: {row.insider_name} ({row.relationship or 'Insider'}) - {row.buy_count} buys, {format_value(row.total_buy_value)}"
-                for row in top_buyers[:10]
-            ])
+            top_buyers_list = "\n".join(
+                [
+                    f"- {row.ticker}: {row.insider_name} "
+                    f"({row.relationship or 'Insider'}) - {row.buy_count} buys, "
+                    f"{format_value(row.total_buy_value)}"
+                    for row in top_buyers[:10]
+                ]
+            )
         else:
-            top_buyers_list = "No significant insider buying activity in the last 30 days."
+            top_buyers_list = (
+                "No significant insider buying activity in the last 30 days."
+            )
 
         if top_sellers:
-            top_sellers_list = "\n".join([
-                f"- {row.ticker}: {row.insider_name} ({row.relationship or 'Insider'}) - {row.sell_count} sells, {format_value(row.total_sell_value)}"
-                for row in top_sellers[:10]
-            ])
+            top_sellers_list = "\n".join(
+                [
+                    f"- {row.ticker}: {row.insider_name} "
+                    f"({row.relationship or 'Insider'}) - {row.sell_count} sells, "
+                    f"{format_value(row.total_sell_value)}"
+                    for row in top_sellers[:10]
+                ]
+            )
         else:
-            top_sellers_list = "No significant insider selling activity in the last 30 days."
+            top_sellers_list = (
+                "No significant insider selling activity in the last 30 days."
+            )
 
         # Format top insiders by share volume
         if top_insiders_volume:
-            top_insiders_list = "\n".join([
-                f"- {row.ticker}: {row.insider_name} ({row.relationship or 'Insider'}) - {row.total_shares:,.0f} shares, {format_value(row.total_value)}"
-                for row in top_insiders_volume[:15]  # Show top 15
-            ])
+            top_insiders_list = "\n".join(
+                [
+                    f"- {row.ticker}: {row.insider_name} "
+                    f"({row.relationship or 'Insider'}) - {row.total_shares:,.0f} "
+                    f"shares, {format_value(row.total_value)}"
+                    for row in top_insiders_volume[:15]  # Show top 15
+                ]
+            )
         else:
             top_insiders_list = "No insider buying activity in the last 30 days."
 
         # Format most active insiders
         if most_active_insiders:
-            most_active_list = "\n".join([
-                f"- {row.ticker}: {row.insider_name} ({row.relationship or 'Insider'}) - {row.trade_count} trades ({row.buy_count} buys, {row.sell_count} sells)"
-                for row in most_active_insiders[:10]  # Show top 10
-            ])
+            most_active_list = "\n".join(
+                [
+                    f"- {row.ticker}: {row.insider_name} "
+                    f"({row.relationship or 'Insider'}) - {row.trade_count} trades "
+                    f"({row.buy_count} buys, {row.sell_count} sells)"
+                    for row in most_active_insiders[:10]  # Show top 10
+                ]
+            )
         else:
             most_active_list = "No active insiders in the last 30 days."
 
         # Format insider role distribution
         if insider_roles:
-            insider_roles_list = "\n".join([
-                f"- {row.relationship}: {row.insider_count} insiders, {row.trade_count} trades"
-                for row in insider_roles[:10]  # Show top 10 roles
-            ])
+            insider_roles_list = "\n".join(
+                [
+                    f"- {row.relationship}: {row.insider_count} insiders, "
+                    f"{row.trade_count} trades"
+                    for row in insider_roles[:10]  # Show top 10 roles
+                ]
+            )
         else:
             insider_roles_list = "No insider role data available."
 
-        system_prompt = f"""You are TradeSignal's AI analyst with COMPLETE DATABASE ACCESS to ALL {len(all_companies)} companies with insider trading activity.
+        # Get recent trade examples for context (last 7 days)
+        recent_cutoff = datetime.utcnow() - timedelta(days=7)
+        recent_trades_result = await self.db.execute(
+            select(Trade, Company, Insider)
+            .join(Company, Trade.company_id == Company.id)
+            .join(Insider, Trade.insider_id == Insider.id)
+            .where(Trade.filing_date >= recent_cutoff)
+            .order_by(Trade.filing_date.desc())
+            .limit(10)
+        )
+        recent_trades_data = recent_trades_result.all()
 
-DATABASE COVERAGE (Last 30 Days):
+        # Format recent trades for context
+        recent_trades_list = ""
+        if recent_trades_data:
+            recent_trades_list = "\nRECENT TRADE EXAMPLES (Last 7 Days):\n"
+            for trade, company, insider in recent_trades_data[:10]:
+                trade_value = await self._get_trade_value(trade)
+                value_str = (
+                    f"${trade_value:,.0f}" if trade_value > 0 else "Not Disclosed"
+                )
+                recent_trades_list += (
+                    f"- {company.ticker}: {insider.name} "
+                    f"({insider.relationship or 'Insider'}) {trade.transaction_type} "
+                    f"{trade.shares:,.0f} shares @ {value_str} on "
+                    f"{trade.filing_date.strftime('%Y-%m-%d')}\n"
+                )
+        else:
+            recent_trades_list = (
+                "\nRECENT TRADE EXAMPLES: No trades in the last 7 days.\n"
+            )
+
+        system_prompt = (
+            f"You are TradeSignal's AI analyst with COMPLETE DATABASE ACCESS to ALL "
+            f"{len(all_companies)} companies with insider trading activity.\n\n"
+            f"""DATABASE COVERAGE (Last 30 Days):
 - Total Companies Tracked: {len(all_companies)}
 - Total Trades: {stats['total_trades']:,}
 - Buy Transactions: {stats['buy_trades']:,} ({(stats['buy_trades']/max(stats['total_trades'],1)*100):.1f}%)
@@ -966,6 +1137,7 @@ MOST ACTIVE INSIDERS BY TRADE COUNT (ALL ROLES):
 
 INSIDER ROLE DISTRIBUTION:
 {insider_roles_list}
+{recent_trades_list}
 
 CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE:
 1. You have access to data from ALL {len(all_companies)} companies listed above
@@ -974,12 +1146,17 @@ CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE:
 4. When asked about "biggest trades", cite the SPECIFIC INSIDERS and their ROLES from the lists above
 5. Format: "[Insider Name] ([Title/Role]) at [Ticker] bought/sold [amount]"
 6. If a value shows "Not Disclosed", explain the SEC filing didn't include the value
-7. NEVER say "I'm not sure" - you have complete database access
-8. Be PRECISE and CONFIDENT - this is real SEC Form 4 data
+7. NEVER say "I'm not sure" or "I don't have access" - you have complete database access
+8. Be PRECISE and CONFIDENT - this is real SEC Form 4 data from the last 30 days
 9. When discussing insiders, mention their specific roles (CEO, CFO, Director, etc.) to provide context
 10. Use the insider role distribution to provide insights about which types of insiders are most active
+11. Reference specific recent trades when relevant to show you're using real-time data
+12. Provide quantitative details (trade counts, values, dates) when available
+13. Compare and contrast different companies/insiders when asked about trends
+14. Be analytical, not just descriptive - explain what the data means
 
-Answer using this real-time data from the complete insider trading database."""
+Answer using this real-time data from the complete insider trading database. Be specific, cite numbers, and reference actual insiders and companies."""
+        )
 
         errors: List[str] = []
 
@@ -987,35 +1164,48 @@ Answer using this real-time data from the complete insider trading database."""
             try:
                 if provider == "gemini" and self.gemini_client:
                     full_prompt = f"{system_prompt}\n\nUser question: {question}"
-                    response = await self.gemini_client.generate_content_async(
-                        full_prompt,
-                        generation_config={
-                            "temperature": 0.2,  # Very low temperature for maximum precision
-                            "max_output_tokens": 500,
-                        }
+                    # Add 30 second timeout for chat responses
+                    response = await asyncio.wait_for(
+                        self.gemini_client.generate_content_async(
+                            full_prompt,
+                            generation_config={
+                                "temperature": 0.2,  # Very low temperature for maximum precision
+                                "max_output_tokens": 500,
+                            },
+                        ),
+                        timeout=30.0,
                     )
                     self.provider = provider
                     return response.text.strip()
 
                 if provider == "openai" and self.openai_client:
-                    response = await self.openai_client.chat.completions.create(
-                        model=settings.openai_model,
-                        messages=[
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": question}
-                        ],
-                        temperature=0.2,  # Very low temperature for maximum precision
-                        max_tokens=500
+                    # Add 30 second timeout for chat responses
+                    response = await asyncio.wait_for(
+                        self.openai_client.chat.completions.create(
+                            model=settings.openai_model,
+                            messages=[
+                                {"role": "system", "content": system_prompt},
+                                {"role": "user", "content": question},
+                            ],
+                            temperature=0.2,  # Very low temperature for maximum precision
+                            max_tokens=500,
+                        ),
+                        timeout=30.0,
                     )
                     self.provider = provider
                     return response.choices[0].message.content.strip()
+            except asyncio.TimeoutError:
+                logger.warning(f"AI timeout for {provider} answering question")
+                errors.append(f"{provider}: timeout")
+                continue
             except Exception as e:
                 logger.error(f"AI API error ({provider}): {e}", exc_info=True)
                 errors.append(f"{provider}: {e}")
                 continue
 
-        return "I'm unable to answer that question at the moment. Please try again later." + (
-            f" (Details: { '; '.join(errors) })" if errors else ""
+        return (
+            "I'm unable to answer that question at the moment. Please try again later."
+            + (f" (Details: { '; '.join(errors) })" if errors else "")
         )
 
     async def _generate_signals(self, companies: List[tuple]) -> List[Dict[str, Any]]:
@@ -1035,32 +1225,38 @@ Answer using this real-time data from the complete insider trading database."""
 
             buy_ratio = buy_vol / total_vol if total_vol > 0 else 0
 
-            company_data.append({
-                "ticker": ticker,
-                "name": name,
-                "trade_count": trade_count,
-                "buy_volume": int(buy_vol),
-                "sell_volume": int(sell_vol),
-                "buy_ratio": round(buy_ratio * 100, 1),
-                "total_volume": int(total_vol)
-            })
+            company_data.append(
+                {
+                    "ticker": ticker,
+                    "name": name,
+                    "trade_count": trade_count,
+                    "buy_volume": int(buy_vol),
+                    "sell_volume": int(sell_vol),
+                    "buy_ratio": round(buy_ratio * 100, 1),
+                    "total_volume": int(total_vol),
+                }
+            )
 
         # Generate AI-powered analysis for signals
         signals_with_ai = await self._add_ai_reasoning_to_signals(company_data)
         return signals_with_ai
 
-    async def _add_ai_reasoning_to_signals(self, companies: List[Dict]) -> List[Dict[str, Any]]:
+    async def _add_ai_reasoning_to_signals(
+        self, companies: List[Dict]
+    ) -> List[Dict[str, Any]]:
         """Add AI-generated reasoning to trading signals."""
         if not companies:
             return []
 
         # Format company data for AI
-        company_summary = "\n".join([
-            f"{c['ticker']} ({c['name']}): {c['trade_count']} trades, "
-            f"Buy: {c['buy_volume']:,} shares ({c['buy_ratio']:.1f}%), "
-            f"Sell: {c['sell_volume']:,} shares"
-            for c in companies
-        ])
+        company_summary = "\n".join(
+            [
+                f"{c['ticker']} ({c['name']}): {c['trade_count']} trades, "
+                f"Buy: {c['buy_volume']:,} shares ({c['buy_ratio']:.1f}%), "
+                f"Sell: {c['sell_volume']:,} shares"
+                for c in companies
+            ]
+        )
 
         system_prompt = """You are an expert financial analyst specializing in insider trading signals.
 For each company, provide:
@@ -1098,7 +1294,7 @@ Provide signals in JSON format."""
                         generation_config={
                             "temperature": 0.3,
                             "max_output_tokens": 2000,
-                        }
+                        },
                     )
                     ai_signals = self._parse_json_response(response.text)
                     if ai_signals and isinstance(ai_signals, list):
@@ -1110,13 +1306,15 @@ Provide signals in JSON format."""
                         model=settings.openai_model,
                         messages=[
                             {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": user_prompt}
+                            {"role": "user", "content": user_prompt},
                         ],
                         temperature=0.3,
                         max_tokens=2000,
-                        response_format={"type": "json_object"}
+                        response_format={"type": "json_object"},
                     )
-                    ai_signals = self._parse_json_response(response.choices[0].message.content)
+                    ai_signals = self._parse_json_response(
+                        response.choices[0].message.content
+                    )
                     if ai_signals:
                         return self._merge_ai_signals_with_data(companies, ai_signals)
                     break
@@ -1127,26 +1325,34 @@ Provide signals in JSON format."""
         # Fallback to rule-based if AI fails
         return self._generate_rule_based_signals(companies)
 
-    def _merge_ai_signals_with_data(self, companies: List[Dict], ai_signals: List[Dict]) -> List[Dict]:
+    def _merge_ai_signals_with_data(
+        self, companies: List[Dict], ai_signals: List[Dict]
+    ) -> List[Dict]:
         """Merge AI-generated signals with company data."""
-        ai_by_ticker = {s.get('ticker'): s for s in ai_signals if s.get('ticker')}
+        ai_by_ticker = {s.get("ticker"): s for s in ai_signals if s.get("ticker")}
 
         signals = []
         for company in companies:
-            ticker = company['ticker']
+            ticker = company["ticker"]
             ai_signal = ai_by_ticker.get(ticker, {})
 
-            signals.append({
-                "ticker": ticker,
-                "company_name": company['name'],
-                "signal": ai_signal.get('signal', self._calculate_signal(company['buy_ratio'])),
-                "strength": ai_signal.get('strength', self._calculate_strength(company['buy_ratio'])),
-                "trade_count": company['trade_count'],
-                "buy_volume": company['buy_volume'],
-                "sell_volume": company['sell_volume'],
-                "buy_ratio": company['buy_ratio'],
-                "reasoning": ai_signal.get('reasoning', '')
-            })
+            signals.append(
+                {
+                    "ticker": ticker,
+                    "company_name": company["name"],
+                    "signal": ai_signal.get(
+                        "signal", self._calculate_signal(company["buy_ratio"])
+                    ),
+                    "strength": ai_signal.get(
+                        "strength", self._calculate_strength(company["buy_ratio"])
+                    ),
+                    "trade_count": company["trade_count"],
+                    "buy_volume": company["buy_volume"],
+                    "sell_volume": company["sell_volume"],
+                    "buy_ratio": company["buy_ratio"],
+                    "reasoning": ai_signal.get("reasoning", ""),
+                }
+            )
 
         return signals
 
@@ -1154,19 +1360,21 @@ Provide signals in JSON format."""
         """Fallback rule-based signal generation."""
         signals = []
         for company in companies:
-            buy_ratio = company['buy_ratio'] / 100
+            buy_ratio = company["buy_ratio"] / 100
 
-            signals.append({
-                "ticker": company['ticker'],
-                "company_name": company['name'],
-                "signal": self._calculate_signal(buy_ratio),
-                "strength": self._calculate_strength(buy_ratio),
-                "trade_count": company['trade_count'],
-                "buy_volume": company['buy_volume'],
-                "sell_volume": company['sell_volume'],
-                "buy_ratio": company['buy_ratio'],
-                "reasoning": ""
-            })
+            signals.append(
+                {
+                    "ticker": company["ticker"],
+                    "company_name": company["name"],
+                    "signal": self._calculate_signal(buy_ratio),
+                    "strength": self._calculate_strength(buy_ratio),
+                    "trade_count": company["trade_count"],
+                    "buy_volume": company["buy_volume"],
+                    "sell_volume": company["sell_volume"],
+                    "buy_ratio": company["buy_ratio"],
+                    "reasoning": "",
+                }
+            )
 
         return signals
 

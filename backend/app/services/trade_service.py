@@ -56,7 +56,7 @@ class TradeService:
         limit: int = 20,
         filters: Optional[TradeFilter] = None,
         sort_by: str = "transaction_date",
-        order: str = "desc"
+        order: str = "desc",
     ) -> tuple[List[Trade], int]:
         """
         Get all trades with filtering and pagination.
@@ -74,8 +74,7 @@ class TradeService:
         """
         # Build base query
         query = select(Trade).options(
-            selectinload(Trade.company),
-            selectinload(Trade.insider)
+            selectinload(Trade.company), selectinload(Trade.insider)
         )
 
         # Apply filters
@@ -127,7 +126,9 @@ class TradeService:
             )
 
         if filters.transaction_type:
-            query = query.where(Trade.transaction_type == filters.transaction_type.upper())
+            query = query.where(
+                Trade.transaction_type == filters.transaction_type.upper()
+            )
 
         if filters.transaction_date_from:
             query = query.where(Trade.transaction_date >= filters.transaction_date_from)
@@ -145,18 +146,18 @@ class TradeService:
             query = query.where(Trade.shares >= filters.min_shares)
 
         if filters.derivative_only:
-            query = query.where(Trade.derivative_transaction == True)
+            query = query.where(Trade.derivative_transaction.is_(True))
 
         if filters.significant_only:
-            query = query.where(Trade.total_value > settings.significant_trade_threshold)
+            query = query.where(
+                Trade.total_value > settings.significant_trade_threshold
+            )
 
         return query
 
     @staticmethod
     async def get_recent(
-        db: AsyncSession,
-        days: int = 7,
-        limit: int = 100
+        db: AsyncSession, days: int = 7, limit: int = 100
     ) -> List[Trade]:
         """
         Get recent trades.
@@ -194,8 +195,14 @@ class TradeService:
         """
         # Calculate total_value if not provided
         trade_dict = trade_data.model_dump()
-        if not trade_dict.get("total_value") and trade_dict.get("shares") and trade_dict.get("price_per_share"):
-            trade_dict["total_value"] = Decimal(trade_dict["shares"]) * Decimal(trade_dict["price_per_share"])
+        if (
+            not trade_dict.get("total_value")
+            and trade_dict.get("shares")
+            and trade_dict.get("price_per_share")
+        ):
+            trade_dict["total_value"] = Decimal(trade_dict["shares"]) * Decimal(
+                trade_dict["price_per_share"]
+            )
 
         trade = Trade(**trade_dict)
         db.add(trade)
@@ -204,12 +211,15 @@ class TradeService:
         # Ensure relationships are loaded for broadcasting
         await db.refresh(trade, attribute_names=["company", "insider"])
 
-        logger.info(f"Created trade: ID {trade.id}, {trade.transaction_type} {trade.shares} shares")
+        logger.info(
+            f"Created trade: ID {trade.id}, {trade.transaction_type} {trade.shares} shares"
+        )
 
         # Real-time alert checking
         if settings.alerts_enabled:
             try:
                 from app.services.alert_service import AlertService
+
                 alert_service = AlertService(db)
                 await alert_service.check_trade_against_alerts(trade)
                 logger.info(f"Checked trade {trade.id} against active alerts")
@@ -218,22 +228,22 @@ class TradeService:
 
         # WebSocket broadcast for frontend
         try:
-            trade_payload = TradeWithDetails.model_validate(trade).model_dump(mode="json")
-            await trade_event_manager.broadcast({
-                "type": "trade_created",
-                "trade": trade_payload,
-            })
+            trade_payload = TradeWithDetails.model_validate(trade).model_dump(
+                mode="json"
+            )
+            await trade_event_manager.broadcast(
+                {
+                    "type": "trade_created",
+                    "trade": trade_payload,
+                }
+            )
         except Exception as exc:  # pragma: no cover - defensive logging
             logger.warning("Failed to broadcast trade creation: %s", exc)
 
         return trade
 
     @staticmethod
-    async def update(
-        db: AsyncSession,
-        trade: Trade,
-        trade_data: TradeUpdate
-    ) -> Trade:
+    async def update(db: AsyncSession, trade: Trade, trade_data: TradeUpdate) -> Trade:
         """
         Update an existing trade.
 
@@ -267,19 +277,26 @@ class TradeService:
         if settings.alerts_enabled:
             try:
                 from app.services.alert_service import AlertService
+
                 alert_service = AlertService(db)
                 await alert_service.check_trade_against_alerts(trade)
                 logger.info(f"Checked updated trade {trade.id} against active alerts")
             except Exception as exc:
-                logger.error(f"Failed to check alerts for updated trade {trade.id}: {exc}")
+                logger.error(
+                    f"Failed to check alerts for updated trade {trade.id}: {exc}"
+                )
 
         # WebSocket broadcast for frontend
         try:
-            trade_payload = TradeWithDetails.model_validate(trade).model_dump(mode="json")
-            await trade_event_manager.broadcast({
-                "type": "trade_updated",
-                "trade": trade_payload,
-            })
+            trade_payload = TradeWithDetails.model_validate(trade).model_dump(
+                mode="json"
+            )
+            await trade_event_manager.broadcast(
+                {
+                    "type": "trade_updated",
+                    "trade": trade_payload,
+                }
+            )
         except Exception as exc:  # pragma: no cover - defensive logging
             logger.warning("Failed to broadcast trade update: %s", exc)
 
@@ -300,8 +317,7 @@ class TradeService:
 
     @staticmethod
     async def get_statistics(
-        db: AsyncSession,
-        filters: Optional[TradeFilter] = None
+        db: AsyncSession, filters: Optional[TradeFilter] = None
     ) -> TradeStats:
         """
         Calculate trade statistics.
@@ -318,12 +334,6 @@ class TradeService:
         if filters:
             query = TradeService._apply_filters(query, filters)
 
-        # Total trades
-        total_trades_result = await db.execute(
-            select(func.count()).select_from(query.subquery())
-        )
-        total_trades = total_trades_result.scalar_one()
-
         # Total buys
         buy_query = query.where(Trade.transaction_type == "BUY")
         total_buys_result = await db.execute(
@@ -338,6 +348,10 @@ class TradeService:
         )
         total_sells = total_sells_result.scalar_one()
 
+        # Total trades = buys + sells (only count BUY and SELL transactions)
+        # This ensures the math is always correct: total_trades = total_buys + total_sells
+        total_trades = total_buys + total_sells
+
         # Sum of shares and value
         # Use subquery columns to avoid cartesian product
         subq = query.subquery()
@@ -346,7 +360,7 @@ class TradeService:
                 func.sum(subq.c.shares),
                 func.sum(subq.c.total_value),
                 func.avg(subq.c.total_value),
-                func.max(subq.c.total_value)
+                func.max(subq.c.total_value),
             )
         )
         sums = sums_result.one()
@@ -357,16 +371,12 @@ class TradeService:
 
         # Total buy value
         buy_subq = buy_query.subquery()
-        buy_value_result = await db.execute(
-            select(func.sum(buy_subq.c.total_value))
-        )
+        buy_value_result = await db.execute(select(func.sum(buy_subq.c.total_value)))
         total_buy_value = float(buy_value_result.scalar_one() or 0.0)
 
         # Total sell value
         sell_subq = sell_query.subquery()
-        sell_value_result = await db.execute(
-            select(func.sum(sell_subq.c.total_value))
-        )
+        sell_value_result = await db.execute(select(func.sum(sell_subq.c.total_value)))
         total_sell_value = float(sell_value_result.scalar_one() or 0.0)
 
         # Net volume = BUY value - SELL value (positive = net buying, negative = net selling)
@@ -387,7 +397,9 @@ class TradeService:
             .limit(1)
         )
         most_active_company_row = most_active_company_result.first()
-        most_active_company = most_active_company_row[0] if most_active_company_row else None
+        most_active_company = (
+            most_active_company_row[0] if most_active_company_row else None
+        )
 
         # Most active insider
         insider_query = select(Trade)
@@ -404,7 +416,9 @@ class TradeService:
             .limit(1)
         )
         most_active_insider_row = most_active_insider_result.first()
-        most_active_insider = most_active_insider_row[0] if most_active_insider_row else None
+        most_active_insider = (
+            most_active_insider_row[0] if most_active_insider_row else None
+        )
 
         return TradeStats(
             total_trades=total_trades,
@@ -417,7 +431,7 @@ class TradeService:
             average_trade_size=average_trade_size,
             largest_trade=largest_trade,
             most_active_company=most_active_company,
-            most_active_insider=most_active_insider
+            most_active_insider=most_active_insider,
         )
 
     @staticmethod
@@ -426,7 +440,7 @@ class TradeService:
         insider_id: int,
         transaction_date: date,
         shares: Decimal,
-        price_per_share: Optional[Decimal]
+        price_per_share: Optional[Decimal],
     ) -> bool:
         """
         Check if a trade already exists (to avoid duplicates).
@@ -445,7 +459,7 @@ class TradeService:
             and_(
                 Trade.insider_id == insider_id,
                 Trade.transaction_date == transaction_date,
-                Trade.shares == shares
+                Trade.shares == shares,
             )
         )
 
