@@ -35,7 +35,7 @@ TradeSignal is a comprehensive financial intelligence platform that aggregates a
 2. **Insider Trades** - SEC Form 4 scraping and tracking
 3. **Congressional Trades** - Political stock transaction monitoring
 4. **Companies & Insiders** - Detailed profiles and historical data
-5. **Billing** - Stripe integration with 3-tier subscription system (Free, Pro, Enterprise)
+5. **Billing** - Stripe integration with 3-tier subscription system (Free, Plus, Pro, Enterprise)
 6. **News** - Financial news aggregation and filtering
 7. **Federal Reserve** - Fed calendar and economic event tracking
 8. **Jobs** - Career opportunities and applications

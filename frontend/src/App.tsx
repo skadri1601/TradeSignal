@@ -1,8 +1,8 @@
-import { useState, lazy, Suspense, useContext, useMemo } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import { NotificationProvider } from './contexts/NotificationContext';
-import { AuthProvider, AuthContext } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { CookieConsent } from './components/CookieConsent';
 import { FirstTimeDisclaimerModal } from './components/FirstTimeDisclaimerModal';
