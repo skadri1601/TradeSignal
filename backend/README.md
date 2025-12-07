@@ -1,640 +1,423 @@
 # TradeSignal Backend
 
-FastAPI backend service for the TradeSignal insider trading intelligence platform.
+FastAPI-based backend service for the TradeSignal platform. Provides RESTful APIs for insider trading intelligence, congressional trades, user authentication, billing, and real-time notifications.
 
----
+## Architecture
 
-## 📁 Current Project Structure
+### Tech Stack
+- **FastAPI** - Async web framework with automatic OpenAPI docs
+- **SQLAlchemy** - ORM for database interactions
+- **PostgreSQL** - Primary relational database
+- **Redis** - Caching and rate limiting
+- **Celery** - Distributed task queue for background jobs
+- **Alembic** - Database migrations (if enabled)
+- **Pydantic** - Data validation and serialization
+- **Prometheus** - Metrics and monitoring
 
+### Project Structure
 ```
 backend/
 ├── app/
-│   ├── models/                    # ✅ SQLAlchemy ORM models
-│   │   ├── __init__.py
-│   │   ├── company.py             # Company model (ticker, CIK, name, sector)
-│   │   ├── insider.py             # Insider model (name, title, relationships)
-│   │   ├── trade.py               # Trade model (transactions with details)
-│   │   ├── alert.py               # Alert rule model
-│   │   ├── alert_history.py       # Alert history tracking
-│   │   ├── push_subscription.py   # Push notification subscriptions
-│   │   ├── scrape_job.py          # Scheduled scrape jobs
-│   │   └── scrape_history.py      # Scraping history logs
-│   │
-│   ├── schemas/                   # ✅ Pydantic schemas (validation & serialization)
-│   │   ├── __init__.py
-│   │   ├── common.py              # Shared schemas (pagination, filters)
-│   │   ├── company.py             # Company schemas (Create, Read, Update)
-│   │   ├── insider.py             # Insider schemas
-│   │   ├── trade.py               # Trade schemas
-│   │   ├── alert.py               # Alert schemas
-│   │   ├── ai.py                  # AI insights schemas
-│   │   ├── stock.py               # Stock price schemas
-│   │   ├── push_subscription.py   # Push subscription schemas
-│   │   ├── scrape_job.py          # Scrape job schemas
-│   │   └── scrape_history.py      # Scrape history schemas
-│   │
-│   ├── routers/                   # ✅ API endpoints
-│   │   ├── __init__.py
-│   │   ├── companies.py           # Company endpoints (/api/v1/companies)
-│   │   ├── insiders.py            # Insider endpoints (/api/v1/insiders)
-│   │   ├── trades.py              # Trade endpoints + WebSocket (/api/v1/trades)
-│   │   ├── scraper.py             # Scraper endpoints (/api/v1/scraper)
-│   │   ├── alerts.py              # Alert management (/api/v1/alerts)
-│   │   ├── ai.py                  # AI insights & chatbot (/api/v1/ai)
-│   │   ├── stocks.py              # Stock prices & market data (/api/v1/stocks)
-│   │   ├── push.py                # Push notifications (/api/v1/push)
-│   │   ├── scheduler.py           # Scheduler management (/api/v1/scheduler)
-│   │   ├── tasks.py               # Background tasks (/api/v1/tasks)
-│   │   └── health.py              # Health check endpoint
-│   │
-│   ├── services/                  # ✅ Business logic layer
-│   │   ├── __init__.py
-│   │   ├── company_service.py     # Company operations
-│   │   ├── insider_service.py     # Insider operations
-│   │   ├── trade_service.py       # Trade operations
-│   │   ├── sec_client.py          # SEC EDGAR API client
-│   │   ├── form4_parser.py        # Form 4 XML parser
-│   │   ├── scraper_service.py     # Scraper orchestration
-│   │   ├── alert_service.py       # Alert rule engine
-│   │   ├── notification_service.py # Multi-channel notifications
-│   │   ├── ai_service.py          # AI insights (Gemini/OpenAI)
-│   │   ├── stock_price_service.py # Stock price fetching (Yahoo/Alpha Vantage)
-│   │   ├── market_status_service.py # Market open/closed detection
-│   │   ├── scheduler_service.py   # APScheduler integration
-│   │   ├── push_subscription_service.py # Push notification management
-│   │   ├── company_enrichment_service.py # Company data enrichment
-│   │   └── trade_event_manager.py # Real-time trade event broadcasting
-│   │
-│   ├── core/                      # ✅ Core infrastructure
-│   │   ├── celery_app.py          # Celery configuration
-│   │   ├── redis_cache.py         # Redis caching utilities
-│   │   └── logging_config.py      # Logging configuration
-│   │
-│   ├── middleware/                # ✅ Custom middleware
-│   │   ├── __init__.py
-│   │   └── https_redirect.py      # HTTPS redirect middleware
-│   │
-│   ├── tasks/                     # ✅ Celery background tasks
-│   │   └── scraper_tasks.py       # Scheduled scraping tasks
-│   │
-│   ├── config.py                  # ✅ Settings management (Pydantic BaseSettings)
-│   ├── database.py                # ✅ Database connection & session factory
-│   ├── main.py                    # ✅ FastAPI application entry point
-│   └── seed_data.py               # ✅ Database seed script
-│
-├── tests/                         # ✅ Test configuration
-│   ├── __init__.py
-│   ├── conftest.py                # Pytest configuration
-│   ├── test_health.py             # Health endpoint tests
-│   └── seed_trades.json           # Sample trade data
-│
-├── scripts/                       # SQL scripts & utilities
-│   └── add_indexes.sql            # Database indexes
-│
-├── requirements.txt               # ✅ Python dependencies
-├── Dockerfile                     # ✅ Docker image definition
-└── README.md                      # This file
+│   ├── core/                   # Core utilities
+│   │   ├── celery_app.py      # Celery configuration
+│   │   ├── limiter.py         # Rate limiting
+│   │   ├── logging_config.py   # Structured logging
+│   │   ├── redis_cache.py     # Redis caching
+│   │   └── security.py        # Auth utilities
+│   ├── models/                 # SQLAlchemy models
+│   │   ├── user.py            # User and authentication
+│   │   ├── trade.py           # Insider trades
+│   │   ├── congressional_trade.py
+│   │   ├── company.py
+│   │   ├── insider.py
+│   │   ├── subscription.py    # Billing models
+│   │   ├── alert.py
+│   │   ├── payment.py
+│   │   ├── ticket.py
+│   │   └── ...
+│   ├── routers/                # API endpoints
+│   │   ├── auth.py            # Authentication
+│   │   ├── trades.py          # Insider trades
+│   │   ├── congressional_trades.py
+│   │   ├── companies.py
+│   │   ├── insiders.py
+│   │   ├── billing.py         # Stripe integration
+│   │   ├── news.py
+│   │   ├── fed.py             # Federal Reserve
+│   │   ├── admin.py
+│   │   ├── health.py
+│   │   └── ...
+│   ├── schemas/                # Pydantic schemas
+│   │   ├── trade.py
+│   │   ├── company.py
+│   │   ├── insider.py
+│   │   └── ...
+│   ├── services/               # Business logic
+│   │   ├── scraper_service.py
+│   │   ├── form4_parser.py
+│   │   ├── congressional_scraper.py
+│   │   ├── stock_price_service.py
+│   │   ├── notification_service.py
+│   │   ├── tier_service.py
+│   │   └── ...
+│   ├── tasks/                  # Celery tasks
+│   │   └── stock_tasks.py
+│   ├── middleware/
+│   │   └── https_redirect.py
+│   ├── config.py               # Settings management
+│   ├── database.py             # DB connection
+│   └── main.py                 # Application entry
+├── tests/                      # Unit tests
+├── requirements.txt
+├── Dockerfile
+└── .env.example
 ```
 
-**Status:** ✅ **FULLY IMPLEMENTED** - All phases complete (Phases 1-6.5)
+## API Endpoints
 
----
+### Authentication (`/api/v1/auth`)
+- `POST /register` - Create new user account
+- `POST /login` - JWT token authentication
+- `POST /forgot-password` - Request password reset
+- `POST /reset-password` - Complete password reset
+- `GET /me` - Get current user profile
+- `PUT /me` - Update user profile
 
-## ✨ Key Features Implemented
+### Insider Trades (`/api/v1/trades`)
+- `GET /` - List all insider trades with filters
+- `GET /{id}` - Get specific trade details
+- `POST /scrape` - Trigger manual scrape (admin)
 
-### 📡 SEC Data Scraping
-- Real-time Form 4 insider trading scraper
-- SEC EDGAR API integration with rate limiting
-- Automated hourly scraping for 109+ companies
-- XML parsing with lxml and BeautifulSoup
-- Intelligent cooldown (23-hour per company)
-- Scrape history tracking and job management
-- Error handling and retry logic
+### Congressional Trades (`/api/v1/congressional-trades`)
+- `GET /` - List congressional trades with filters
+- `GET /{id}` - Get specific congressional trade
+- `GET /congresspeople` - List all congress members
 
-### 🗄️ Database & Models
-- PostgreSQL with async SQLAlchemy 2.0
-- 8 database models (Company, Insider, Trade, Alert, Alert History, Push Subscription, Scrape Job, Scrape History)
-- Full CRUD operations for all models
-- Pagination support
-- Advanced filtering and querying
-- Database indexes for performance
+### Companies (`/api/v1/companies`)
+- `GET /` - List companies with search
+- `GET /{ticker}` - Get company details
+- `GET /{ticker}/trades` - Get trades for company
+- `GET /{ticker}/insiders` - Get insiders for company
 
-### 🔔 Alerts & Notifications
-- Flexible alert rule engine
-- Multi-channel notifications (webhooks, email, browser push)
-- Real-time WebSocket alert streaming
-- VAPID-based browser push notifications
-- Alert history tracking
-- Scheduled alert processing
+### Insiders (`/api/v1/insiders`)
+- `GET /` - List insiders
+- `GET /{id}` - Get insider profile
+- `GET /{id}/trades` - Get trades by insider
 
-### 🤖 AI Integration
-- Google Gemini 2.0 Flash (primary)
-- OpenAI GPT-4o-mini (fallback)
-- Daily market summaries
-- AI trading signals (bullish/bearish/neutral)
-- Company-specific analysis
-- Interactive chatbot with real-time data access
-- Smart caching (24-hour TTL)
-- Token usage tracking
+### Billing (`/api/v1/billing`)
+- `POST /create-checkout-session` - Create Stripe checkout
+- `POST /webhook` - Stripe webhook handler
+- `GET /subscription` - Get current subscription
+- `POST /cancel-subscription` - Cancel subscription
+- `GET /orders` - Get payment history
 
-### 📈 Stock Market Data
-- Yahoo Finance integration (primary, free)
-- Alpha Vantage fallback
-- Real-time prices for 109+ stocks
-- Market status detection (open/closed)
-- Parallel data fetching (7-8s for all stocks)
-- Redis caching (10s TTL)
-- Top gainers/losers calculation
+### News (`/api/v1/news`)
+- `GET /` - Get financial news feed
+- `GET /{id}` - Get specific news article
 
-### ⚙️ Background Tasks
-- Celery integration with Redis broker
-- Scheduled scraping tasks
-- APScheduler for job management
-- Celery Beat for periodic tasks
-- Flower UI for monitoring
-- Task status tracking
+### Federal Reserve (`/api/v1/fed`)
+- `GET /calendar` - Get Fed economic calendar
+- `GET /events` - List upcoming events
 
-### 🔌 API Endpoints (60+)
-- RESTful API with FastAPI
-- WebSocket support for real-time updates
-- Interactive API docs (Swagger UI)
-- Full OpenAPI specification
+### Admin (`/api/v1/admin`)
+- `GET /users` - List all users (superuser only)
+- `PUT /users/{id}` - Update user (superuser only)
+- `DELETE /users/{id}` - Delete user (superuser only)
+- `GET /stats` - System statistics
+
+### Health & Monitoring
+- `GET /api/v1/health` - Health check
+- `GET /metrics` - Prometheus metrics
+
+## Database Models
+
+### Core Models
+- **User** - User accounts with roles (free, pro, enterprise, admin)
+- **Subscription** - Stripe subscription data
+- **Payment** - Payment history
+- **Trade** - Insider trading transactions
+- **CongressionalTrade** - Political stock transactions
+- **Company** - Company profiles
+- **Insider** - Insider profiles
+- **Alert** - User alerts and notifications
+- **Ticket** - Support tickets
+
+## Service Layer
+
+### Scraper Service
+- Automated SEC Form 4 scraping
+- Scheduled scraping with Celery
+- Configurable scrape hours and frequency
+- Duplicate detection
+
+### Congressional Scraper
+- Political stock transaction scraping
+- Congress member profile tracking
+
+### Stock Price Service
+- Real-time stock price fetching
+- Price history and charts
+- Market data integration
+
+### Notification Service
+- Multi-channel alerts (email, push)
+- Configurable alert rules
+- Priority-based notifications
+
+### Tier Service
+- Feature access control by subscription tier
+- Rate limiting by tier
+- Usage tracking
+
+## Authentication & Security
+
+### JWT Authentication
+- Access tokens with configurable expiry
+- Refresh token support
+- Password hashing with bcrypt
+
+### Rate Limiting
+- Tiered rate limits (free: 100/hour, pro: 1000/hour, enterprise: unlimited)
+- Redis-backed rate limiter
+- Per-endpoint customization
+
+### Security Features
 - CORS configuration
-- Health check endpoints
-- Rate limiting ready
+- HTTPS redirect middleware (production)
+- SQL injection prevention (SQLAlchemy ORM)
+- Input validation (Pydantic)
+- Secret management via environment variables
 
-### 🚀 Performance & Caching
-- Redis caching layer
-- Async operations throughout
-- Database query optimization
-- Parallel API requests
-- Smart cache invalidation
-- Efficient data pagination
+## Background Tasks
 
----
+### Celery Workers
+- Scheduled scraping (hourly during market hours)
+- Stock price updates
+- Alert processing
+- Email sending
 
-## 🛠️ Tech Stack
-
-- **Framework**: FastAPI 0.104+ (async Python web framework)
-- **Database**: PostgreSQL 15 with SQLAlchemy 2.0 (async)
-- **Validation**: Pydantic v2
-- **Task Queue**: Celery + Redis
-- **Caching**: Redis
-- **AI**: Google Gemini 2.0 Flash, OpenAI GPT-4o-mini
-- **Market Data**: Yahoo Finance (yfinance), Alpha Vantage
-- **Scheduler**: APScheduler
-- **Monitoring**: Flower, Prometheus
-- **HTTP Client**: httpx (async)
-- **XML Parsing**: lxml, BeautifulSoup4
-- **Testing**: pytest (planned)
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Python 3.11+
-- PostgreSQL 15+ (or use Docker)
-- SEC EDGAR user agent (your name + email)
-
-### Installation
-
-**1. Navigate to backend directory**
-```bash
-cd backend
+### Task Configuration
+```python
+# Scraper runs every hour from 9 AM to 4 PM ET
+SCRAPER_SCHEDULE_HOURS = "9-16"
+SCRAPER_TIMEZONE = "America/New_York"
 ```
 
-**2. Create virtual environment**
-```bash
-python -m venv venv
-```
+## Environment Variables
 
-**3. Activate virtual environment**
-
-Windows:
-```bash
-venv\Scripts\activate
-```
-
-Mac/Linux:
-```bash
-source venv/bin/activate
-```
-
-**4. Install dependencies**
-```bash
-pip install -r requirements.txt
-```
-
-**5. Set up environment variables**
-
-Create a `.env` file in the backend directory:
+### Required
 ```env
 # Database
-DATABASE_URL=postgresql+asyncpg://tradesignal:tradesignal_dev@localhost:5432/tradesignal
+DATABASE_URL=postgresql://user:password@localhost:5432/tradesignal
 
-# SEC EDGAR (REQUIRED)
-SEC_USER_AGENT=YourName your.email@example.com
+# Redis
+REDIS_URL=redis://localhost:6379/0
 
-# Security
-JWT_SECRET=your-random-secret-key-change-this
-JWT_ALGORITHM=HS256
+# JWT
+SECRET_KEY=your-secret-key-min-32-chars
+ACCESS_TOKEN_EXPIRE_MINUTES=30
 
-# Application
-ENVIRONMENT=development
-DEBUG=true
+# Stripe
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRICE_ID_PRO=price_...
+STRIPE_PRICE_ID_ENTERPRISE=price_...
+
+# SEC API
+SEC_API_KEY=your-sec-api-key
+```
+
+### Optional
+```env
+# Feature Flags
+ENABLE_AI_INSIGHTS=true
+ENABLE_WEBHOOKS=true
+ENABLE_EMAIL_ALERTS=true
+ENABLE_PUSH_NOTIFICATIONS=true
+SCHEDULER_ENABLED=true
+
+# Logging
 LOG_LEVEL=INFO
+USE_JSON_LOGGING=false
 
-# Features
-ENABLE_AI_INSIGHTS=false
-ENABLE_WEBHOOKS=false
-ENABLE_EMAIL_ALERTS=false
+# CORS
+CORS_ORIGINS=http://localhost:3000,https://yourdomain.com
+
+# Rate Limiting
+RATE_LIMIT_FREE_TIER=100
+RATE_LIMIT_PRO_TIER=1000
 ```
 
-**6. Start PostgreSQL**
+## Development
 
-Using Docker:
+### Setup
 ```bash
-# From project root
-docker-compose up postgres -d
-```
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-Or use your own PostgreSQL instance.
-
-**7. Seed the database (optional)**
-```bash
-python -m app.seed_data
-```
-
-**8. Start the FastAPI server**
-```bash
-uvicorn app.main:app --reload
-```
-
-Server will run at: http://localhost:8000
-
----
-
-## 📖 API Documentation
-
-Once the server is running, access interactive API documentation:
-
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-- **OpenAPI JSON**: http://localhost:8000/openapi.json
-
----
-
-## 🔌 API Endpoints
-
-### Companies
-
-- `GET /api/v1/companies/` - List all companies (with pagination)
-- `GET /api/v1/companies/{ticker}` - Get company by ticker
-- `GET /api/v1/companies/{ticker}/insiders` - Get company's insiders
-- `GET /api/v1/companies/{ticker}/trades` - Get company's trades
-- `GET /api/v1/companies/stats` - Get company statistics
-- `POST /api/v1/companies/` - Create new company
-- `PUT /api/v1/companies/{ticker}` - Update company
-- `DELETE /api/v1/companies/{ticker}` - Delete company
-
-### Insiders
-
-- `GET /api/v1/insiders/` - List all insiders (with pagination)
-- `GET /api/v1/insiders/{id}` - Get insider by ID
-- `GET /api/v1/insiders/{id}/trades` - Get insider's trades
-- `GET /api/v1/insiders/{id}/activity` - Get insider's activity summary
-- `POST /api/v1/insiders/` - Create new insider
-- `PUT /api/v1/insiders/{id}` - Update insider
-- `DELETE /api/v1/insiders/{id}` - Delete insider
-
-### Trades
-
-- `GET /api/v1/trades/` - List all trades (with pagination & filters)
-- `GET /api/v1/trades/{id}` - Get trade by ID
-- `GET /api/v1/trades/recent` - Get recent trades (last 7 days)
-- `GET /api/v1/trades/stats` - Get trade statistics
-- `POST /api/v1/trades/` - Create new trade
-- `PUT /api/v1/trades/{id}` - Update trade
-- `DELETE /api/v1/trades/{id}` - Delete trade
-
-**Trade Filters:**
-- `ticker` - Filter by company ticker
-- `insider_id` - Filter by insider ID
-- `transaction_type` - Filter by BUY/SELL
-- `min_value` - Minimum transaction value
-- `max_value` - Maximum transaction value
-- `start_date` - Start date (YYYY-MM-DD)
-- `end_date` - End date (YYYY-MM-DD)
-
-### Scraper (Phase 2)
-
-- `GET /api/v1/scraper/test` - Test SEC API connectivity
-- `GET /api/v1/scraper/scrape/{ticker}` - Scrape trades by ticker
-- `POST /api/v1/scraper/scrape` - Scrape trades (with body params)
-
-**Scraper Parameters:**
-- `ticker` - Company ticker symbol (e.g., AAPL, TSLA)
-- `cik` - Company CIK number (optional, alternative to ticker)
-- `days_back` - Number of days to look back (default: 30)
-- `max_filings` - Maximum filings to process (default: 10)
-
----
-
-## 🧪 Testing API
-
-### Using Swagger UI (Recommended)
-
-1. Open http://localhost:8000/docs
-2. Expand any endpoint
-3. Click "Try it out"
-4. Fill in parameters
-5. Click "Execute"
-
-### Using cURL
-
-**Get recent trades:**
-```bash
-curl http://localhost:8000/api/v1/trades/recent
-```
-
-**Get company by ticker:**
-```bash
-curl http://localhost:8000/api/v1/companies/AAPL
-```
-
-**Filter trades:**
-```bash
-curl "http://localhost:8000/api/v1/trades/?ticker=AAPL&transaction_type=BUY"
-```
-
-**Scrape Apple trades:**
-```bash
-curl "http://localhost:8000/api/v1/scraper/scrape/AAPL?days_back=300&max_filings=1"
-```
-
-**Get trade statistics:**
-```bash
-curl http://localhost:8000/api/v1/trades/stats
-```
-
----
-
-## 🗄️ Database
-
-### Schema
-
-**Companies Table:**
-- `id` (PK)
-- `ticker` (UNIQUE, indexed)
-- `name`
-- `cik` (UNIQUE, indexed)
-- `sector`
-- `industry`
-- `market_cap`
-- `website`
-- `created_at`, `updated_at`
-
-**Insiders Table:**
-- `id` (PK)
-- `name`
-- `title`
-- `company_id` (FK → companies)
-- `is_director`, `is_officer`, `is_ten_percent_owner`, `is_other`
-- `created_at`, `updated_at`
-
-**Trades Table:**
-- `id` (PK)
-- `insider_id` (FK → insiders)
-- `company_id` (FK → companies)
-- `transaction_date`, `filing_date`
-- `transaction_type` (BUY/SELL)
-- `transaction_code` (P, S, A, M, etc.)
-- `shares`, `price_per_share`, `total_value`
-- `shares_owned_after`
-- `ownership_type` (Direct/Indirect)
-- `derivative_transaction` (boolean)
-- `sec_filing_url`, `form_type`
-- `created_at`, `updated_at`
-
-### Database Operations
-
-**Connect to PostgreSQL (Docker):**
-```bash
-docker exec -it tradesignal-db psql -U tradesignal -d tradesignal
-```
-
-**Useful SQL queries:**
-```sql
--- List tables
-\dt
-
--- Count records
-SELECT COUNT(*) FROM companies;
-SELECT COUNT(*) FROM insiders;
-SELECT COUNT(*) FROM trades;
-
--- View recent trades
-SELECT * FROM trades ORDER BY transaction_date DESC LIMIT 10;
-
--- Exit
-\q
-```
-
----
-
-## 🔧 Development
-
-### Project Configuration
-
-Configuration is managed via `app/config.py` using Pydantic Settings. All settings can be overridden with environment variables.
-
-**Key settings:**
-- `DATABASE_URL` - PostgreSQL connection string
-- `SEC_USER_AGENT` - Required by SEC EDGAR API
-- `ENABLE_AI_INSIGHTS` - Toggle AI features
-- `ENABLE_WEBHOOKS` - Toggle webhook notifications
-- `LOG_LEVEL` - Logging verbosity (DEBUG, INFO, WARNING, ERROR)
-
-### Adding New Endpoints
-
-1. Create route function in `app/routers/`
-2. Add service logic in `app/services/`
-3. Define schemas in `app/schemas/`
-4. Register router in `app/main.py`
-
-Example:
-```python
-# app/routers/example.py
-from fastapi import APIRouter
-
-router = APIRouter()
-
-@router.get("/example")
-async def get_example():
-    return {"message": "Hello World"}
-
-# app/main.py
-from app.routers import example
-app.include_router(example.router, prefix="/api/v1")
-```
-
-### Database Migrations (Future)
-
-Alembic migrations are planned but not yet implemented. Currently using raw SQL schema from project root.
-
----
-
-## 🐛 Troubleshooting
-
-### Issue: ModuleNotFoundError
-
-**Solution:**
-```bash
-cd backend
-venv\Scripts\activate  # or source venv/bin/activate
+# Install dependencies
 pip install -r requirements.txt
+
+# Copy environment file
+cp .env.example .env
+
+# Edit .env with your configuration
+nano .env
 ```
 
-### Issue: Database connection error
-
-**Solution:**
+### Running Locally
 ```bash
-# Check if PostgreSQL is running
-docker ps
+# Run FastAPI server
+uvicorn app.main:app --reload --port 8000
 
-# Start PostgreSQL
-docker-compose up postgres -d
+# Run Celery worker (separate terminal)
+celery -A app.core.celery_app worker --loglevel=info
 
-# Verify connection string in .env
-DATABASE_URL=postgresql+asyncpg://tradesignal:tradesignal_dev@localhost:5432/tradesignal
+# Run Celery beat scheduler (separate terminal)
+celery -A app.core.celery_app beat --loglevel=info
 ```
 
-### Issue: Port 8000 already in use
-
-**Solution:**
-
-Windows:
+### Database Migrations
 ```bash
-netstat -ano | findstr :8000
-taskkill /PID <PID> /F
+# Create migration
+alembic revision --autogenerate -m "description"
+
+# Run migrations
+alembic upgrade head
+
+# Rollback migration
+alembic downgrade -1
 ```
 
-Mac/Linux:
+## Testing
+
+### Run Tests
 ```bash
-lsof -i :8000
-kill -9 <PID>
+# All tests
+pytest
+
+# Specific test file
+pytest tests/test_trades_api.py
+
+# With coverage
+pytest --cov=app --cov-report=html
+
+# Verbose output
+pytest -v
 ```
 
-Or use a different port:
-```bash
-uvicorn app.main:app --reload --port 8001
+### Test Structure
+```
+tests/
+├── conftest.py           # Fixtures
+├── test_trades_api.py
+├── test_tier_service.py
+├── test_form4_parser.py
+└── ...
 ```
 
-### Issue: SEC scraper returns 0 filings
+## Deployment
 
-**Possible causes:**
-1. Invalid ticker/CIK
-2. No recent Form 4 filings for that company
-3. SEC API rate limiting (max 10 req/sec)
-4. Invalid SEC_USER_AGENT in .env
-
-**Solution:**
-```bash
-# Test SEC connectivity
-curl http://localhost:8000/api/v1/scraper/test
-
-# Check logs for errors
-# (logs appear in terminal where uvicorn is running)
-```
-
----
-
-## 📦 Dependencies
-
-Key packages (see `requirements.txt` for full list):
-
-- `fastapi` - Web framework
-- `uvicorn[standard]` - ASGI server
-- `sqlalchemy[asyncio]` - ORM
-- `asyncpg` - Async PostgreSQL driver
-- `pydantic[email]` - Data validation
-- `pydantic-settings` - Settings management
-- `httpx` - Async HTTP client
-- `lxml` - XML parsing
-- `beautifulsoup4` - HTML/XML parsing
-- `python-dotenv` - Environment variable management
-- `python-multipart` - Form data support
-
----
-
-## 🔒 Security
-
-- Environment variables stored in `.env` (not committed to git)
-- SQL injection protection via SQLAlchemy parameterized queries
-- JWT authentication (planned)
-- CORS configured for frontend domain
-- Rate limiting (planned)
-
----
-
-## 📊 Logging
-
-Logs are output to stdout in JSON format (in production) or colored format (in development).
-
-Log levels:
-- `DEBUG` - Detailed information for debugging
-- `INFO` - General informational messages
-- `WARNING` - Warning messages
-- `ERROR` - Error messages
-
-Configure via `LOG_LEVEL` environment variable.
-
----
-
-## 🚀 Docker Deployment
-
-Build and run with Docker:
-
+### Docker
 ```bash
 # Build image
 docker build -t tradesignal-backend .
 
 # Run container
-docker run -p 8000:8000 \
-  -e DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/db \
-  -e SEC_USER_AGENT="Name email@example.com" \
-  tradesignal-backend
+docker run -p 8000:8000 --env-file .env tradesignal-backend
 ```
 
-Or use docker-compose (recommended):
-
+### Docker Compose
 ```bash
-# From project root
-docker-compose up --build
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f backend
+
+# Restart service
+docker-compose restart backend
 ```
 
----
+### Production Checklist
+- [ ] Set `DEBUG=false`
+- [ ] Use strong `SECRET_KEY`
+- [ ] Configure production database
+- [ ] Set up Redis for production
+- [ ] Enable HTTPS redirect
+- [ ] Configure CORS origins
+- [ ] Set up logging aggregation
+- [ ] Enable Prometheus monitoring
+- [ ] Configure backups
+- [ ] Set up health checks
+- [ ] Use environment-specific configs
 
-## 📝 Notes
+## Monitoring
 
-- All timestamps stored in UTC
-- Database uses async SQLAlchemy 2.0
-- SEC EDGAR requires proper User-Agent header
-- SEC rate limit: 10 requests/second
-- Form 4 filings sometimes have errors - validation is important
-- Scraper auto-creates companies and insiders if not found
+### Prometheus Metrics
+Available at `/metrics`:
+- Request count and latency
+- Database connection pool stats
+- Celery task metrics
+- Custom business metrics
 
----
+### Logging
+- Structured JSON logging in production
+- Human-readable logs in development
+- Log levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
 
-## 📞 Support
+### Health Checks
+- Database connectivity
+- Redis connectivity
+- Disk space
+- Memory usage
+- API endpoint: `/api/v1/health`
 
-For issues or questions:
-- Check `/docs` endpoint for API documentation
-- Review logs in terminal
-- Refer to main project [README](../README.md)
+## Troubleshooting
 
----
+### Database Connection Issues
+```bash
+# Check PostgreSQL is running
+docker-compose ps postgres
 
-**Built with FastAPI and PostgreSQL | Part of TradeSignal Platform**
+# Check DATABASE_URL is correct
+echo $DATABASE_URL
+```
+
+### Redis Connection Issues
+```bash
+# Check Redis is running
+docker-compose ps redis
+
+# Test Redis connection
+redis-cli ping
+```
+
+### Scraper Not Running
+```bash
+# Check scheduler is enabled
+echo $SCHEDULER_ENABLED  # should be 'true'
+
+# Check Celery beat is running
+celery -A app.core.celery_app inspect active
+```
+
+## Contributing
+
+1. Follow PEP 8 style guide
+2. Add type hints to all functions
+3. Write docstrings for public functions
+4. Add unit tests for new features
+5. Update this README for significant changes
+
+## License
+
+Proprietary - All rights reserved
+
+## Support
+
+For issues and questions:
+- GitHub Issues: Create an issue
+- Email: dev@tradesignal.com
+- Docs: [Main README](../README.md)

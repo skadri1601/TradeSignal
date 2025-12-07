@@ -37,8 +37,8 @@ def setup_json_logging(level: str = "INFO") -> logging.Logger:
 
     # JSON formatter with custom format
     formatter = jsonlogger.JsonFormatter(
-        fmt='%(asctime)s %(name)s %(levelname)s %(message)s %(pathname)s %(lineno)d',
-        datefmt='%Y-%m-%d %H:%M:%S'
+        fmt="%(asctime)s %(name)s %(levelname)s %(message)s %(pathname)s %(lineno)d",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
 
     log_handler.setFormatter(formatter)
@@ -50,7 +50,7 @@ def setup_json_logging(level: str = "INFO") -> logging.Logger:
 
     logger.info(
         "Structured JSON logging initialized",
-        extra={"log_level": level, "format": "json"}
+        extra={"log_level": level, "format": "json"},
     )
 
     return logger

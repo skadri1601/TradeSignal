@@ -12,14 +12,17 @@ from slowapi.util import get_remote_address
 
 from app.database import get_db
 from app.services.ai_service import AIService
+from app.services.tier_service import TierService
 from app.schemas.ai import (
     CompanyAnalysisResponse,
     DailySummaryResponse,
     ChatQuestion,
     ChatResponse,
-    TradingSignalsResponse
+    TradingSignalsResponse,
 )
 from app.config import settings
+from app.models.user import User
+from app.core.security import get_current_active_user
 
 logger = logging.getLogger(__name__)
 
@@ -34,12 +37,12 @@ def check_ai_availability():
     if not settings.enable_ai_insights:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="AI insights feature is disabled. Set ENABLE_AI_INSIGHTS=true in .env"
+            detail="AI insights feature is disabled. Set ENABLE_AI_INSIGHTS=true in .env",
         )
     if not settings.gemini_api_key and not settings.openai_api_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="No AI provider API key configured. Set GEMINI_API_KEY or OPENAI_API_KEY in .env"
+            detail="No AI provider API key configured. Set GEMINI_API_KEY or OPENAI_API_KEY in .env",
         )
 
 
@@ -47,14 +50,15 @@ def check_ai_availability():
     "/analyze/{ticker}",
     response_model=CompanyAnalysisResponse,
     summary="Analyze company insider trading",
-    dependencies=[Depends(check_ai_availability)]
+    dependencies=[Depends(check_ai_availability)],
 )
 @limiter.limit("5/hour")  # AI is expensive, limit to 5 requests per hour
 async def analyze_company(
     request: Request,
     ticker: str,
     days_back: int = Query(30, ge=1, le=365, description="Days to analyze"),
-    db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Get AI-powered analysis of insider trading for a specific company.
@@ -72,19 +76,24 @@ async def analyze_company(
     **Returns:**
     - AI-generated analysis with sentiment and insights
     """
+    # Check tier limit
+    await TierService.check_ai_limit(current_user.id, db)
+
     service = AIService(db)
     result = await service.analyze_company(ticker.upper(), days_back)
+
+    # Increment usage counter
+    await TierService.increment_ai_usage(current_user.id, db)
 
     if not result:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="AI service unavailable"
+            detail="AI service unavailable",
         )
 
     if "error" in result and result.get("ticker") is None:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=result["error"]
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=result["error"]
         )
 
     return result
@@ -94,10 +103,14 @@ async def analyze_company(
     "/summary/daily",
     response_model=DailySummaryResponse,
     summary="Get daily insider trading summary",
-    dependencies=[Depends(check_ai_availability)]
+    dependencies=[Depends(check_ai_availability)],
 )
 @limiter.limit("10/hour")
-async def get_daily_summary(request: Request, db: AsyncSession = Depends(get_db)):
+async def get_daily_summary(
+    request: Request,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """
     Get AI-generated summary of top insider trades from the last 24 hours.
 
@@ -111,19 +124,24 @@ async def get_daily_summary(request: Request, db: AsyncSession = Depends(get_db)
     **Returns:**
     - AI-written summary with top trades
     """
+    # Check tier limit
+    await TierService.check_ai_limit(current_user.id, db)
+
     service = AIService(db)
     result = await service.generate_daily_summary()
+
+    # Increment usage counter
+    await TierService.increment_ai_usage(current_user.id, db)
 
     if not result:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="AI service unavailable"
+            detail="AI service unavailable",
         )
 
     if "error" in result:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=result["error"]
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=result["error"]
         )
 
     return result
@@ -133,13 +151,14 @@ async def get_daily_summary(request: Request, db: AsyncSession = Depends(get_db)
     "/ask",
     response_model=ChatResponse,
     summary="Ask AI about insider trades",
-    dependencies=[Depends(check_ai_availability)]
+    dependencies=[Depends(check_ai_availability)],
 )
 @limiter.limit("20/hour")
 async def ask_question(
     request: Request,
     question_data: ChatQuestion,
-    db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Ask natural language questions about insider trading data.
@@ -156,19 +175,24 @@ async def ask_question(
     **Returns:**
     - AI-generated answer to your question
     """
+    # Check tier limit
+    await TierService.check_ai_limit(current_user.id, db)
+
     service = AIService(db)
     result = await service.ask_question(question_data.question)
+
+    # Increment usage counter
+    await TierService.increment_ai_usage(current_user.id, db)
 
     if not result:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="AI service unavailable"
+            detail="AI service unavailable",
         )
 
     if "error" in result:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=result["error"]
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=result["error"]
         )
 
     return result
@@ -178,10 +202,14 @@ async def ask_question(
     "/signals",
     response_model=TradingSignalsResponse,
     summary="Get AI trading signals",
-    dependencies=[Depends(check_ai_availability)]
+    dependencies=[Depends(check_ai_availability)],
 )
 @limiter.limit("10/hour")
-async def get_trading_signals(request: Request, db: AsyncSession = Depends(get_db)):
+async def get_trading_signals(
+    request: Request,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """
     Get AI-generated trading signals based on recent insider activity.
 
@@ -205,28 +233,30 @@ async def get_trading_signals(request: Request, db: AsyncSession = Depends(get_d
     **Returns:**
     - List of trading signals for companies with high activity
     """
+    # Check tier limit
+    await TierService.check_ai_limit(current_user.id, db)
+
     service = AIService(db)
     result = await service.generate_trading_signals()
+
+    # Increment usage counter
+    await TierService.increment_ai_usage(current_user.id, db)
 
     if not result:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="AI service unavailable"
+            detail="AI service unavailable",
         )
 
     if "error" in result:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=result["error"]
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=result["error"]
         )
 
     return result
 
 
-@router.get(
-    "/status",
-    summary="Check AI service status"
-)
+@router.get("/status", summary="Check AI service status")
 @limiter.limit("30/minute")
 async def get_ai_status(request: Request):
     """
@@ -242,12 +272,12 @@ async def get_ai_status(request: Request):
         "primary": settings.ai_provider,
         "gemini": {
             "configured": gemini_configured,
-            "model": settings.gemini_model if gemini_configured else None
+            "model": settings.gemini_model if gemini_configured else None,
         },
         "openai": {
             "configured": openai_configured,
-            "model": settings.openai_model if openai_configured else None
-        }
+            "model": settings.openai_model if openai_configured else None,
+        },
     }
 
     available = settings.enable_ai_insights and (gemini_configured or openai_configured)
@@ -256,5 +286,5 @@ async def get_ai_status(request: Request):
         "enabled": settings.enable_ai_insights,
         "available": available,
         "providers": provider_status,
-        "active_provider": settings.ai_provider if available else None
+        "active_provider": settings.ai_provider if available else None,
     }

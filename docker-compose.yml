@@ -9,8 +9,6 @@ services:
       POSTGRES_PASSWORD: "tradesignal_dev"
       POSTGRES_DB: "tradesignal"
       POSTGRES_HOST_AUTH_METHOD: "scram-sha-256"
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -22,8 +20,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: tradesignal-redis
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
     command: ["redis-server", "--appendonly", "yes"]
@@ -62,12 +58,10 @@ services:
       - SCRAPER_COOLDOWN_HOURS=23
       - SCRAPER_DAYS_BACK=7
       - SCRAPER_MAX_FILINGS=10
-      - CORS_ORIGINS=http://localhost:5174,http://localhost:5173,http://localhost:5175
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:5174,http://localhost:5175
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - PROMETHEUS_ENABLED=true
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
     dns:
       - 8.8.8.8
       - 8.8.4.4
@@ -83,60 +77,11 @@ services:
       - ./frontend:/app
       - /app/node_modules
     ports:
-      - "5174:5174"
+      - "3000:5173"
     environment:
       - VITE_API_URL=http://localhost:8000
     depends_on:
       - backend
-
-  # Phase 7: Celery worker for background tasks
-  celery-worker:
-    build: ./backend
-    container_name: tradesignal-celery-worker
-    command: celery -A app.core.celery_app worker --loglevel=info
-    volumes:
-      - ./backend:/app
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://tradesignal:tradesignal_dev@postgres:5432/tradesignal
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-    depends_on:
-      - redis
-      - postgres
-    restart: unless-stopped
-
-  # Phase 7: Celery beat for scheduled tasks
-  celery-beat:
-    build: ./backend
-    container_name: tradesignal-celery-beat
-    command: celery -A app.core.celery_app beat --loglevel=info
-    volumes:
-      - ./backend:/app
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://tradesignal:tradesignal_dev@postgres:5432/tradesignal
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-    depends_on:
-      - redis
-      - postgres
-    restart: unless-stopped
-
-  # Phase 7: Flower for Celery monitoring
-  flower:
-    build: ./backend
-    container_name: tradesignal-flower
-    command: celery -A app.core.celery_app flower --port=5555
-    ports:
-      - "5555:5555"
-    environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-    depends_on:
-      - redis
-      - celery-worker
-    restart: unless-stopped
 
 volumes:
   postgres_data:

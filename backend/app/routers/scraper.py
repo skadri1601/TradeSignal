@@ -40,8 +40,7 @@ class ScrapeResponse(BaseModel):
 
 @router.post("/scrape", response_model=ScrapeResponse, status_code=200)
 async def scrape_company_filings(
-    request: ScrapeRequest,
-    db: AsyncSession = Depends(get_db)
+    request: ScrapeRequest, db: AsyncSession = Depends(get_db)
 ):
     """
     Scrape Form 4 filings for a company.
@@ -70,10 +69,7 @@ async def scrape_company_filings(
     **Note:** SEC rate limits to 10 requests/second. Large scrapes may take time.
     """
     if not request.ticker and not request.cik:
-        raise HTTPException(
-            status_code=400,
-            detail="Must provide either ticker or CIK"
-        )
+        raise HTTPException(status_code=400, detail="Must provide either ticker or CIK")
 
     logger.info(
         f"Scrape request: {request.ticker or request.cik} "
@@ -87,7 +83,7 @@ async def scrape_company_filings(
             ticker=request.ticker,
             cik=request.cik,
             days_back=request.days_back,
-            max_filings=request.max_filings
+            max_filings=request.max_filings,
         )
 
         return ScrapeResponse(**result)
@@ -97,10 +93,7 @@ async def scrape_company_filings(
 
     except Exception as e:
         logger.error(f"Scrape failed: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Scraping failed: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Scraping failed: {str(e)}")
 
 
 @router.get("/scrape/{ticker}", response_model=ScrapeResponse)
@@ -108,7 +101,7 @@ async def scrape_by_ticker(
     ticker: str,
     days_back: int = Query(30, ge=1, le=365, description="Days to look back"),
     max_filings: int = Query(100, ge=1, le=100, description="Max filings"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Quick scrape by ticker (GET endpoint).
@@ -122,20 +115,14 @@ async def scrape_by_ticker(
     try:
         scraper = ScraperService()
         result = await scraper.scrape_company_trades(
-            db=db,
-            ticker=ticker,
-            days_back=days_back,
-            max_filings=max_filings
+            db=db, ticker=ticker, days_back=days_back, max_filings=max_filings
         )
 
         return ScrapeResponse(**result)
 
     except Exception as e:
         logger.error(f"Scrape failed: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Scraping failed: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Scraping failed: {str(e)}")
 
 
 @router.get("/test", response_model=dict)
@@ -158,18 +145,15 @@ async def test_sec_connection():
             "success": True,
             "message": "SEC client configured correctly",
             "user_agent": client.user_agent,
-            "rate_limit": f"{client.MAX_REQUESTS_PER_SECOND} req/sec"
+            "rate_limit": f"{client.MAX_REQUESTS_PER_SECOND} req/sec",
         }
 
     except ValueError as e:
         return {
             "success": False,
             "error": str(e),
-            "message": "SEC_USER_AGENT not configured. Set in .env file."
+            "message": "SEC_USER_AGENT not configured. Set in .env file.",
         }
 
     except Exception as e:
-        return {
-            "success": False,
-            "error": str(e)
-        }
+        return {"success": False, "error": str(e)}

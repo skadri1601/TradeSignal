@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import db_manager
 from app.models import ScrapeHistory, Company
 from app.services.scraper_service import ScraperService
+from app.services.congressional_scraper import CongressionalScraperService
 from app.config import settings
 from sqlalchemy import select
 
@@ -36,12 +37,13 @@ class SchedulerService:
         self.scheduler = AsyncIOScheduler(
             timezone=settings.scraper_timezone,
             job_defaults={
-                'coalesce': True,  # Combine missed runs
-                'max_instances': 1,  # Only one instance of each job at a time
-                'misfire_grace_time': 3600,  # Allow 1 hour grace period for missed jobs
-            }
+                "coalesce": True,  # Combine missed runs
+                "max_instances": 1,  # Only one instance of each job at a time
+                "misfire_grace_time": 3600,  # Allow 1 hour grace period for missed jobs
+            },
         )
         self.scraper_service = ScraperService()
+        self.congressional_scraper = CongressionalScraperService()
         self._running = False
 
     async def start(self) -> None:
@@ -54,15 +56,39 @@ class SchedulerService:
             if settings.scheduler_enabled:
                 self.scheduler.add_job(
                     self.scrape_all_companies,
-                    'cron',
+                    "cron",
                     hour=settings.scraper_schedule_hours,
-                    id='periodic_scrape_all',
-                    name='Periodic Scrape All Companies',
-                    replace_existing=True
+                    id="periodic_scrape_all",
+                    name="Periodic Scrape All Companies",
+                    replace_existing=True,
                 )
-                logger.info(f"Scheduler started with periodic scraping at hours: {settings.scraper_schedule_hours} ({settings.scraper_timezone})")
+                logger.info(
+                    f"Scheduler started with periodic scraping at hours: "
+                    f"{settings.scraper_schedule_hours} ({settings.scraper_timezone})"
+                )
             else:
-                logger.info("Scheduler started but periodic scraping is disabled (SCHEDULER_ENABLED=false)")
+                logger.info(
+                    "Scheduler started but periodic scraping is disabled (SCHEDULER_ENABLED=false)"
+                )
+
+            # Add congressional scraping job (every 6 hours)
+            if settings.congressional_scraper_enabled:
+                self.scheduler.add_job(
+                    self.scrape_congressional_trades,
+                    "cron",
+                    hour=settings.congressional_scrape_hours,
+                    id="periodic_scrape_congressional",
+                    name="Periodic Congressional Trade Scrape",
+                    replace_existing=True,
+                )
+                logger.info(
+                    f"Congressional scraper scheduled at hours: "
+                    f"{settings.congressional_scrape_hours} ({settings.scraper_timezone})"
+                )
+            else:
+                logger.info(
+                    "Congressional scraper disabled (CONGRESSIONAL_SCRAPER_ENABLED=false)"
+                )
 
     async def stop(self) -> None:
         """Stop the scheduler."""
@@ -81,35 +107,57 @@ class SchedulerService:
 
     async def scrape_all_companies(self) -> None:
         """
-        Scrape all companies from watchlist file.
+        Scrape all companies from watchlist file or database.
 
-        Called by scheduled job. Iterates through companies in watchlist and scrapes
+        Called by scheduled job. Iterates through companies and scrapes
         recent Form 4 filings while respecting rate limits and last scrape times.
         """
+        logger.info("=" * 80)
         logger.info("Starting scheduled scrape of all companies")
+        logger.info("=" * 80)
 
-        # Load companies from watchlist file
+        # Try to load companies from watchlist file first
         import os
-        watchlist_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'watchlist_companies.txt')
+
+        watchlist_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "watchlist_companies.txt"
+        )
 
         tickers = []
         try:
-            with open(watchlist_path, 'r') as f:
+            with open(watchlist_path, "r") as f:
                 for line in f:
                     line = line.strip()
                     # Skip comments and empty lines
-                    if line and not line.startswith('#'):
+                    if line and not line.startswith("#"):
                         tickers.append(line)
-            logger.info(f"Loaded {len(tickers)} companies from watchlist")
+            logger.info(f"Loaded {len(tickers)} companies from watchlist file")
         except FileNotFoundError:
-            logger.error(f"Watchlist file not found at {watchlist_path}")
-            return
+            logger.warning(
+                f"Watchlist file not found at {watchlist_path}, trying database..."
+            )
+            # Fallback to database if watchlist doesn't exist
+            async with db_manager.get_session() as db:
+                result = await db.execute(select(Company))
+                companies = result.scalars().all()
+                tickers = [company.ticker for company in companies if company.ticker]
+                logger.info(f"Loaded {len(tickers)} companies from database")
         except Exception as e:
-            logger.error(f"Error reading watchlist file: {e}")
-            return
+            logger.error(f"Error reading watchlist file: {e}, trying database...")
+            # Fallback to database on error
+            async with db_manager.get_session() as db:
+                result = await db.execute(select(Company))
+                companies = result.scalars().all()
+                tickers = [company.ticker for company in companies if company.ticker]
+                logger.info(f"Loaded {len(tickers)} companies from database")
 
         if not tickers:
-            logger.warning("No companies found in watchlist")
+            logger.warning(
+                "No companies found in watchlist or database. Scraping cannot proceed."
+            )
+            logger.warning(
+                "Please seed companies using the seed script or add companies to the database."
+            )
             return
 
         async with db_manager.get_session() as db:
@@ -127,21 +175,26 @@ class SchedulerService:
                         # Check if scraped recently (skip if within cooldown period)
                         last_scrape = await self._get_last_successful_scrape(db, ticker)
                         cooldown = timedelta(hours=settings.scraper_cooldown_hours)
-                        if last_scrape and (datetime.now() - last_scrape.completed_at) < cooldown:
-                            logger.info(f"Skipping {ticker} - scraped {last_scrape.completed_at}")
+                        if (
+                            last_scrape
+                            and (datetime.now() - last_scrape.completed_at) < cooldown
+                        ):
+                            logger.info(
+                                f"Skipping {ticker} - scraped {last_scrape.completed_at}"
+                            )
                             continue
 
                         # Scrape this company with configured parameters
                         result = await self.scrape_company(
                             ticker,
                             days_back=settings.scraper_days_back,
-                            max_filings=settings.scraper_max_filings
+                            max_filings=settings.scraper_max_filings,
                         )
 
-                        if result['status'] == 'success':
+                        if result["status"] == "success":
                             successful += 1
-                            total_filings += result['filings_found']
-                            total_trades += result['trades_created']
+                            total_filings += result["filings_found"]
+                            total_trades += result["trades_created"]
                         else:
                             failed += 1
 
@@ -158,10 +211,7 @@ class SchedulerService:
                 logger.error(f"Error in scrape_all_companies: {e}", exc_info=True)
 
     async def scrape_company(
-        self,
-        ticker: str,
-        days_back: int = 7,
-        max_filings: int = 10
+        self, ticker: str, days_back: int = 7, max_filings: int = 10
     ) -> dict:
         """
         Scrape a specific company and log the result.
@@ -179,9 +229,7 @@ class SchedulerService:
         # Create scrape history record
         async with db_manager.get_session() as db:
             history = ScrapeHistory(
-                ticker=ticker,
-                started_at=start_time,
-                status='running'
+                ticker=ticker, started_at=start_time, status="running"
             )
             db.add(history)
             await db.commit()
@@ -196,7 +244,7 @@ class SchedulerService:
                     db=scrape_db,
                     ticker=ticker,
                     days_back=days_back,
-                    max_filings=max_filings
+                    max_filings=max_filings,
                 )
 
             # Calculate duration
@@ -208,9 +256,9 @@ class SchedulerService:
                 result_history = await db.get(ScrapeHistory, history_id)
                 if result_history:
                     result_history.completed_at = end_time
-                    result_history.status = 'success'
-                    result_history.filings_found = result.get('filings_processed', 0)
-                    result_history.trades_created = result.get('trades_created', 0)
+                    result_history.status = "success"
+                    result_history.filings_found = result.get("filings_processed", 0)
+                    result_history.trades_created = result.get("trades_created", 0)
                     result_history.duration_seconds = duration
                     await db.commit()
 
@@ -220,12 +268,12 @@ class SchedulerService:
             )
 
             return {
-                'status': 'success',
-                'ticker': ticker,
-                'filings_found': result.get('filings_processed', 0),
-                'trades_created': result.get('trades_created', 0),
-                'duration_seconds': duration,
-                'error_message': None
+                "status": "success",
+                "ticker": ticker,
+                "filings_found": result.get("filings_processed", 0),
+                "trades_created": result.get("trades_created", 0),
+                "duration_seconds": duration,
+                "error_message": None,
             }
 
         except Exception as e:
@@ -238,7 +286,7 @@ class SchedulerService:
                 result_history = await db.get(ScrapeHistory, history_id)
                 if result_history:
                     result_history.completed_at = end_time
-                    result_history.status = 'failed'
+                    result_history.status = "failed"
                     result_history.error_message = error_msg
                     result_history.duration_seconds = duration
                     await db.commit()
@@ -246,12 +294,12 @@ class SchedulerService:
             logger.error(f"Failed to scrape {ticker}: {error_msg}")
 
             return {
-                'status': 'failed',
-                'ticker': ticker,
-                'filings_found': 0,
-                'trades_created': 0,
-                'duration_seconds': duration,
-                'error_message': error_msg
+                "status": "failed",
+                "ticker": ticker,
+                "filings_found": 0,
+                "trades_created": 0,
+                "duration_seconds": duration,
+                "error_message": error_msg,
             }
 
     async def trigger_manual_scrape_all(self) -> dict:
@@ -274,12 +322,14 @@ class SchedulerService:
 
             for company in companies:
                 try:
-                    result = await self.scrape_company(company.ticker, days_back=7, max_filings=10)
+                    result = await self.scrape_company(
+                        company.ticker, days_back=7, max_filings=10
+                    )
 
-                    if result['status'] == 'success':
+                    if result["status"] == "success":
                         successful += 1
-                        total_filings += result['filings_found']
-                        total_trades += result['trades_created']
+                        total_filings += result["filings_found"]
+                        total_trades += result["trades_created"]
                     else:
                         failed += 1
 
@@ -288,26 +338,47 @@ class SchedulerService:
                     failed += 1
 
         return {
-            'companies_scraped': successful,
-            'companies_failed': failed,
-            'total_filings': total_filings,
-            'total_trades': total_trades
+            "companies_scraped": successful,
+            "companies_failed": failed,
+            "total_filings": total_filings,
+            "total_trades": total_trades,
         }
 
     async def _get_last_successful_scrape(
-        self,
-        db: AsyncSession,
-        ticker: str
+        self, db: AsyncSession, ticker: str
     ) -> Optional[ScrapeHistory]:
         """Get the most recent successful scrape for a ticker."""
         result = await db.execute(
             select(ScrapeHistory)
             .where(ScrapeHistory.ticker == ticker)
-            .where(ScrapeHistory.status == 'success')
+            .where(ScrapeHistory.status == "success")
             .order_by(ScrapeHistory.completed_at.desc())
             .limit(1)
         )
         return result.scalar_one_or_none()
+
+    async def scrape_congressional_trades(self) -> None:
+        """
+        Scrape congressional trades from Finnhub API.
+
+        Called by scheduled job (every 6 hours).
+        """
+        logger.info("Starting scheduled congressional trade scrape")
+
+        async with db_manager.get_session() as db:
+            try:
+                result = await self.congressional_scraper.scrape_congressional_trades(
+                    db=db, days_back=settings.congressional_scrape_days_back
+                )
+
+                logger.info(
+                    f"Congressional scrape complete: "
+                    f"{result.get('trades_created', 0)} trades created, "
+                    f"{result.get('trades_processed', 0)} processed"
+                )
+
+            except Exception as e:
+                logger.error(f"Error during scheduled congressional scrape: {e}")
 
 
 # Global scheduler instance

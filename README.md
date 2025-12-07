@@ -1,358 +1,278 @@
-# TradeSignal 📊
+# TradeSignal
 
-> Track insider trades and political stock transactions in real-time. Monitor SEC filings, analyze patterns, and get AI-powered insights on market-moving trades.
+> Real-time insider trading intelligence platform for tracking SEC Form 4 filings, congressional trades, and market-moving transactions with AI-powered insights.
 
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
-[![React 18](https://img.shields.io/badge/react-18+-blue.svg)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/typescript-5+-blue.svg)](https://www.typescriptlang.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+## Overview
 
-![TradeSignal Demo](docs/demo.gif)
-<!-- Add demo screenshot/gif later -->
+TradeSignal is a comprehensive financial intelligence platform that aggregates and analyzes insider trading activity, congressional stock transactions, and market data to help users make informed investment decisions. Built with modern technologies and real-time data processing.
 
-## 📊 Current Status
-
-**✅ FULLY OPERATIONAL** - All core features implemented and deployed via Docker
-
-- **109+ Companies** actively tracked with hourly automated scraping
-- **Real-time Data** via WebSocket connections and 15-second market updates
-- **AI Integration** with Google Gemini 2.0 Flash for insights and chatbot
-- **Multi-channel Alerts** with webhooks, email, and browser push notifications
-- **Live Market Data** from Yahoo Finance with intelligent caching
-- **8 Database Models** with full CRUD operations and pagination
-- **60+ API Endpoints** documented with interactive Swagger UI
-- **Celery Background Tasks** for automated scraping and alerts
-- **Docker Deployment** with PostgreSQL, Redis, Celery, Flower, and monitoring
-
-**Access Your TradeSignal Instance:**
-- Frontend Dashboard: http://localhost:5174
-- Backend API: http://localhost:8000
-- API Documentation: http://localhost:8000/docs
-- Celery Flower: http://localhost:5555
-
----
-
-## 🚀 Features
-
-- **📡 Real-Time SEC Monitoring**: Track Form 4 insider trading filings within minutes of publication
-- **📊 Live Market Overview**: Real-time stock prices for 109+ companies with 15-second auto-refresh
-- **🤖 AI-Powered Insights**: Google Gemini 2.0 Flash analysis with daily summaries and trading signals
-- **🔔 Smart Alerts**: Multi-channel notifications (webhooks, email, browser push) with custom filters
-- **⚡ Real-Time Dashboard**: WebSocket-powered live updates with trade streaming
-- **🎯 Advanced Filtering**: Search by ticker, insider role, trade value, transaction type
-- **📈 Market Analytics**: Live top gainers/losers, insider activity patterns, buy/sell ratios
-- **🔄 Auto-Scraping**: Hourly automated SEC filing scraping for 109+ companies
-- **💬 AI Chatbot**: Interactive Q&A about insider trading with real-time data access
-
-## 🎯 Use Cases
-
-- **Retail Investors**: Follow smart money and identify investment opportunities
-- **Financial Analysts**: Research insider trading patterns and sentiment
-- **Compliance Teams**: Monitor regulatory filings for red flags
-- **Academic Research**: Study market efficiency and insider behavior
-- **News/Media**: Track and report on significant insider activity
-
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Backend
-- **Framework**: FastAPI (async Python web framework)
-- **Database**: PostgreSQL with SQLAlchemy ORM
-- **Data Processing**: Pandas, BeautifulSoup, lxml
-- **AI/ML**: Google Gemini 2.0 Flash, OpenAI GPT-4o-mini
-- **Market Data**: Yahoo Finance (yfinance), Alpha Vantage (fallback)
-- **Task Scheduling**: APScheduler
-- **Notifications**: pywebpush, SendGrid, webhooks
+- **FastAPI** - High-performance async Python web framework
+- **PostgreSQL** - Primary database for structured data
+- **Redis** - Caching and rate limiting
+- **Celery** - Distributed task queue for scheduled scraping
+- **SQLAlchemy** - ORM and database management
+- **Prometheus** - Metrics and monitoring
 
 ### Frontend
-- **Framework**: React 18 with TypeScript
-- **Styling**: Tailwind CSS
-- **Charts**: Recharts
-- **State Management**: React Query, Zustand
-- **Real-Time**: WebSocket API
+- **React 18** - Modern UI library with hooks
+- **TypeScript** - Type-safe JavaScript
+- **Vite** - Fast build tool and dev server
+- **Tailwind CSS** - Utility-first styling
+- **React Router** - Client-side routing
 
-### DevOps
-- **Containerization**: Docker, Docker Compose
-- **CI/CD**: GitHub Actions
-- **Hosting**: Railway / Azure App Service
-- **Database**: Supabase (PostgreSQL)
+### Infrastructure
+- **Docker & Docker Compose** - Containerization
+- **Nginx** - Reverse proxy (production)
+- **Grafana** - Metrics visualization (optional)
 
-## 📊 Data Sources
+## Key Features
 
-- **SEC EDGAR**: Form 4 filings (corporate insiders) - 100% live data
-- **Yahoo Finance**: Real-time stock prices (primary, free)
-- **Alpha Vantage**: Market data fallback (requires API key)
-- **Google Gemini**: AI-powered trade analysis (1500 free requests/day)
-- **OpenAI GPT-4**: AI fallback for insights
-- **House/Senate Disclosures**: Congressional trades (planned Phase 7)
+### Backend (14 Core Services)
+1. **Authentication** - JWT-based auth with login, register, password reset
+2. **Insider Trades** - SEC Form 4 scraping and tracking
+3. **Congressional Trades** - Political stock transaction monitoring
+4. **Companies & Insiders** - Detailed profiles and historical data
+5. **Billing** - Stripe integration with 3-tier subscription system (Free, Pro, Enterprise)
+6. **News** - Financial news aggregation and filtering
+7. **Federal Reserve** - Fed calendar and economic event tracking
+8. **Jobs** - Career opportunities and applications
+9. **Admin Dashboard** - User management and system administration
+10. **Contact & Support** - Ticket system for user inquiries
+11. **Health Checks** - System monitoring and uptime tracking
+12. **Push Notifications** - Real-time alerts for important trades
+13. **Stock Prices** - Live market data integration
+14. **Scheduler** - Automated scraping with configurable schedules
 
-## 🏗️ Architecture
-```
-┌─────────────────┐
-│   SEC EDGAR     │
-│   API Scraper   │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐      ┌──────────────────┐
-│   Data Pipeline │─────▶│   PostgreSQL     │
-│   (Python)      │      │   Database       │
-└─────────────────┘      └────────┬─────────┘
-                                  │
-                                  ▼
-                         ┌──────────────────┐
-                         │   FastAPI        │
-                         │   Backend        │
-                         └────────┬─────────┘
-                                  │
-                    ┌─────────────┼─────────────┐
-                    ▼             ▼             ▼
-            ┌──────────┐  ┌──────────┐  ┌──────────┐
-            │ REST API │  │WebSocket │  │ OpenAI   │
-            └─────┬────┘  └─────┬────┘  └──────────┘
-                  │             │
-                  └──────┬──────┘
-                         ▼
-                  ┌──────────────┐
-                  │    React     │
-                  │   Dashboard  │
-                  └──────────────┘
-```
+### Frontend (16 Pages)
+1. **Authentication** - Login, Register, Password Reset, Profile
+2. **Dashboard** - Overview of recent trades and market activity
+3. **Trades** - Insider trading activity with filtering
+4. **Congressional Trades** - Political trading transparency
+5. **Market Overview** - Live market indices and sector performance
+6. **News** - Curated financial news feed
+7. **Fed Calendar** - Upcoming economic events
+8. **Company Pages** - Detailed company information and insider activity
+9. **Insider Pages** - Individual insider profiles and trade history
+10. **Admin Dashboard** - System administration interface
+11. **Pricing** - Subscription tiers and feature comparison
+12. **Support & FAQ** - Help center and documentation
+13. **Contact & Careers** - Public pages for inquiries and job listings
+14. **Lessons & Strategies** - Educational content for users
+15. **Order History** - Billing and subscription management
+16. **Terms, Privacy, About** - Legal and informational pages
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
+- Docker & Docker Compose
+- Node.js 18+ (for local frontend development)
+- Python 3.11+ (for local backend development)
 
-- Python 3.11+
-- Node.js 18+
-- PostgreSQL 14+ (or Supabase account)
-- Docker (optional, for containerized setup)
+### Environment Setup
 
-### Installation
-
-**1. Clone the repository**
+1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/trade-signal.git
-cd trade-signal
+git clone https://github.com/yourusername/TradeSignal.git
+cd TradeSignal
 ```
 
-**2. Set up environment variables**
+2. Create environment files:
 ```bash
-# Copy the example
-cp .env.example .env
+# Backend environment
+cp backend/.env.example backend/.env
 
-# Edit .env and add minimum required values:
+# Frontend environment
+cp frontend/.env.example frontend/.env
 ```
 
-Minimum required configuration:
-```env
-# Database (use Docker or Supabase)
-DATABASE_URL=postgresql://tradesignal:tradesignal_dev@localhost:5432/tradesignal
+3. Configure environment variables (see below)
 
-# SEC EDGAR (REQUIRED - use your info)
-SEC_USER_AGENT=Saad Kadri er.saadk16@gmail.com
+### Docker Deployment (Recommended)
 
-# Security
-JWT_SECRET=your-random-secret-key-change-this
-JWT_ALGORITHM=HS256
-
-# Features (disable AI for now)
-ENABLE_AI_INSIGHTS=false
-ENABLE_WEBHOOKS=false
-
-# Application
-ENVIRONMENT=development
-DEBUG=true
-LOG_LEVEL=INFO
-```
-
-**3. Start PostgreSQL Database**
+Start all services with Docker Compose:
 ```bash
-# Start only PostgreSQL from docker-compose
-docker-compose up postgres -d
+# Start all services
+docker-compose up -d
 
-# Verify it's running
-docker ps
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
 ```
 
-**4. Backend Setup**
+Access the application:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
+- API Documentation: http://localhost:8000/docs
+- Metrics: http://localhost:8000/metrics
+
+### Local Development
+
+#### Backend
 ```bash
 cd backend
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --port 8000
 ```
 
-**5. Frontend Setup**
+#### Frontend
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-**6. Initialize Database**
-```bash
-# Run migrations (details in docs/DEPLOYMENT.md)
+## Environment Variables
+
+### Backend Key Variables
+```env
+# Database
+DATABASE_URL=postgresql://user:pass@localhost:5432/tradesignal
+
+# Redis
+REDIS_URL=redis://localhost:6379/0
+
+# JWT Authentication
+SECRET_KEY=your-secret-key-here
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# Stripe Billing
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+
+# SEC API
+SEC_API_KEY=your-sec-api-key
+
+# Feature Flags
+ENABLE_AI_INSIGHTS=true
+ENABLE_WEBHOOKS=true
+SCHEDULER_ENABLED=true
 ```
 
-### Docker Setup (Recommended)
+### Frontend Key Variables
+```env
+VITE_API_URL=http://localhost:8000
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
+```
+
+## API Documentation
+
+Interactive API documentation is available at:
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+
+### Key API Endpoints
+- `/api/v1/auth/*` - Authentication
+- `/api/v1/trades/*` - Insider trades
+- `/api/v1/congressional-trades/*` - Congressional trades
+- `/api/v1/companies/*` - Company data
+- `/api/v1/insiders/*` - Insider profiles
+- `/api/v1/news/*` - Financial news
+- `/api/v1/admin/*` - Administration
+
+## Project Structure
+
+```
+TradeSignal/
+├── backend/                 # FastAPI backend
+│   ├── app/
+│   │   ├── core/           # Core utilities (security, cache, limiter)
+│   │   ├── models/         # SQLAlchemy database models
+│   │   ├── routers/        # API endpoint routes
+│   │   ├── schemas/        # Pydantic request/response schemas
+│   │   ├── services/       # Business logic layer
+│   │   ├── tasks/          # Celery background tasks
+│   │   └── main.py         # Application entry point
+│   ├── tests/              # Backend tests
+│   └── requirements.txt    # Python dependencies
+├── frontend/               # React frontend
+│   ├── src/
+│   │   ├── api/           # API client functions
+│   │   ├── components/    # React components
+│   │   ├── contexts/      # React contexts (Auth, Notifications)
+│   │   ├── hooks/         # Custom React hooks
+│   │   ├── pages/         # Page components
+│   │   └── App.tsx        # Application root
+│   └── package.json       # Node dependencies
+├── docker-compose.yml     # Docker orchestration
+└── README.md             # This file
+```
+
+## Development Workflow
+
+1. Create feature branch: `git checkout -b feature/your-feature`
+2. Make changes and test locally
+3. Run tests: `pytest` (backend) / `npm test` (frontend)
+4. Commit changes: `git commit -m "feat: your feature"`
+5. Push and create PR: `git push origin feature/your-feature`
+
+## Monitoring
+
+Optional monitoring stack with Prometheus and Grafana:
 ```bash
-docker-compose up --build
+docker-compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
 ```
 
 Access:
-- Frontend: http://localhost:5174
-- Backend API: http://localhost:8000
-- API Docs: http://localhost:8000/docs
+- Prometheus: http://localhost:9090
+- Grafana: http://localhost:3001 (admin/admin)
 
-## 📖 Documentation
+## Testing
 
-- [Backend Documentation](backend/README.md) - API endpoints, setup, database schema
-- [Frontend Documentation](frontend/README.md) - React components, state management, deployment
-- [Project Status](PROJECT_STATUS.md) - Development progress, phase completion, test results
-- Interactive API Docs: http://localhost:8000/docs (when backend is running)
-
-## 🔑 Environment Variables
-```env
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/tradesignal
-
-# AI Providers (optional)
-GEMINI_API_KEY=your-gemini-key  # Free tier: 1500 requests/day
-OPENAI_API_KEY=sk-...           # Fallback
-AI_PROVIDER=gemini              # gemini or openai
-
-# Market Data (optional)
-ALPHA_VANTAGE_API_KEY=...       # Fallback for Yahoo Finance
-
-# Security
-JWT_SECRET=your-secret-key
-JWT_ALGORITHM=HS256
-
-# Features
-ENABLE_AI_INSIGHTS=true
-ENABLE_WEBHOOKS=true
-ENABLE_EMAIL_ALERTS=false
-ENABLE_PUSH_NOTIFICATIONS=false
-```
-
-See `.env.example` for full configuration.
-
-## 🧪 Running Tests
+### Backend
 ```bash
-# Backend tests
 cd backend
-pytest
-
-# Frontend tests
-cd frontend
-npm test
+pytest                          # Run all tests
+pytest tests/test_trades_api.py  # Run specific test
+pytest --cov=app               # Run with coverage
 ```
 
-## 📈 Roadmap
+### Frontend
+```bash
+cd frontend
+npm test              # Run tests
+npm run test:watch    # Watch mode
+```
 
-### ✅ Phase 1: Backend Core (COMPLETED)
-- [x] FastAPI backend with REST API
-- [x] PostgreSQL database with SQLAlchemy ORM
-- [x] Database models (Companies, Insiders, Trades)
-- [x] 21 API endpoints fully tested
-- [x] Docker containerization
-- [x] Seed data for testing
+## Deployment
 
-### ✅ Phase 2: SEC Scraper (COMPLETED)
-- [x] SEC EDGAR API client with rate limiting
-- [x] Form 4 XML parser (insider trades)
-- [x] Real-time scraper service
-- [x] Auto-create companies and insiders
-- [x] Scraper API endpoints
-- [x] Successfully tested with 109+ companies
+Production deployment guide:
+1. Set production environment variables
+2. Configure SSL/TLS certificates
+3. Set up production database (PostgreSQL)
+4. Configure Redis for production
+5. Deploy with Docker Compose or Kubernetes
+6. Set up monitoring and logging
+7. Configure backup strategy
 
-### ✅ Phase 3: Frontend Dashboard (COMPLETED)
-- [x] React 18 dashboard with TypeScript
-- [x] Tailwind CSS styling
-- [x] Trade listing with advanced filtering
-- [x] Company/insider profiles
-- [x] Real-time updates (WebSocket)
-- [x] Charts and analytics (Recharts)
-- [x] Responsive design
+See [backend/README.md](backend/README.md) and [frontend/README.md](frontend/README.md) for detailed deployment instructions.
 
-### ✅ Phase 4: Scheduled Auto-Scraping (COMPLETED)
-- [x] APScheduler integration
-- [x] Hourly automated scraping (all 109+ companies)
-- [x] Intelligent cooldown (23-hour per company)
-- [x] Job management API endpoints
-- [x] Error handling and retry logic
-
-### ✅ Phase 5: Notifications & Alerts (COMPLETED)
-- [x] Alert rule engine with flexible filters
-- [x] Multi-channel notifications (webhooks, email, push)
-- [x] Real-time WebSocket alert streaming
-- [x] Alert management UI
-- [x] Slack/Discord integration tested
-- [x] Browser push notifications with VAPID
-
-### ✅ Phase 6: AI-Powered Insights (COMPLETED)
-- [x] Google Gemini 2.0 Flash integration (free tier)
-- [x] OpenAI GPT-4o-mini fallback
-- [x] Daily market summary (news feed style)
-- [x] Trading signals (bullish/bearish/neutral)
-- [x] Company-specific AI analysis
-- [x] Interactive AI chatbot with real data
-- [x] AI Insights dashboard page
-
-### ✅ Phase 6.5: Live Market Overview (COMPLETED - Nov 10, 2025)
-- [x] Yahoo Finance integration (primary)
-- [x] Alpha Vantage fallback
-- [x] Real-time prices for 109+ stocks
-- [x] 15-second auto-refresh
-- [x] Parallel fetching (7-8s for all stocks)
-- [x] Market Overview page with search/filter/sort
-- [x] Dashboard widget (top gainers/losers)
-- [x] Intelligent caching (10s TTL)
-
-### 📋 Future Phases
-- [ ] **Phase 7**: Congressional trade tracking (House/Senate)
-- [ ] **Phase 8**: Mobile app (React Native, iOS/Android)
-- [ ] Machine learning predictions
-- [ ] Options flow tracking
-- [ ] International market support
-- [ ] Advanced portfolio tracking
-
-## 🤝 Contributing
-
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+## Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
-## 📄 License
+Please follow the existing code style and include tests for new features.
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## License
 
-## ⚠️ Disclaimer
+This project is proprietary software. All rights reserved.
 
-This platform is for informational and educational purposes only. It does not constitute financial advice. Always do your own research and consult with a qualified financial advisor before making investment decisions. Insider trading data is publicly available but trading based solely on this information carries risks.
+## Support
 
-## 🙏 Acknowledgments
+- Documentation: [backend/README.md](backend/README.md), [frontend/README.md](frontend/README.md)
+- Issues: Create a GitHub issue
+- Email: support@tradesignal.com
 
-- Data sourced from SEC EDGAR (public domain)
-- Built with amazing open-source tools
-- Inspired by platforms like Capitol Trades and OpenInsider
+## Roadmap
 
-## 👨‍💻 Author
-
-**Saad Kadri**
-- LinkedIn: [linkedin.com/in/yourprofile](https://linkedin.com/in/yourprofile)
-- Email: er.saadk16@gmail.com
-
-## ⭐ Show Your Support
-
-If you find this project useful, please give it a star! It helps others discover the project.
-
----
-
-**Built with ❤️ by Saad Kadri | MS Computer Science @ UT Arlington**
+See [TradeSignal.md](TradeSignal.md) for future features and enhancements.

@@ -9,6 +9,7 @@ from datetime import datetime
 
 class CompanyAnalysisResponse(BaseModel):
     """Response for company analysis endpoint."""
+
     ticker: str
     company_name: str
     days_analyzed: int
@@ -22,6 +23,7 @@ class CompanyAnalysisResponse(BaseModel):
 
 class TopTrade(BaseModel):
     """Individual top trade."""
+
     ticker: str
     company: str
     insider: str
@@ -34,6 +36,7 @@ class TopTrade(BaseModel):
 
 class CompanySummary(BaseModel):
     """Individual company summary in news feed."""
+
     ticker: str
     company_name: str
     summary: str
@@ -47,6 +50,7 @@ class CompanySummary(BaseModel):
 
 class DailySummaryResponse(BaseModel):
     """Response for daily summary endpoint."""
+
     company_summaries: List[CompanySummary]
     total_trades: int
     generated_at: str
@@ -56,11 +60,15 @@ class DailySummaryResponse(BaseModel):
 
 class ChatQuestion(BaseModel):
     """Request for chatbot endpoint."""
-    question: str = Field(..., min_length=1, max_length=500, description="User's question")
+
+    question: str = Field(
+        ..., min_length=1, max_length=500, description="User's question"
+    )
 
 
 class ChatResponse(BaseModel):
     """Response for chatbot endpoint."""
+
     question: str
     answer: str
     timestamp: str
@@ -69,6 +77,7 @@ class ChatResponse(BaseModel):
 
 class TradingSignal(BaseModel):
     """Individual trading signal."""
+
     ticker: str
     company_name: str
     signal: str  # BULLISH, BEARISH, NEUTRAL
@@ -81,6 +90,7 @@ class TradingSignal(BaseModel):
 
 class TradingSignalsResponse(BaseModel):
     """Response for trading signals endpoint."""
+
     signals: List[TradingSignal]
     generated_at: str
     period: str

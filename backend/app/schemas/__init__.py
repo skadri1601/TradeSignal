@@ -29,12 +29,40 @@ from app.schemas.trade import (
     TradeFilter,
     TradeStats,
 )
+from app.schemas.congressperson import (
+    CongresspersonBase,
+    CongresspersonCreate,
+    CongresspersonUpdate,
+    CongresspersonRead,
+    CongresspersonFilter,
+)
+from app.schemas.congressional_trade import (
+    CongressionalTradeBase,
+    CongressionalTradeCreate,
+    CongressionalTradeUpdate,
+    CongressionalTradeRead,
+    CongressionalTradeWithDetails,
+    CongressionalTradeFilter,
+    CongressionalTradeStats,
+)
 from app.schemas.common import (
     PaginationParams,
     SortParams,
     PaginatedResponse,
     SuccessResponse,
     ErrorResponse,
+)
+from app.schemas.job import (
+    JobBase,
+    JobCreate,
+    JobUpdate,
+    JobResponse,
+    JobListResponse,
+    JobApplicationBase,
+    JobApplicationCreate,
+    JobApplicationResponse,
+    JobApplicationStatusUpdate,
+    JobApplicationListResponse,
 )
 
 __all__ = [
@@ -60,10 +88,35 @@ __all__ = [
     "TradeWithDetails",
     "TradeFilter",
     "TradeStats",
+    # Congressperson schemas
+    "CongresspersonBase",
+    "CongresspersonCreate",
+    "CongresspersonUpdate",
+    "CongresspersonRead",
+    "CongresspersonFilter",
+    # Congressional Trade schemas
+    "CongressionalTradeBase",
+    "CongressionalTradeCreate",
+    "CongressionalTradeUpdate",
+    "CongressionalTradeRead",
+    "CongressionalTradeWithDetails",
+    "CongressionalTradeFilter",
+    "CongressionalTradeStats",
     # Common schemas
     "PaginationParams",
     "SortParams",
     "PaginatedResponse",
     "SuccessResponse",
     "ErrorResponse",
+    # Job schemas
+    "JobBase",
+    "JobCreate",
+    "JobUpdate",
+    "JobResponse",
+    "JobListResponse",
+    "JobApplicationBase",
+    "JobApplicationCreate",
+    "JobApplicationResponse",
+    "JobApplicationStatusUpdate",
+    "JobApplicationListResponse",
 ]

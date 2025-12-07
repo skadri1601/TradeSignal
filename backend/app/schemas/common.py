@@ -12,6 +12,7 @@ T = TypeVar("T")
 
 class PaginationParams(BaseModel):
     """Schema for pagination parameters."""
+
     page: int = Field(1, ge=1, description="Page number (1-indexed)")
     limit: int = Field(20, ge=1, le=100, description="Items per page (max 100)")
 
@@ -23,12 +24,16 @@ class PaginationParams(BaseModel):
 
 class SortParams(BaseModel):
     """Schema for sorting parameters."""
+
     sort_by: str = Field("transaction_date", description="Field to sort by")
-    order: str = Field("desc", pattern="^(asc|desc)$", description="Sort order (asc or desc)")
+    order: str = Field(
+        "desc", pattern="^(asc|desc)$", description="Sort order (asc or desc)"
+    )
 
 
 class PaginatedResponse(BaseModel, Generic[T]):
     """Generic schema for paginated API responses."""
+
     items: List[T] = Field(default_factory=list, description="List of items")
     total: int = Field(0, ge=0, description="Total number of items")
     page: int = Field(1, ge=1, description="Current page")
@@ -39,11 +44,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
 
     @classmethod
     def create(
-        cls,
-        items: List[T],
-        total: int,
-        page: int,
-        limit: int
+        cls, items: List[T], total: int, page: int, limit: int
     ) -> "PaginatedResponse[T]":
         """
         Create a paginated response.
@@ -71,6 +72,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
 
 class SuccessResponse(BaseModel):
     """Schema for generic success response."""
+
     success: bool = Field(True, description="Operation success status")
     message: str = Field(..., description="Success message")
     data: Optional[Any] = Field(None, description="Optional response data")
@@ -78,6 +80,7 @@ class SuccessResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     """Schema for error response."""
+
     error: str = Field(..., description="Error message")
     status_code: int = Field(..., ge=400, le=599, description="HTTP status code")
     detail: Optional[Any] = Field(None, description="Additional error details")

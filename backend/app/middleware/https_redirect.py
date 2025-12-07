@@ -5,7 +5,7 @@ Enforces HTTPS in production and adds security headers.
 Based on TRUTH_FREE.md Phase 1.6 specifications.
 """
 
-import os
+
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import RedirectResponse
@@ -50,7 +50,9 @@ class HTTPSRedirectMiddleware(BaseHTTPMiddleware):
         if settings.environment == "production":
             # HTTP Strict Transport Security (HSTS)
             # Tell browsers to only use HTTPS for 1 year (including subdomains)
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+            response.headers[
+                "Strict-Transport-Security"
+            ] = "max-age=31536000; includeSubDomains"
 
             # Prevent MIME type sniffing
             response.headers["X-Content-Type-Options"] = "nosniff"
@@ -68,6 +70,8 @@ class HTTPSRedirectMiddleware(BaseHTTPMiddleware):
             response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
             # Permissions Policy (disable unnecessary features)
-            response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+            response.headers[
+                "Permissions-Policy"
+            ] = "geolocation=(), microphone=(), camera=()"
 
         return response

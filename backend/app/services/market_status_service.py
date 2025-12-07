@@ -23,7 +23,7 @@ class MarketStatusService:
     def _get_nyse_calendar(cls):
         """Get or create NYSE calendar instance"""
         if cls._nyse_calendar is None:
-            cls._nyse_calendar = mcal.get_calendar('NYSE')
+            cls._nyse_calendar = mcal.get_calendar("NYSE")
         return cls._nyse_calendar
 
     @classmethod
@@ -40,7 +40,7 @@ class MarketStatusService:
                 - closes_at: str - When market closes (if open)
                 - time_until_close: str - Time remaining until close (if open)
         """
-        ny_tz = pytz.timezone('America/New_York')
+        ny_tz = pytz.timezone("America/New_York")
         now = datetime.now(ny_tz)
 
         try:
@@ -57,12 +57,22 @@ class MarketStatusService:
                     "status": "closed",
                     "reason": "Weekend or Market Holiday",
                     "next_open": next_open,
-                    "current_time_et": now.strftime("%Y-%m-%d %I:%M %p ET")
+                    "current_time_et": now.strftime("%Y-%m-%d %I:%M %p ET"),
                 }
 
             # Check if within market hours
-            market_open = schedule.iloc[0]['market_open'].to_pydatetime()
-            market_close = schedule.iloc[0]['market_close'].to_pydatetime()
+            # pandas-market-calendars returns times in UTC, convert to ET
+            market_open_utc = schedule.iloc[0]["market_open"].to_pydatetime()
+            market_close_utc = schedule.iloc[0]["market_close"].to_pydatetime()
+
+            # Convert to ET timezone
+            if market_open_utc.tzinfo is None:
+                market_open_utc = pytz.UTC.localize(market_open_utc)
+            if market_close_utc.tzinfo is None:
+                market_close_utc = pytz.UTC.localize(market_close_utc)
+
+            market_open = market_open_utc.astimezone(ny_tz)
+            market_close = market_close_utc.astimezone(ny_tz)
 
             if market_open <= now <= market_close:
                 time_until_close = market_close - now
@@ -75,7 +85,7 @@ class MarketStatusService:
                     "reason": "Regular Trading Hours",
                     "closes_at": market_close.strftime("%I:%M %p ET"),
                     "time_until_close": f"{int(hours)}h {int(minutes)}m",
-                    "current_time_et": now.strftime("%Y-%m-%d %I:%M %p ET")
+                    "current_time_et": now.strftime("%Y-%m-%d %I:%M %p ET"),
                 }
 
             # Market is closed (before or after hours)
@@ -91,7 +101,7 @@ class MarketStatusService:
                 "status": "closed",
                 "reason": reason,
                 "next_open": next_open_str,
-                "current_time_et": now.strftime("%Y-%m-%d %I:%M %p ET")
+                "current_time_et": now.strftime("%Y-%m-%d %I:%M %p ET"),
             }
 
         except Exception as e:
@@ -115,11 +125,17 @@ class MarketStatusService:
             # Look ahead 7 days to find next open
             schedule = nyse_calendar.schedule(
                 start_date=current_time.date(),
-                end_date=current_time.date() + timedelta(days=7)
+                end_date=current_time.date() + timedelta(days=7),
             )
 
             for idx, row in schedule.iterrows():
-                market_open_time = row['market_open'].to_pydatetime()
+                market_open_time_utc = row["market_open"].to_pydatetime()
+                # Convert to ET timezone
+                if market_open_time_utc.tzinfo is None:
+                    market_open_time_utc = pytz.UTC.localize(market_open_time_utc)
+                market_open_time = market_open_time_utc.astimezone(
+                    pytz.timezone("America/New_York")
+                )
                 if market_open_time > current_time:
                     return market_open_time.strftime("%A, %B %d at %I:%M %p ET")
 
@@ -149,7 +165,7 @@ class MarketStatusService:
                 "reason": "Weekend",
                 "next_open": "Monday at 9:30 AM ET",
                 "current_time_et": now.strftime("%Y-%m-%d %I:%M %p ET"),
-                "fallback_mode": True
+                "fallback_mode": True,
             }
 
         # Time check (9:30 AM - 4:00 PM ET)
@@ -163,7 +179,7 @@ class MarketStatusService:
                 "reason": "Regular Trading Hours (Fallback Mode)",
                 "closes_at": "4:00 PM ET",
                 "current_time_et": now.strftime("%Y-%m-%d %I:%M %p ET"),
-                "fallback_mode": True
+                "fallback_mode": True,
             }
 
         return {
@@ -172,7 +188,7 @@ class MarketStatusService:
             "reason": "Outside Market Hours (Fallback Mode)",
             "next_open": "9:30 AM ET",
             "current_time_et": now.strftime("%Y-%m-%d %I:%M %p ET"),
-            "fallback_mode": True
+            "fallback_mode": True,
         }
 
     @classmethod
@@ -186,4 +202,4 @@ class MarketStatusService:
         - Market closed: refresh every 5 minutes
         """
         status = cls.is_market_open()
-        return status.get('is_open', False)
+        return status.get("is_open", False)

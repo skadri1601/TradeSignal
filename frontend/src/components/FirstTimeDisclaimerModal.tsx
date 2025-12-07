@@ -6,6 +6,8 @@
  */
 
 import { useState } from 'react';
+import { useCustomAlert } from '../hooks/useCustomAlert';
+import CustomAlert from './common/CustomAlert';
 
 interface FirstTimeDisclaimerModalProps {
   onAccept: () => void;
@@ -13,10 +15,14 @@ interface FirstTimeDisclaimerModalProps {
 
 export const FirstTimeDisclaimerModal = ({ onAccept }: FirstTimeDisclaimerModalProps) => {
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const { alertState, showAlert, hideAlert } = useCustomAlert();
 
   const handleAccept = () => {
     if (!termsAccepted) {
-      alert('Please check the box to confirm you have read and agree to the terms.');
+      showAlert(
+        'Please check the box to confirm you have read and agree to the terms.',
+        { type: 'warning', title: 'TradeSignal' }
+      );
       return;
     }
     onAccept();
@@ -118,6 +124,15 @@ export const FirstTimeDisclaimerModal = ({ onAccept }: FirstTimeDisclaimerModalP
           </p>
         </div>
       </div>
+
+      {/* Custom Alert Modal */}
+      <CustomAlert
+        show={alertState.show}
+        message={alertState.message}
+        title={alertState.title || 'TradeSignal'}
+        type={alertState.type}
+        onClose={hideAlert}
+      />
     </div>
   );
 };

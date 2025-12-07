@@ -1,0 +1,687 @@
+"""
+Admin Dashboard API Router
+Endpoints for user management and system administration
+"""
+
+from typing import Optional
+from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func, desc
+from pydantic import BaseModel, EmailStr
+
+from app.database import get_db
+from app.core.security import get_current_support_or_superuser, get_current_super_admin
+from app.models.user import User
+from app.models.payment import Payment
+from app.models.subscription import Subscription
+
+router = APIRouter()
+
+
+# Response Models
+class UserListItem(BaseModel):
+    id: int
+    email: str
+    username: str
+    full_name: str | None
+    is_active: bool
+    is_verified: bool
+    is_superuser: bool
+    stripe_subscription_tier: str | None
+    stripe_customer_id: str | None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class UserDetail(BaseModel):
+    id: int
+    email: str
+    username: str
+    full_name: str | None
+    date_of_birth: str | None
+    phone_number: str | None
+    bio: str | None
+    avatar_url: str | None
+    is_active: bool
+    is_verified: bool
+    is_superuser: bool
+    stripe_customer_id: str | None
+    stripe_subscription_id: str | None
+    stripe_subscription_tier: str | None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class UserListResponse(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    users: list[UserListItem]
+
+
+class AdminStats(BaseModel):
+    total_users: int
+    active_users: int
+    verified_users: int
+    free_tier: int
+    basic_tier: int
+    pro_tier: int
+    total_revenue_estimate: float
+
+
+class UpdateUserRequest(BaseModel):
+    is_active: Optional[bool] = None
+    is_verified: Optional[bool] = None
+    is_superuser: Optional[bool] = None
+    role: Optional[str] = None
+
+
+class CreateUserRequest(BaseModel):
+    email: EmailStr
+    username: str
+    password: str
+    full_name: Optional[str] = None
+    is_active: bool = True
+    is_verified: bool = False
+    role: str = "customer"
+
+
+# Admin Endpoints
+
+
+@router.get("/stats", response_model=AdminStats)
+async def get_admin_stats(
+    current_user: User = Depends(get_current_support_or_superuser),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get system-wide statistics for admin dashboard
+    """
+    # Total users
+    total_result = await db.execute(select(func.count(User.id)))
+    total_users = total_result.scalar() or 0
+
+    # Active users
+    active_result = await db.execute(
+        select(func.count(User.id)).where(User.is_active.is_(True))
+    )
+    active_users = active_result.scalar() or 0
+
+    # Verified users
+    verified_result = await db.execute(
+        select(func.count(User.id)).where(User.is_verified.is_(True))
+    )
+    verified_users = verified_result.scalar() or 0
+
+    # Tier counts - get from subscriptions table
+    # Free tier: users without subscription or with free tier
+    free_result = await db.execute(
+        select(func.count(User.id))
+        .outerjoin(Subscription, User.id == Subscription.user_id)
+        .where((Subscription.id.is_(None)) | (Subscription.tier == "free"))
+    )
+    free_tier = free_result.scalar() or 0
+
+    # Basic/Plus tier
+    basic_result = await db.execute(
+        select(func.count(Subscription.id)).where(
+            Subscription.tier.in_(["basic", "plus"])
+        )
+    )
+    basic_tier = basic_result.scalar() or 0
+
+    # Pro tier
+    pro_result = await db.execute(
+        select(func.count(Subscription.id)).where(Subscription.tier == "pro")
+    )
+    pro_tier = pro_result.scalar() or 0
+
+    # Revenue estimate (basic=$9, pro=$29)
+    total_revenue = (basic_tier * 9) + (pro_tier * 29)
+
+    return AdminStats(
+        total_users=total_users,
+        active_users=active_users,
+        verified_users=verified_users,
+        free_tier=free_tier,
+        basic_tier=basic_tier,
+        pro_tier=pro_tier,
+        total_revenue_estimate=float(total_revenue),
+    )
+
+
+@router.get("/users", response_model=UserListResponse)
+async def list_users(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    search: Optional[str] = None,
+    tier: Optional[str] = None,
+    active_only: bool = False,
+    current_user: User = Depends(get_current_support_or_superuser),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    List all users with pagination and filtering
+    """
+    # Build query
+    query = select(User)
+
+    # Apply filters
+    if search:
+        search_pattern = f"%{search}%"
+        query = query.where(
+            (User.email.ilike(search_pattern))
+            | (User.username.ilike(search_pattern))
+            | (User.full_name.ilike(search_pattern))
+        )
+
+    if tier:
+        if tier == "free":
+            # Users without subscription or with free tier
+            query = query.outerjoin(
+                Subscription, User.id == Subscription.user_id
+            ).where((Subscription.id.is_(None)) | (Subscription.tier == "free"))
+        else:
+            # Users with specific tier
+            query = query.join(Subscription, User.id == Subscription.user_id).where(
+                Subscription.tier == tier
+            )
+
+    if active_only:
+        query = query.where(User.is_active.is_(True))
+
+    # Get total count - need to handle joins properly
+    # If we have joins, count distinct users
+    if tier:
+        # If filtering by tier, count distinct users from the joined query
+        count_query = select(func.count(func.distinct(User.id)))
+        if tier == "free":
+            count_query = count_query.select_from(
+                User.outerjoin(Subscription, User.id == Subscription.user_id)
+            ).where((Subscription.id.is_(None)) | (Subscription.tier == "free"))
+        else:
+            count_query = count_query.select_from(
+                User.join(Subscription, User.id == Subscription.user_id)
+            ).where(Subscription.tier == tier)
+
+        if search:
+            search_pattern = f"%{search}%"
+            count_query = count_query.where(
+                (User.email.ilike(search_pattern))
+                | (User.username.ilike(search_pattern))
+                | (User.full_name.ilike(search_pattern))
+            )
+
+        if active_only:
+            count_query = count_query.where(User.is_active.is_(True))
+    else:
+        # No tier filter, count directly from User
+        count_query = select(func.count(User.id))
+        if search:
+            search_pattern = f"%{search}%"
+            count_query = count_query.where(
+                (User.email.ilike(search_pattern))
+                | (User.username.ilike(search_pattern))
+                | (User.full_name.ilike(search_pattern))
+            )
+        if active_only:
+            count_query = count_query.where(User.is_active.is_(True))
+
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
+
+    # Apply pagination
+    offset = (page - 1) * page_size
+    query = query.offset(offset).limit(page_size).order_by(User.created_at.desc())
+
+    # Execute query
+    result = await db.execute(query)
+    users = result.scalars().all()
+
+    # Get subscription tiers for users
+    user_list = []
+    for user in users:
+        # Get subscription tier
+        sub_result = await db.execute(
+            select(Subscription).where(Subscription.user_id == user.id)
+        )
+        subscription = sub_result.scalar_one_or_none()
+
+        # Create user list item
+        user_item = UserListItem(
+            id=user.id,
+            email=user.email,
+            username=user.username,
+            full_name=user.full_name,
+            is_active=user.is_active,
+            is_verified=user.is_verified,
+            is_superuser=user.is_superuser,
+            stripe_subscription_tier=subscription.tier if subscription else None,
+            stripe_customer_id=subscription.stripe_customer_id
+            if subscription
+            else None,
+            created_at=user.created_at,
+            updated_at=user.updated_at,
+        )
+        user_list.append(user_item)
+
+    return UserListResponse(
+        total=total, page=page, page_size=page_size, users=user_list
+    )
+
+
+@router.get("/users/{user_id}", response_model=UserDetail)
+async def get_user_detail(
+    user_id: int,
+    current_user: User = Depends(get_current_support_or_superuser),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get detailed information about a specific user
+    """
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return UserDetail.model_validate(user)
+
+
+@router.patch("/users/{user_id}", response_model=UserDetail)
+async def update_user(
+    user_id: int,
+    update_data: UpdateUserRequest,
+    current_user: User = Depends(get_current_support_or_superuser),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Update user status (active, verified, superuser)
+    """
+    # Prevent self-demotion
+    if user_id == current_user.id and update_data.is_superuser is False:
+        raise HTTPException(
+            status_code=400, detail="Cannot remove your own superuser status"
+        )
+
+    # Get user
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Prevent support from modifying roles or superuser status
+    if current_user.role == "support":
+        if update_data.role is not None or update_data.is_superuser is not None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Support admins cannot modify user roles or superuser status",
+            )
+        # Support cannot modify support or super_admin users
+        if user.role in ["support", "super_admin"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Support admins cannot modify other admins",
+            )
+
+    # Prevent changing super_admin role (only super_admin can do this)
+    if user.role == "super_admin" and current_user.role != "super_admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot modify super admin users",
+        )
+
+    # Update fields
+    if update_data.is_active is not None:
+        user.is_active = update_data.is_active
+    if update_data.is_verified is not None:
+        user.is_verified = update_data.is_verified
+    if update_data.is_superuser is not None and current_user.role == "super_admin":
+        user.is_superuser = update_data.is_superuser
+    if update_data.role is not None and current_user.role == "super_admin":
+        # Only super_admin can change roles
+        if update_data.role not in ["customer", "support", "super_admin"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid role. Must be: customer, support, or super_admin",
+            )
+        user.role = update_data.role
+        # Sync is_superuser with role
+        if update_data.role == "super_admin":
+            user.is_superuser = True
+        elif update_data.role == "support":
+            user.is_superuser = (
+                True  # Support also needs is_superuser for backward compatibility
+            )
+        else:
+            user.is_superuser = False
+
+    user.updated_at = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(user)
+
+    return UserDetail.model_validate(user)
+
+
+@router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: int,
+    permanent: bool = Query(
+        False, description="Permanently delete user (default: soft delete)"
+    ),
+    current_user: User = Depends(get_current_support_or_superuser),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Delete a user (soft delete by default, permanent if specified).
+    Support can only soft delete. Super Admin can do both.
+    """
+    # Prevent self-deletion
+    if user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete your own account via admin panel",
+        )
+
+    # Get user
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    # Support cannot delete super_admin or other support admins
+    if current_user.role == "support":
+        if user.role in ["support", "super_admin"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Support admins cannot delete other admins",
+            )
+        if permanent:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Support admins can only soft delete users",
+            )
+
+    # Super admin cannot permanently delete other super admins
+    if permanent and user.role == "super_admin" and user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot permanently delete super admin accounts",
+        )
+
+    if permanent:
+        # Permanent deletion (super admin only, except super admins)
+        await db.delete(user)
+        await db.commit()
+        return {"message": "User permanently deleted", "user_id": user_id}
+    else:
+        # Soft delete
+        user.is_active = False
+        user.updated_at = datetime.utcnow()
+        await db.commit()
+        return {"message": "User deactivated", "user_id": user_id}
+
+
+# User Search and Billing Endpoints (for Support/Admin)
+
+
+@router.get("/users/search")
+async def search_user(
+    query: str = Query(..., description="Search by email, username, or full name"),
+    current_user: User = Depends(get_current_support_or_superuser),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Search for a user by email, username, or full name.
+    Returns user details including subscription and billing info.
+    """
+    search_pattern = f"%{query}%"
+    result = await db.execute(
+        select(User)
+        .where(
+            (User.email.ilike(search_pattern))
+            | (User.username.ilike(search_pattern))
+            | (User.full_name.ilike(search_pattern))
+        )
+        .limit(10)
+    )
+    users = result.scalars().all()
+
+    if not users:
+        raise HTTPException(
+            status_code=404, detail="No users found matching the search query"
+        )
+
+    # If single user, return detailed info
+    if len(users) == 1:
+        user = users[0]
+        # Get subscription
+        sub_result = await db.execute(
+            select(Subscription).where(Subscription.user_id == user.id)
+        )
+        subscription = sub_result.scalar_one_or_none()
+
+        # Get payment count
+        payment_count_result = await db.execute(
+            select(func.count(Payment.id)).where(Payment.user_id == user.id)
+        )
+        payment_count = payment_count_result.scalar() or 0
+
+        return {
+            "user": UserDetail.model_validate(user),
+            "subscription": {
+                "tier": subscription.tier if subscription else "free",
+                "status": subscription.status if subscription else "inactive",
+                "is_active": subscription.is_active if subscription else False,
+                "current_period_end": subscription.current_period_end.isoformat()
+                if subscription and subscription.current_period_end
+                else None,
+            }
+            if subscription
+            else None,
+            "payment_count": payment_count,
+        }
+
+    # Multiple users - return list
+    return {
+        "users": [UserListItem.model_validate(u) for u in users],
+        "count": len(users),
+    }
+
+
+@router.get("/users/{user_id}/billing")
+async def get_user_billing_history(
+    user_id: int,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_support_or_superuser),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get billing/order history for a specific user.
+    Support and Super Admin can access this.
+    """
+    # Verify user exists
+    user_result = await db.execute(select(User).where(User.id == user_id))
+    user = user_result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Get subscription
+    sub_result = await db.execute(
+        select(Subscription).where(Subscription.user_id == user_id)
+    )
+    subscription = sub_result.scalar_one_or_none()
+
+    # Get payment history
+    count_query = select(Payment).where(Payment.user_id == user_id)
+    count_result = await db.execute(
+        select(func.count()).select_from(count_query.subquery())
+    )
+    total = count_result.scalar() or 0
+
+    payments_query = (
+        select(Payment)
+        .where(Payment.user_id == user_id)
+        .order_by(desc(Payment.created_at))
+        .offset(skip)
+        .limit(limit)
+    )
+    payments_result = await db.execute(payments_query)
+    payments = payments_result.scalars().all()
+
+    # Format payments
+    orders = []
+    for payment in payments:
+        orders.append(
+            {
+                "id": payment.id,
+                "amount": float(payment.amount),
+                "currency": payment.currency,
+                "payment_type": payment.payment_type,
+                "status": payment.status,
+                "tier": payment.tier,
+                "tier_before": payment.tier_before,
+                "description": payment.description,
+                "receipt_url": payment.receipt_url,
+                "invoice_url": payment.invoice_url,
+                "refunded_amount": float(payment.refunded_amount)
+                if payment.refunded_amount
+                else None,
+                "refunded_at": payment.refunded_at.isoformat()
+                if payment.refunded_at
+                else None,
+                "period_start": payment.period_start.isoformat()
+                if payment.period_start
+                else None,
+                "period_end": payment.period_end.isoformat()
+                if payment.period_end
+                else None,
+                "created_at": payment.created_at.isoformat(),
+            }
+        )
+
+    return {
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "username": user.username,
+            "full_name": user.full_name,
+        },
+        "subscription": {
+            "tier": subscription.tier if subscription else "free",
+            "status": subscription.status if subscription else "inactive",
+            "is_active": subscription.is_active if subscription else False,
+            "current_period_start": subscription.current_period_start.isoformat()
+            if subscription and subscription.current_period_start
+            else None,
+            "current_period_end": subscription.current_period_end.isoformat()
+            if subscription and subscription.current_period_end
+            else None,
+        }
+        if subscription
+        else None,
+        "orders": {"items": orders, "total": total, "skip": skip, "limit": limit},
+    }
+
+
+# Super Admin Only - Manage Support Admins
+
+
+@router.get("/support-admins")
+async def list_support_admins(
+    current_user: User = Depends(get_current_super_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    List all support admins. Super Admin only.
+    """
+    result = await db.execute(
+        select(User).where(User.role == "support").order_by(User.created_at.desc())
+    )
+    support_admins = result.scalars().all()
+
+    return {
+        "support_admins": [
+            UserListItem.model_validate(admin) for admin in support_admins
+        ],
+        "count": len(support_admins),
+    }
+
+
+@router.post("/support-admins/{user_id}")
+async def promote_to_support(
+    user_id: int,
+    current_user: User = Depends(get_current_super_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Promote a user to support admin. Super Admin only.
+    """
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user.role == "super_admin":
+        raise HTTPException(status_code=400, detail="Cannot change super admin role")
+
+    user.role = "support"
+    user.is_superuser = True  # Keep for backward compatibility
+    user.updated_at = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(user)
+
+    return {
+        "message": f"User {user.email} promoted to support admin",
+        "user": UserDetail.model_validate(user),
+    }
+
+
+@router.delete("/support-admins/{user_id}")
+async def demote_from_support(
+    user_id: int,
+    current_user: User = Depends(get_current_super_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Demote a support admin to customer. Super Admin only.
+    """
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot demote yourself")
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user.role != "support":
+        raise HTTPException(status_code=400, detail="User is not a support admin")
+
+    user.role = "customer"
+    user.is_superuser = False
+    user.updated_at = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(user)
+
+    return {
+        "message": f"User {user.email} demoted to customer",
+        "user": UserDetail.model_validate(user),
+    }

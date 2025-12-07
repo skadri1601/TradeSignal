@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { tradesApi } from '../api/trades';
-import { TrendingUp, TrendingDown, Building2, ArrowRight, RefreshCw } from 'lucide-react';
+import { TrendingUp, TrendingDown, Building2, ArrowRight, RefreshCw, AlertCircle } from 'lucide-react';
 import { formatNumber, formatCurrencyCompact } from '../utils/formatters';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import TradeList from '../components/trades/TradeList';
@@ -22,19 +22,49 @@ export default function Dashboard() {
   const dateFrom = sevenDaysAgo.toISOString().split('T')[0];
 
   // Fetch trade stats (last 7 days)
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
     queryKey: ['tradeStats', 'last7days'],
     queryFn: async () => {
-      const result = await tradesApi.getTradeStats({ transaction_date_from: dateFrom });
-      setLastUpdated(new Date());
-      return result;
+      try {
+        const result = await tradesApi.getTradeStats({ transaction_date_from: dateFrom });
+        setLastUpdated(new Date());
+        return result;
+      } catch (error: any) {
+        console.error('Error fetching trade stats:', error);
+        throw new Error(error?.message || 'Failed to fetch trade statistics');
+      }
     },
+    retry: (failureCount) => {
+      // Retry up to 3 times with exponential backoff
+      if (failureCount < 3) {
+        return true;
+      }
+      return false;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 30000, // Consider data stale after 30 seconds
   });
 
   // Fetch recent trades
-  const { data: recentTrades, isLoading: tradesLoading } = useQuery({
+  const { data: recentTrades, isLoading: tradesLoading, error: tradesError } = useQuery({
     queryKey: ['recentTrades'],
-    queryFn: () => tradesApi.getRecentTrades(7),
+    queryFn: async () => {
+      try {
+        return await tradesApi.getRecentTrades(7);
+      } catch (error: any) {
+        console.error('Error fetching recent trades:', error);
+        throw new Error(error?.message || 'Failed to fetch recent trades');
+      }
+    },
+    retry: (failureCount) => {
+      // Retry up to 3 times with exponential backoff
+      if (failureCount < 3) {
+        return true;
+      }
+      return false;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 30000,
   });
 
   // Refresh data
@@ -75,6 +105,27 @@ export default function Dashboard() {
     return (
       <div className="flex items-center justify-center h-64">
         <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (statsError) {
+    return (
+      <div className="space-y-6">
+        <LegalDisclaimer />
+        <div className="card">
+          <div className="text-center py-12">
+            <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-3" />
+            <p className="text-gray-500 mb-2">Failed to load dashboard data</p>
+            <p className="text-sm text-gray-400 mb-4">{statsError instanceof Error ? statsError.message : 'Unknown error'}</p>
+            <button
+              onClick={() => refreshMutation.mutate()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -227,6 +278,24 @@ export default function Dashboard() {
         {tradesLoading ? (
           <div className="flex items-center justify-center h-32">
             <LoadingSpinner />
+          </div>
+        ) : tradesError ? (
+          <div className="text-center py-12">
+            <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-3" />
+            <p className="text-gray-500 mb-2">Failed to load recent trades</p>
+            <p className="text-sm text-gray-400">{tradesError instanceof Error ? tradesError.message : 'Unknown error'}</p>
+            <button
+              onClick={() => refreshMutation.mutate()}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        ) : (recentTrades || []).length === 0 ? (
+          <div className="text-center py-12">
+            <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+            <p className="text-gray-500">No recent trades found</p>
+            <p className="text-sm text-gray-400 mt-1">Trades will appear here once data is scraped</p>
           </div>
         ) : (
           <>

@@ -5,7 +5,6 @@ Manages browser push notification subscriptions.
 """
 
 import logging
-from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from datetime import datetime
@@ -30,8 +29,7 @@ class PushSubscriptionService:
         self.db = db
 
     async def create_subscription(
-        self,
-        data: PushSubscriptionCreate
+        self, data: PushSubscriptionCreate
     ) -> PushSubscription:
         """
         Create or update a push subscription.
@@ -47,9 +45,7 @@ class PushSubscriptionService:
         """
         # Check if subscription already exists
         result = await self.db.execute(
-            select(PushSubscription).where(
-                PushSubscription.endpoint == data.endpoint
-            )
+            select(PushSubscription).where(PushSubscription.endpoint == data.endpoint)
         )
         existing = result.scalar_one_or_none()
 
@@ -87,9 +83,7 @@ class PushSubscriptionService:
             True if subscription was deleted, False if not found
         """
         result = await self.db.execute(
-            delete(PushSubscription).where(
-                PushSubscription.endpoint == endpoint
-            )
+            delete(PushSubscription).where(PushSubscription.endpoint == endpoint)
         )
         await self.db.commit()
 
@@ -107,9 +101,7 @@ class PushSubscriptionService:
             List of active PushSubscription instances
         """
         result = await self.db.execute(
-            select(PushSubscription).where(
-                PushSubscription.is_active == True
-            )
+            select(PushSubscription).where(PushSubscription.is_active.is_(True))
         )
         return list(result.scalars().all())
 

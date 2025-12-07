@@ -1,23 +1,40 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState, lazy, Suspense, useContext, useMemo } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import { NotificationProvider } from './contexts/NotificationContext';
-import { useRealtimeAlerts } from './hooks/useRealtimeAlerts';
+import { AuthProvider, AuthContext } from './contexts/AuthContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { CookieConsent } from './components/CookieConsent';
 import { FirstTimeDisclaimerModal } from './components/FirstTimeDisclaimerModal';
 
 // Lazy load pages for code splitting (Phase 4.3)
-const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Dashboard = lazy(() => import('./pages/DashboardNew'));
 const TradesPage = lazy(() => import('./pages/TradesPage'));
+const CongressionalTradesPage = lazy(() => import('./pages/CongressionalTradesPage'));
 const MarketOverviewPage = lazy(() => import('./pages/MarketOverviewPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const CompanyPage = lazy(() => import('./pages/CompanyPage'));
 const InsiderPage = lazy(() => import('./pages/InsiderPage'));
-const AlertsPage = lazy(() => import('./pages/AlertsPage'));
-const AIInsightsPage = lazy(() => import('./pages/AIInsightsPage'));
+const NewsPage = lazy(() => import('./pages/NewsPage'));
+const LessonsPage = lazy(() => import('./pages/LessonsPage'));
+const StrategiesPage = lazy(() => import('./pages/StrategiesPage'));
+const FedCalendarPage = lazy(() => import('./pages/FedCalendarPage'));
+const OrderHistoryPage = lazy(() => import('./pages/OrderHistoryPage'));
+const FAQPage = lazy(() => import('./pages/FAQPage'));
+const ContactPage = lazy(() => import('./pages/ContactPage'));
+const CareersPage = lazy(() => import('./pages/CareersPage'));
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
 const PricingPage = lazy(() => import('./pages/PricingPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const SupportPage = lazy(() => import('./pages/SupportPage'));
+const BillingSuccessPage = lazy(() => import('./pages/BillingSuccessPage'));
+const BillingCancelPage = lazy(() => import('./pages/BillingCancelPage'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboardPage'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 // Loading skeleton component
@@ -35,32 +52,56 @@ const PageLoader = () => (
   </div>
 );
 
-// WebSocket URL for real-time alerts
-const ALERTS_WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/api/v1/alerts/stream';
-
 function AppContent() {
-  // Connect to real-time alerts WebSocket
-  useRealtimeAlerts({ url: ALERTS_WS_URL, enabled: true });
-
   return (
-    <Layout>
-      <Suspense fallback={<PageLoader />}>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/trades" element={<TradesPage />} />
-          <Route path="/market-overview" element={<MarketOverviewPage />} />
-          <Route path="/ai-insights" element={<AIInsightsPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/companies/:ticker" element={<CompanyPage />} />
-          <Route path="/insiders/:id" element={<InsiderPage />} />
-          <Route path="/alerts" element={<AlertsPage />} />
-          <Route path="/pricing" element={<PricingPage />} />
-          <Route path="/terms" element={<TermsOfServicePage />} />
-          <Route path="/privacy" element={<PrivacyPolicyPage />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Suspense>
-    </Layout>
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        {/* Auth routes - NO LAYOUT (full screen) */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+
+        {/* All other routes - WITH LAYOUT */}
+        <Route path="/*" element={
+          <Layout>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/pricing" element={<PricingPage />} />
+              <Route path="/terms" element={<TermsOfServicePage />} />
+              <Route path="/privacy" element={<PrivacyPolicyPage />} />
+              <Route path="/faq" element={<FAQPage />} />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/careers" element={<CareersPage />} />
+
+              {/* Admin routes - redirect non-admins */}
+              <Route path="/admin" element={<ProtectedRoute requireSuperuser><AdminDashboard /></ProtectedRoute>} />
+              
+              {/* User routes - redirect admins to /admin */}
+              <Route path="/" element={<ProtectedRoute redirectAdmin><Dashboard /></ProtectedRoute>} />
+              <Route path="/trades" element={<ProtectedRoute redirectAdmin><TradesPage /></ProtectedRoute>} />
+              <Route path="/congressional-trades" element={<ProtectedRoute redirectAdmin><CongressionalTradesPage /></ProtectedRoute>} />
+              <Route path="/market-overview" element={<ProtectedRoute redirectAdmin><MarketOverviewPage /></ProtectedRoute>} />
+              <Route path="/news" element={<ProtectedRoute redirectAdmin><NewsPage /></ProtectedRoute>} />
+              <Route path="/fed-calendar" element={<ProtectedRoute redirectAdmin><FedCalendarPage /></ProtectedRoute>} />
+              <Route path="/lessons" element={<ProtectedRoute redirectAdmin><LessonsPage /></ProtectedRoute>} />
+              <Route path="/strategies" element={<ProtectedRoute redirectAdmin><StrategiesPage /></ProtectedRoute>} />
+              <Route path="/companies/:ticker" element={<ProtectedRoute redirectAdmin><CompanyPage /></ProtectedRoute>} />
+              <Route path="/insiders/:id" element={<ProtectedRoute redirectAdmin><InsiderPage /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+              <Route path="/support" element={<ProtectedRoute><SupportPage /></ProtectedRoute>} />
+              <Route path="/orders" element={<ProtectedRoute redirectAdmin><OrderHistoryPage /></ProtectedRoute>} />
+              <Route path="/billing/success" element={<ProtectedRoute><BillingSuccessPage /></ProtectedRoute>} />
+              <Route path="/billing/cancel" element={<ProtectedRoute><BillingCancelPage /></ProtectedRoute>} />
+
+              {/* 404 */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Layout>
+        } />
+      </Routes>
+    </Suspense>
   );
 }
 
@@ -84,10 +125,12 @@ function App() {
   }
 
   return (
-    <NotificationProvider>
-      <AppContent />
-      <CookieConsent />
-    </NotificationProvider>
+    <AuthProvider>
+      <NotificationProvider>
+        <AppContent />
+        <CookieConsent />
+      </NotificationProvider>
+    </AuthProvider>
   );
 }
 

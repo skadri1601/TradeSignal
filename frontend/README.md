@@ -1,647 +1,456 @@
 # TradeSignal Frontend
 
-React 18 + TypeScript frontend dashboard for the TradeSignal insider trading intelligence platform.
+React-based frontend application for TradeSignal. Provides a modern, responsive user interface for tracking insider trades, congressional stock transactions, and market intelligence.
 
----
+## Tech Stack
 
-## 📁 Current Project Structure
+- **React 18** - Modern UI library with concurrent features
+- **TypeScript** - Type-safe JavaScript for better DX
+- **Vite** - Fast build tool with hot module replacement
+- **React Router 6** - Client-side routing with data loading
+- **Tailwind CSS** - Utility-first CSS framework
+- **Headless UI** - Unstyled, accessible UI components
+- **Recharts** - Composable charting library
+- **Axios** - HTTP client for API communication
+
+## Project Structure
 
 ```
 frontend/
 ├── src/
-│   ├── api/                       # ✅ API client & HTTP requests
-│   │   ├── client.ts              # Axios instance configuration
-│   │   ├── ai.ts                  # AI insights & chatbot API
-│   │   ├── alerts.ts              # Alert management API
-│   │   ├── companies.ts           # Company API calls
-│   │   ├── insiders.ts            # Insider API calls
-│   │   ├── stocks.ts              # Stock price & market data API
-│   │   └── trades.ts              # Trade API calls
-│   │
-│   ├── components/                # ✅ Reusable UI components
-│   │   ├── layout/
-│   │   │   ├── Header.tsx         # App header with navigation
-│   │   │   └── Layout.tsx         # Main layout wrapper
-│   │   │
-│   │   ├── trades/
-│   │   │   ├── TradeList.tsx      # Trade table with filtering
-│   │   │   ├── TradePieChart.tsx  # Buy/Sell distribution chart
-│   │   │   └── TradeValueSparkline.tsx # Value trend sparkline
-│   │   │
-│   │   ├── stocks/
-│   │   │   ├── MarketOverviewCard.tsx  # Individual stock card
-│   │   │   └── MarketSummaryCard.tsx   # Market summary widget
-│   │   │
-│   │   ├── alerts/
-│   │   │   ├── AlertCard.tsx      # Alert display card
-│   │   │   ├── AlertList.tsx      # Alert listing
-│   │   │   ├── CreateAlertModal.tsx # Create alert modal
-│   │   │   └── EditAlertModal.tsx # Edit alert modal
-│   │   │
-│   │   ├── ai/
-│   │   │   ├── AIChat.tsx         # Interactive AI chatbot
-│   │   │   ├── CompanyAnalysis.tsx # AI company analysis
-│   │   │   ├── DailySummaryCard.tsx # AI daily market summary
-│   │   │   └── TradingSignals.tsx # AI trading signals
-│   │   │
-│   │   └── common/
-│   │       ├── CompanyAutocomplete.tsx # Company search autocomplete
-│   │       ├── LoadingSpinner.tsx # Loading indicator
-│   │       ├── CookieConsent.tsx  # Cookie consent banner
-│   │       ├── DataFreshnessIndicator.tsx # Data age indicator
-│   │       ├── FirstTimeDisclaimerModal.tsx # Legal disclaimer
-│   │       ├── LegalDisclaimer.tsx # Legal footer
-│   │       └── MarketStatusBanner.tsx # Market open/closed banner
-│   │
-│   ├── pages/                     # ✅ Page components
-│   │   ├── Dashboard.tsx          # Home dashboard with stats
-│   │   ├── TradesPage.tsx         # All trades view with filters
-│   │   ├── CompanyPage.tsx        # Company detail view
-│   │   ├── InsiderPage.tsx        # Insider detail view
-│   │   ├── MarketOverviewPage.tsx # Live stock prices (109+ stocks)
-│   │   ├── AIInsightsPage.tsx     # AI insights & chatbot
-│   │   ├── AlertsPage.tsx         # Alert management
-│   │   ├── AboutPage.tsx          # About page
-│   │   ├── PricingPage.tsx        # Pricing/subscription page
-│   │   ├── PrivacyPolicyPage.tsx  # Privacy policy
-│   │   ├── TermsOfServicePage.tsx # Terms of service
-│   │   └── NotFound.tsx           # 404 page
-│   │
-│   ├── hooks/                     # ✅ Custom React hooks
-│   │   ├── usePushNotifications.ts # Browser push notifications
-│   │   ├── useRealtimeAlerts.ts   # Real-time alert streaming
-│   │   └── useTradeStream.ts      # WebSocket trade streaming
-│   │
-│   ├── contexts/                  # ✅ React contexts
-│   │   └── NotificationContext.tsx # Notification state management
-│   │
-│   ├── types/                     # ✅ TypeScript type definitions
-│   │   └── index.ts               # All type definitions
-│   │
-│   ├── utils/                     # ✅ Utility functions
-│   │   └── constants.ts           # App constants
-│   │
-│   ├── test/                      # ✅ Test configuration
-│   │   └── setup.ts               # Vitest setup
-│   │
-│   ├── App.tsx                    # ✅ Root app component with routing
-│   ├── main.tsx                   # ✅ App entry point
-│   └── index.css                  # ✅ Global styles + Tailwind
-│
-├── public/                        # Static assets
-│   └── vite.svg
-│
-├── package.json                   # ✅ Dependencies & scripts
-├── tsconfig.json                  # ✅ TypeScript configuration
-├── vite.config.ts                 # ✅ Vite bundler config
-├── vitest.config.ts               # ✅ Vitest test config
-├── tailwind.config.js             # ✅ Tailwind CSS config
-├── postcss.config.js              # ✅ PostCSS config
-├── Dockerfile                     # ✅ Docker image definition
-└── README.md                      # This file
+│   ├── api/                    # API client functions
+│   │   ├── client.ts          # Axios instance with interceptors
+│   │   ├── auth.ts            # Authentication API
+│   │   ├── billing.ts         # Stripe billing API
+│   │   ├── companies.ts       # Companies API
+│   │   ├── congressionalTrades.ts
+│   │   ├── fed.ts
+│   │   ├── jobs.ts
+│   │   ├── news.ts
+│   │   ├── tickets.ts
+│   │   └── admin.ts
+│   ├── components/             # Reusable components
+│   │   ├── common/            # Shared components
+│   │   │   ├── CompanyAutocomplete.tsx
+│   │   │   ├── CustomAlert.tsx
+│   │   │   └── CustomConfirm.tsx
+│   │   ├── congressional/     # Congressional trades components
+│   │   ├── layout/            # Layout components
+│   │   │   ├── Header.tsx
+│   │   │   ├── Sidebar.tsx
+│   │   │   ├── TopBar.tsx
+│   │   │   └── Layout.tsx
+│   │   ├── CompanyLogo.tsx
+│   │   ├── CookieConsent.tsx
+│   │   ├── FirstTimeDisclaimerModal.tsx
+│   │   ├── ProtectedRoute.tsx
+│   │   ├── TierRestrictionBanner.tsx
+│   │   └── UsageStats.tsx
+│   ├── contexts/               # React contexts
+│   │   ├── AuthContext.tsx    # Authentication state
+│   │   └── NotificationContext.tsx
+│   ├── hooks/                  # Custom React hooks
+│   │   ├── useCustomAlert.ts
+│   │   └── useCustomConfirm.ts
+│   ├── pages/                  # Page components
+│   │   ├── LoginPage.tsx
+│   │   ├── RegisterPage.tsx
+│   │   ├── ForgotPasswordPage.tsx
+│   │   ├── ResetPasswordPage.tsx
+│   │   ├── DashboardNew.tsx
+│   │   ├── TradesPage.tsx
+│   │   ├── CongressionalTradesPage.tsx
+│   │   ├── CompanyPage.tsx
+│   │   ├── InsiderPage.tsx
+│   │   ├── NewsPage.tsx
+│   │   ├── FedCalendarPage.tsx
+│   │   ├── LessonsPage.tsx
+│   │   ├── StrategiesPage.tsx
+│   │   ├── PricingPage.tsx
+│   │   ├── ProfilePage.tsx
+│   │   ├── SupportPage.tsx
+│   │   ├── AdminDashboardPage.tsx
+│   │   ├── OrderHistoryPage.tsx
+│   │   ├── BillingSuccessPage.tsx
+│   │   ├── BillingCancelPage.tsx
+│   │   ├── CareersPage.tsx
+│   │   ├── ContactPage.tsx
+│   │   ├── FAQPage.tsx
+│   │   └── NotFound.tsx
+│   ├── types/                  # TypeScript type definitions
+│   │   └── index.ts
+│   ├── App.tsx                 # Root component with routing
+│   ├── main.tsx               # Application entry point
+│   └── index.css              # Global styles
+├── public/                     # Static assets
+├── index.html                  # HTML template
+├── package.json               # Dependencies and scripts
+├── tsconfig.json              # TypeScript configuration
+├── vite.config.ts             # Vite configuration
+└── tailwind.config.js         # Tailwind configuration
 ```
 
-**Status:** ✅ **FULLY IMPLEMENTED** - All phases complete (Phases 1-6.5)
+## Key Features
 
----
+### Authentication Flow
+- **Login/Register** - JWT-based authentication
+- **Password Reset** - Email-based password recovery
+- **Protected Routes** - Route guards with role-based access
+- **Session Management** - Auto-refresh tokens, persistent sessions
+- **User Profile** - Profile editing and account management
 
-## ✨ Key Features Implemented
+### Dashboard
+- Recent insider trades overview
+- Congressional trades summary
+- Market indices and sector performance
+- Quick stats and trending companies
+- Real-time data updates
 
-### 📊 Dashboard & Analytics
-- Real-time insider trade tracking with live updates
-- Market overview with 109+ stocks and live prices (15-second refresh)
-- Top gainers/losers widget
-- Buy/sell ratio charts and sparklines
-- Data freshness indicators
+### Trades Pages
+- **Insider Trades** - Filterable table with search
+- **Congressional Trades** - Political stock transactions
+- Advanced filters (date range, transaction type, amount)
+- Export functionality
+- Detailed trade modals
 
-### 🔔 Alerts & Notifications
-- Custom alert creation with flexible filters (ticker, value, transaction type)
-- Real-time WebSocket alert streaming
-- Browser push notifications (with VAPID)
-- Alert management (create, edit, delete, enable/disable)
-- Multi-channel delivery (webhooks, email, push)
+### Company & Insider Pages
+- Company profiles with key metrics
+- Insider trading history
+- Stock price charts
+- News and filings
+- Related trades and insiders
 
-### 🤖 AI-Powered Insights
-- Google Gemini 2.0 Flash integration
-- Daily market summaries (news feed style)
-- AI trading signals (bullish/bearish/neutral)
-- Company-specific AI analysis
-- Interactive AI chatbot with real-time data access
-- Smart caching (24-hour TTL)
+### Admin Dashboard
+- User management (view, edit, delete users)
+- System statistics
+- Subscription management
+- Support ticket handling
+- Analytics and metrics
 
-### 📈 Market Data
-- Live stock prices for 109+ companies
-- Yahoo Finance integration (primary source)
-- Market status banner (open/closed with live indicator)
-- Real-time price updates
-- Top gainers/losers analysis
-- Parallel data fetching for performance
+### Billing & Subscriptions
+- Stripe checkout integration
+- 3-tier subscription system (Free, Pro, Enterprise)
+- Payment history
+- Subscription management (upgrade, cancel)
+- Feature access control
 
-### 🎯 Trade Management
-- Advanced filtering (ticker, date range, value, transaction type)
-- Trade listing with pagination
-- Company and insider detail pages
-- WebSocket live trade streaming
-- Trade statistics and visualizations
+### Additional Pages
+- **News** - Financial news aggregation
+- **Fed Calendar** - Economic events and FOMC meetings
+- **Lessons** - Educational content for trading
+- **Strategies** - Trading strategy guides
+- **Support** - Help desk and ticket system
+- **FAQ** - Frequently asked questions
+- **Contact** - Contact form
+- **Careers** - Job listings and applications
 
-### 🔒 Legal & Compliance
-- Cookie consent banner
-- First-time user disclaimer modal
-- Privacy policy & terms of service pages
-- Legal disclaimer footer
-- GDPR compliance features
+## Routing
 
----
+### Public Routes (no auth required)
+- `/about` - About page
+- `/pricing` - Pricing tiers
+- `/terms` - Terms of service
+- `/privacy` - Privacy policy
+- `/faq` - FAQ
+- `/contact` - Contact form
+- `/careers` - Job listings
 
-## 🛠️ Tech Stack
+### Authentication Routes (full-screen, no layout)
+- `/login` - Login page
+- `/register` - Registration page
+- `/forgot-password` - Password reset request
+- `/reset-password/:token` - Password reset confirmation
 
-- **Framework**: React 18
-- **Language**: TypeScript 5
-- **Build Tool**: Vite 5
-- **Styling**: Tailwind CSS 3
-- **State Management**: Zustand (global), React Query (server state)
-- **HTTP Client**: Axios
-- **Routing**: React Router v6
-- **Charts**: Recharts
-- **Icons**: Lucide React
-- **Date Handling**: date-fns
-- **Notifications**: react-hot-toast
+### Protected Routes (auth required)
+- `/` - Dashboard
+- `/trades` - Insider trades
+- `/congressional-trades` - Congressional trades
+- `/market-overview` - Market data
+- `/companies/:ticker` - Company details
+- `/insiders/:id` - Insider profile
+- `/news` - News feed
+- `/fed-calendar` - Fed calendar
+- `/lessons` - Educational content
+- `/strategies` - Trading strategies
+- `/profile` - User profile
+- `/support` - Support center
+- `/orders` - Order history
+- `/billing/success` - Billing success
+- `/billing/cancel` - Billing cancel
 
----
+### Admin Routes (superuser only)
+- `/admin` - Admin dashboard
 
-## 🚀 Quick Start
+## State Management
 
-### Prerequisites
+### AuthContext
+Manages authentication state globally:
+- Current user data
+- Login/logout functions
+- Token management
+- Role-based access control
 
-- Node.js 18+
-- npm or yarn
-- Backend API running (see [backend/README.md](../backend/README.md))
+### NotificationContext
+Manages toast notifications:
+- Success/error/info/warning messages
+- Auto-dismiss timers
+- Queue management
 
-### Installation
+## API Integration
 
-**1. Navigate to frontend directory**
-```bash
-cd frontend
+### API Client (`src/api/client.ts`)
+Centralized Axios instance with:
+- Base URL configuration
+- Request interceptors (add auth token)
+- Response interceptors (handle errors, refresh tokens)
+- Error handling and retry logic
+
+### API Modules
+Each API module exports typed functions:
+```typescript
+// Example: auth.ts
+export const login = async (email: string, password: string): Promise<LoginResponse>
+export const register = async (data: RegisterRequest): Promise<User>
+export const getCurrentUser = async (): Promise<User>
 ```
 
-**2. Install dependencies**
-```bash
-npm install
-```
-
-**3. Set up environment variables**
+## Environment Variables
 
 Create a `.env` file in the frontend directory:
+
 ```env
+# Required
 VITE_API_URL=http://localhost:8000
-VITE_WS_URL=ws://localhost:8000/ws
+
+# Stripe (for billing)
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
+
+# Optional
+VITE_ENABLE_ANALYTICS=false
 ```
 
-**4. Start development server**
+## Development
+
+### Setup
+```bash
+# Install dependencies
+npm install
+
+# Copy environment file
+cp .env.example .env
+
+# Edit .env with your configuration
+nano .env
+```
+
+### Run Development Server
 ```bash
 npm run dev
 ```
 
-Frontend will run at: http://localhost:5174
-
----
-
-## 📜 Available Scripts
-
-### Development
-```bash
-npm run dev          # Start Vite dev server with hot reload
-```
-
-### Production Build
-```bash
-npm run build        # Build for production (outputs to /dist)
-npm run preview      # Preview production build locally
-```
-
-### Code Quality
-```bash
-npm run lint         # Run ESLint
-npm run type-check   # Run TypeScript type checking (if configured)
-```
-
----
-
-## 🎨 Styling with Tailwind CSS
-
-This project uses Tailwind CSS for styling. All utility classes are available:
-
-```tsx
-// Example component
-export function Button() {
-  return (
-    <button className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
-      Click Me
-    </button>
-  );
-}
-```
-
-**Tailwind Configuration** (`tailwind.config.js`):
-- Custom colors (brand colors)
-- Extended spacing
-- Custom fonts (optional)
-- Dark mode support
-
----
-
-## 🔌 API Integration
-
-### API Client Setup
-
-The API client is configured in `src/api/client.ts`:
-
-```typescript
-import axios from 'axios';
-
-const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Request interceptor (for auth tokens, etc.)
-apiClient.interceptors.request.use((config) => {
-  // Add auth token if available
-  return config;
-});
-
-// Response interceptor (for error handling)
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    // Handle errors globally
-    return Promise.reject(error);
-  }
-);
-
-export default apiClient;
-```
-
-### Using React Query
-
-React Query manages server state and caching:
-
-```typescript
-// src/hooks/useTrades.ts
-import { useQuery } from '@tanstack/react-query';
-import { fetchTrades } from '@/api/trades';
-
-export function useTrades(filters?: TradeFilters) {
-  return useQuery({
-    queryKey: ['trades', filters],
-    queryFn: () => fetchTrades(filters),
-    staleTime: 30000, // 30 seconds
-    refetchInterval: 60000, // Refetch every minute
-  });
-}
-
-// Usage in component
-function TradesPage() {
-  const { data, isLoading, error } = useTrades();
-
-  if (isLoading) return <LoadingSpinner />;
-  if (error) return <ErrorMessage error={error} />;
-
-  return <TradeList trades={data.items} />;
-}
-```
-
----
-
-## 📊 State Management
-
-### Global State (Zustand)
-
-```typescript
-// src/store/useFilterStore.ts
-import { create } from 'zustand';
-
-interface FilterState {
-  ticker: string | null;
-  startDate: Date | null;
-  endDate: Date | null;
-  transactionType: 'BUY' | 'SELL' | null;
-  setTicker: (ticker: string | null) => void;
-  setDateRange: (start: Date | null, end: Date | null) => void;
-  setTransactionType: (type: 'BUY' | 'SELL' | null) => void;
-  reset: () => void;
-}
-
-export const useFilterStore = create<FilterState>((set) => ({
-  ticker: null,
-  startDate: null,
-  endDate: null,
-  transactionType: null,
-  setTicker: (ticker) => set({ ticker }),
-  setDateRange: (start, end) => set({ startDate: start, endDate: end }),
-  setTransactionType: (type) => set({ transactionType: type }),
-  reset: () => set({
-    ticker: null,
-    startDate: null,
-    endDate: null,
-    transactionType: null
-  }),
-}));
-```
-
-### Server State (React Query)
-
-React Query handles all server data (trades, companies, insiders) with automatic caching, refetching, and background updates.
-
----
-
-## 🧩 Key Components (Planned)
-
-### Dashboard
-- Overview statistics (total trades, companies, insiders)
-- Recent trades list
-- Charts (trade volume over time, buy vs sell)
-- Top insiders by activity
-
-### Trade List
-- Searchable/filterable table
-- Pagination
-- Sort by date, value, company
-- Color coding (green = buy, red = sell)
-- Export to CSV (optional)
-
-### Company Page
-- Company details (ticker, sector, market cap)
-- All insider trades for company
-- Insider list
-- Trade chart for company
-
-### Insider Page
-- Insider details (name, title, relationships)
-- All trades by insider
-- Win rate / performance metrics
-- Timeline of activity
-
----
-
-## 🎨 Theme & Design
-
-### Color Scheme
-- Primary: Blue (#3B82F6)
-- Success (Buy): Green (#10B981)
-- Danger (Sell): Red (#EF4444)
-- Background: Gray (#F9FAFB)
-- Dark mode: Coming soon
-
-### Typography
-- Font: Inter or system font stack
-- Headings: Bold, larger sizes
-- Body: Regular, 16px base
-
-### Components
-- Cards with subtle shadows
-- Rounded corners (8px)
-- Hover effects on interactive elements
-- Loading skeletons for better UX
-
----
-
-## 📱 Responsive Design
-
-The dashboard is fully responsive:
-- **Desktop** (1024px+): Full layout with sidebar
-- **Tablet** (768px-1023px): Collapsible sidebar
-- **Mobile** (< 768px): Bottom navigation, stacked layout
-
-Breakpoints (Tailwind):
-- `sm`: 640px
-- `md`: 768px
-- `lg`: 1024px
-- `xl`: 1280px
-- `2xl`: 1536px
-
----
-
-## 🔧 Development Tips
-
-### Hot Module Replacement (HMR)
-
-Vite provides instant HMR. Changes appear immediately without full page reload.
-
-### TypeScript
-
-All components should be typed:
-```typescript
-interface TradeListProps {
-  trades: Trade[];
-  onTradeClick?: (trade: Trade) => void;
-}
-
-export function TradeList({ trades, onTradeClick }: TradeListProps) {
-  // ...
-}
-```
-
-### Component Organization
-
-- Keep components small and focused
-- Extract reusable logic into custom hooks
-- Use TypeScript for type safety
-- Follow naming conventions:
-  - Components: PascalCase (`TradeCard.tsx`)
-  - Hooks: camelCase with `use` prefix (`useTrades.ts`)
-  - Utils: camelCase (`formatCurrency.ts`)
-
----
-
-## 🐛 Troubleshooting
-
-### Issue: npm install fails
-
-**Solution:**
-```bash
-# Clear npm cache
-npm cache clean --force
-
-# Delete node_modules and package-lock.json
-rm -rf node_modules package-lock.json
-
-# Reinstall
-npm install
-```
-
-### Issue: Port 5174 already in use
-
-**Solution:**
-
-Mac/Linux:
-```bash
-lsof -ti:5174 | xargs kill -9
-```
-
-Windows:
-```bash
-netstat -ano | findstr :5174
-taskkill /PID <PID> /F
-```
-
-Or use different port:
-```bash
-npm run dev -- --port 5175
-```
-
-### Issue: API calls failing (CORS error)
-
-**Cause:** Backend not allowing frontend origin
-
-**Solution:**
-1. Ensure backend is running
-2. Check CORS configuration in `backend/app/main.py`
-3. Verify `VITE_API_URL` in `.env`
-
-### Issue: Build fails with TypeScript errors
-
-**Solution:**
-```bash
-# Check TypeScript errors
-npx tsc --noEmit
-
-# Fix errors, then rebuild
-npm run build
-```
-
----
-
-## 📦 Dependencies
-
-### Core Dependencies
-- `react` - UI library
-- `react-dom` - React DOM renderer
-- `react-router-dom` - Client-side routing
-- `typescript` - Type safety
-- `vite` - Build tool
-
-### UI Libraries
-- `tailwindcss` - Utility-first CSS
-- `lucide-react` - Icon library
-- `recharts` - Charting library
-- `react-hot-toast` - Toast notifications
-
-### State & Data
-- `@tanstack/react-query` - Server state management
-- `zustand` - Global state management
-- `axios` - HTTP client
-- `date-fns` - Date utilities
-
----
-
-## 🚀 Production Deployment
+Access the app at http://localhost:3000
 
 ### Build for Production
 ```bash
 npm run build
 ```
 
-Output will be in `/dist` directory.
+Output will be in the `dist/` directory.
 
-### Deploy to Vercel (Recommended)
-
+### Preview Production Build
 ```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Deploy
-vercel
-
-# Or connect GitHub repo for automatic deployments
+npm run preview
 ```
 
-### Deploy to Netlify
-
+### Linting
 ```bash
-# Install Netlify CLI
-npm i -g netlify-cli
-
-# Deploy
-netlify deploy --prod
+npm run lint
 ```
 
-### Environment Variables (Production)
-
-Set these in your hosting platform:
-```
-VITE_API_URL=https://your-backend-api.com
-VITE_WS_URL=wss://your-backend-api.com/ws
+### Type Checking
+```bash
+npm run type-check
 ```
 
----
+## Component Patterns
 
-## 🔒 Security
+### Protected Routes
+```typescript
+<Route path="/admin" element={
+  <ProtectedRoute requireSuperuser>
+    <AdminDashboard />
+  </ProtectedRoute>
+} />
+```
 
-- Environment variables prefixed with `VITE_` (public)
-- Sensitive data (API keys) should be in backend only
-- HTTPS in production
-- Content Security Policy (CSP) headers
-- XSS protection via React's built-in escaping
+### API Calls with Error Handling
+```typescript
+try {
+  const trades = await getTrades({ limit: 50 });
+  setTrades(trades);
+} catch (error) {
+  console.error('Failed to fetch trades:', error);
+  showNotification('error', 'Failed to load trades');
+}
+```
 
----
+### Authentication Check
+```typescript
+const { user, isAuthenticated } = useContext(AuthContext);
 
-## 📊 Performance Optimization
+if (!isAuthenticated) {
+  return <Navigate to="/login" />;
+}
+```
+
+## Styling
+
+### Tailwind CSS
+Utility-first approach with custom configuration:
+```typescript
+// Example component
+<div className="bg-white shadow rounded-lg p-6 hover:shadow-lg transition-shadow">
+  <h2 className="text-2xl font-bold text-gray-900">Title</h2>
+  <p className="text-gray-600 mt-2">Description</p>
+</div>
+```
+
+### Custom Classes
+Defined in `index.css` for reusable styles:
+```css
+.btn-primary {
+  @apply bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700;
+}
+```
+
+## Performance Optimizations
 
 ### Code Splitting
-Vite automatically code-splits by route:
+Lazy-loaded routes with React.lazy():
 ```typescript
-// Lazy load pages
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const TradesPage = lazy(() => import('./pages/TradesPage'));
+const Dashboard = lazy(() => import('./pages/DashboardNew'));
+```
+
+### Memoization
+Use `useMemo` and `useCallback` for expensive computations:
+```typescript
+const filteredTrades = useMemo(() =>
+  trades.filter(t => t.amount > 100000),
+  [trades]
+);
 ```
 
 ### Image Optimization
-- Use WebP format when possible
-- Lazy load images below fold
-- Use proper image sizes (don't load 4K images for thumbnails)
+- Use appropriate image formats (WebP, AVIF)
+- Lazy load images below the fold
+- Responsive images with `srcset`
 
-### React Query Caching
-- Configure appropriate `staleTime` and `cacheTime`
-- Use query key invalidation for real-time updates
-- Enable background refetching for live data
+## Testing
 
----
-
-## 🧪 Testing (Planned)
-
-### Unit Tests (Vitest)
+### Unit Tests
 ```bash
-npm run test
+npm test
 ```
 
-### E2E Tests (Playwright)
+### E2E Tests (if configured)
 ```bash
 npm run test:e2e
 ```
 
----
+## Deployment
 
-## 📝 Notes
+### Build
+```bash
+npm run build
+```
 
-- This frontend is **Phase 3** of the project (not yet implemented)
-- Current focus is on backend functionality (Phases 1 & 2)
-- Once backend is complete, frontend development will begin
-- Design mockups and wireframes coming soon
+### Docker
+```bash
+# Build image
+docker build -t tradesignal-frontend .
 
----
+# Run container
+docker run -p 3000:80 tradesignal-frontend
+```
 
-## 📞 Support
+### Static Hosting
+Deploy the `dist/` folder to:
+- Vercel
+- Netlify
+- AWS S3 + CloudFront
+- Nginx
 
-For issues or questions:
-- Ensure backend API is running and accessible
-- Check browser console for errors
-- Review React Query DevTools (if enabled)
-- Refer to main project [README](../README.md)
+### Environment-Specific Builds
+```bash
+# Production
+VITE_API_URL=https://api.tradesignal.com npm run build
 
----
+# Staging
+VITE_API_URL=https://api-staging.tradesignal.com npm run build
+```
 
-**Built with React, TypeScript, and Tailwind CSS | Part of TradeSignal Platform**
+## Troubleshooting
+
+### CORS Issues
+Ensure backend CORS settings include your frontend URL:
+```python
+# backend/app/config.py
+CORS_ORIGINS = "http://localhost:3000,https://tradesignal.com"
+```
+
+### Authentication Not Persisting
+Check if `localStorage` is available and not blocked:
+```typescript
+if (typeof window !== 'undefined' && window.localStorage) {
+  // Safe to use localStorage
+}
+```
+
+### API Calls Failing
+1. Check `VITE_API_URL` in `.env`
+2. Verify backend is running
+3. Check browser console for errors
+4. Inspect network tab for request details
+
+### Build Errors
+```bash
+# Clear cache and rebuild
+rm -rf node_modules dist .vite
+npm install
+npm run build
+```
+
+## Contributing
+
+1. Follow React best practices
+2. Use TypeScript for all new code
+3. Follow the existing component structure
+4. Add prop types for all components
+5. Write meaningful commit messages
+6. Update this README for significant changes
+
+## Browser Support
+
+- Chrome/Edge (latest)
+- Firefox (latest)
+- Safari (latest)
+- Mobile browsers (iOS Safari, Chrome Mobile)
+
+## Accessibility
+
+- Semantic HTML elements
+- ARIA labels where needed
+- Keyboard navigation support
+- Screen reader friendly
+- Color contrast compliance (WCAG AA)
+
+## License
+
+Proprietary - All rights reserved
+
+## Support
+
+For issues and questions:
+- GitHub Issues: Create an issue
+- Email: dev@tradesignal.com
+- Docs: [Main README](../README.md)

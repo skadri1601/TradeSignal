@@ -42,7 +42,7 @@ class ScraperService:
         ticker: Optional[str] = None,
         cik: Optional[str] = None,
         days_back: int = 30,
-        max_filings: int = 100
+        max_filings: int = 100,
     ) -> Dict[str, Any]:
         """
         Scrape Form 4 filings for a specific company.
@@ -77,10 +77,7 @@ class ScraperService:
         # Fetch Form 4 filings from SEC
         try:
             filings = await self.sec_client.fetch_recent_form4_filings(
-                cik=cik,
-                ticker=ticker,
-                start_date=start_date,
-                count=max_filings
+                cik=cik, ticker=ticker, start_date=start_date, count=max_filings
             )
         except Exception as e:
             logger.error(f"Failed to fetch Form 4 filings: {e}")
@@ -88,7 +85,7 @@ class ScraperService:
                 "success": False,
                 "error": str(e),
                 "filings_processed": 0,
-                "trades_created": 0
+                "trades_created": 0,
             }
 
         if not filings:
@@ -97,7 +94,7 @@ class ScraperService:
                 "success": True,
                 "filings_processed": 0,
                 "trades_created": 0,
-                "message": "No filings found"
+                "message": "No filings found",
             }
 
         # Process each filing
@@ -112,7 +109,9 @@ class ScraperService:
                 filings_processed += 1
 
             except Exception as e:
-                logger.error(f"Failed to process filing {filing.get('accession_number')}: {e}")
+                logger.error(
+                    f"Failed to process filing {filing.get('accession_number')}: {e}"
+                )
                 errors.append(str(e))
                 continue
 
@@ -125,7 +124,7 @@ class ScraperService:
             "success": True,
             "filings_processed": filings_processed,
             "trades_created": trades_created,
-            "errors": errors if errors else None
+            "errors": errors if errors else None,
         }
 
     async def _process_filing(self, db: AsyncSession, filing: Dict[str, Any]) -> int:
@@ -166,32 +165,43 @@ class ScraperService:
 
         # Ensure insider exists
         insider = await self._ensure_insider(
-            db,
-            parsed_data["reporting_owner"],
-            company.id
+            db, parsed_data["reporting_owner"], company.id
         )
         if not insider:
-            logger.warning(f"Could not create/find insider: {parsed_data['reporting_owner']}")
+            logger.warning(
+                f"Could not create/find insider: {parsed_data['reporting_owner']}"
+            )
             return 0
 
         # Create trades
         trades_created = 0
+        from app.services.trade_service import TradeService
+
         for txn in parsed_data["transactions"]:
             try:
+                # Check for duplicate before creating
+                is_duplicate = await TradeService.check_duplicate(
+                    db=db,
+                    insider_id=insider.id,
+                    transaction_date=txn["transaction_date"],
+                    shares=txn["shares"],
+                    price_per_share=txn.get("price_per_share"),
+                )
+
+                if is_duplicate:
+                    logger.debug("Duplicate trade detected, skipping")
+                    continue
+
                 trade = await self._create_trade(
-                    db,
-                    txn,
-                    company.id,
-                    insider.id,
-                    filing_url
+                    db, txn, company.id, insider.id, filing_url
                 )
                 if trade:
                     trades_created += 1
 
             except IntegrityError:
-                # Duplicate trade, skip
+                # Duplicate trade (database constraint), skip
                 await db.rollback()
-                logger.debug("Duplicate trade detected, skipping")
+                logger.debug("Duplicate trade detected (constraint), skipping")
                 continue
 
             except Exception as e:
@@ -202,9 +212,7 @@ class ScraperService:
         return trades_created
 
     async def _ensure_company(
-        self,
-        db: AsyncSession,
-        issuer_data: Dict[str, str]
+        self, db: AsyncSession, issuer_data: Dict[str, str]
     ) -> Optional[Company]:
         """
         Ensure company exists in database, create if not.
@@ -221,9 +229,7 @@ class ScraperService:
             return None
 
         # Check if exists
-        result = await db.execute(
-            select(Company).where(Company.cik == cik)
-        )
+        result = await db.execute(select(Company).where(Company.cik == cik))
         company = result.scalar_one_or_none()
 
         if company:
@@ -234,7 +240,7 @@ class ScraperService:
             company_data = CompanyCreate(
                 ticker=issuer_data.get("ticker", "UNKNOWN"),
                 name=issuer_data.get("name", "Unknown Company"),
-                cik=cik
+                cik=cik,
             )
 
             company = Company(**company_data.model_dump())
@@ -248,16 +254,11 @@ class ScraperService:
         except IntegrityError:
             await db.rollback()
             # Race condition: company was created by another process
-            result = await db.execute(
-                select(Company).where(Company.cik == cik)
-            )
+            result = await db.execute(select(Company).where(Company.cik == cik))
             return result.scalar_one_or_none()
 
     async def _ensure_insider(
-        self,
-        db: AsyncSession,
-        owner_data: Dict[str, Any],
-        company_id: int
+        self, db: AsyncSession, owner_data: Dict[str, Any], company_id: int
     ) -> Optional[Insider]:
         """
         Ensure insider exists in database, create if not.
@@ -277,8 +278,7 @@ class ScraperService:
         # Check if exists (by name and company)
         result = await db.execute(
             select(Insider).where(
-                Insider.name == name,
-                Insider.company_id == company_id
+                Insider.name == name, Insider.company_id == company_id
             )
         )
         insider = result.scalar_one_or_none()
@@ -296,7 +296,7 @@ class ScraperService:
                 is_director=owner_data.get("is_director", False),
                 is_officer=owner_data.get("is_officer", False),
                 is_ten_percent_owner=owner_data.get("is_ten_percent_owner", False),
-                is_other=owner_data.get("is_other", False)
+                is_other=owner_data.get("is_other", False),
             )
 
             insider = Insider(**insider_data.model_dump())
@@ -312,8 +312,7 @@ class ScraperService:
             # Race condition
             result = await db.execute(
                 select(Insider).where(
-                    Insider.name == name,
-                    Insider.company_id == company_id
+                    Insider.name == name, Insider.company_id == company_id
                 )
             )
             return result.scalar_one_or_none()
@@ -324,7 +323,7 @@ class ScraperService:
         txn_data: Dict[str, Any],
         company_id: int,
         insider_id: int,
-        filing_url: str
+        filing_url: str,
     ) -> Optional[Trade]:
         """
         Create a trade from transaction data.
@@ -356,7 +355,7 @@ class ScraperService:
                 shares_owned_after=txn_data.get("shares_owned_after"),
                 ownership_type=txn_data.get("ownership_type", "Direct"),
                 derivative_transaction=txn_data.get("derivative_transaction", False),
-                sec_filing_url=filing_url
+                sec_filing_url=filing_url,
             )
 
             trade = Trade(**trade_data.model_dump())

@@ -51,34 +51,29 @@ class Insider(Base):
         Integer,
         ForeignKey("companies.id", ondelete="CASCADE"),
         nullable=True,
-        index=True
+        index=True,
     )
 
     # Insider Type Flags
     is_director: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_officer: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    is_ten_percent_owner: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_ten_percent_owner: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
     is_other: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow,
-        nullable=False
+        DateTime, default=datetime.utcnow, nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
-        nullable=False
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
 
     # Relationships
     company: Mapped["Company"] = sa_relationship("Company", back_populates="insiders")
     trades: Mapped[List["Trade"]] = sa_relationship(
-        "Trade",
-        back_populates="insider",
-        cascade="all, delete-orphan"
+        "Trade", back_populates="insider", cascade="all, delete-orphan"
     )
 
     def __repr__(self) -> str:
