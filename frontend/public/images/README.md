@@ -39,6 +39,32 @@ Based on the design mockups, please save the following images in this folder:
 
 These images will be referenced in the landing page components. The actual image files should be placed directly in this `frontend/public/images/` directory so they can be accessed via `/images/filename.png` in the React components.
 
+## Design Analysis from Layzo Website
+
+Based on analysis of https://layzo.webflow.io, the design features:
+
+### Key Design Elements:
+1. **Glassmorphism Navigation Bar** - Semi-transparent, frosted glass effect with rounded corners
+2. **Dark Purple Gradient Background** - Deep purple with star particles and glowing center
+3. **Modern Typography** - Large, bold headings with clean sans-serif fonts
+4. **Rounded Elements** - All buttons and cards have rounded corners
+5. **Smooth Animations** - Subtle hover effects and transitions
+6. **Hero Section** - Large headline with tagline and CTA buttons
+7. **Feature Cards** - Glassmorphic cards showcasing key features
+8. **Atmospheric Backgrounds** - Abstract, artistic backgrounds with lighting effects
+
+### Color Palette:
+- Primary: Deep purple (#6B46C1, #7C3AED variations)
+- Background: Dark purple/black with gradients
+- Accents: Light purple, white, blue
+- Text: White on dark backgrounds
+
+### Animation Style:
+- Smooth transitions on hover
+- Parallax scrolling effects
+- Subtle glow and particle animations
+- Glassmorphism blur effects
+
 ## Note
 
 If you have the actual image files, please save them with the names listed above. The design implementation will reference these images.

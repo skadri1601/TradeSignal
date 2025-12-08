@@ -15,7 +15,6 @@ import logging
 import platform
 
 from app.database import db_manager
-from app.models import Company
 from app.services import CompanyService, InsiderService, TradeService
 from app.schemas.trade import TradeCreate
 from app.config import settings

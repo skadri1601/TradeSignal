@@ -6,7 +6,7 @@ Orchestrates fetching congressional trades from APIs and saving to database.
 
 import logging
 from datetime import datetime, date, timedelta
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any, Optional
 from decimal import Decimal
 
 from sqlalchemy import select

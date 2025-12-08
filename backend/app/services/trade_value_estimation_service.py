@@ -13,10 +13,9 @@ from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime, timedelta
 from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_
-from sqlalchemy.orm import selectinload
+from sqlalchemy import select, func, and_
 
-from app.models import Trade, Company, Insider
+from app.models import Trade
 from app.services.stock_price_service import StockPriceService
 
 logger = logging.getLogger(__name__)
@@ -28,7 +27,7 @@ class TradeValueEstimationService:
     _cache_ttl = timedelta(minutes=10)  # Cache for 10 minutes
     """
     Service for estimating missing trade values.
-    
+
     When SEC filings don't disclose total_value or price_per_share,
     this service provides intelligent estimates using:
     - Historical price data

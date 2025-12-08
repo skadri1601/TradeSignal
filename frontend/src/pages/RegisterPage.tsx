@@ -62,7 +62,7 @@ export default function RegisterPage() {
 
     try {
       await register(email, username, password);
-      navigate('/', { replace: true });
+      navigate('/dashboard', { replace: true });
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please try again.');
     } finally {

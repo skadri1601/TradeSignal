@@ -10,15 +10,12 @@ Analyzes insider trading patterns to identify trends and make predictions:
 """
 
 import logging
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Any
 from datetime import datetime, timedelta
-from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_, desc, case
-from sqlalchemy.orm import selectinload
+from sqlalchemy import select, func, and_, case
 
 from app.models import Trade, Company, Insider
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -575,10 +572,13 @@ Pattern Type: {pattern}
 Trend: {trend}
 Confidence: {confidence:.1%}
 Buy Ratio: {buy_ratio:.1%} ({buy_count} buy trades, ${total_buy_value:,.0f} total)
-Sell Ratio: {sell_ratio:.1%} ({sell_count} sell trades, ${total_sell_value:,.0f} total)
+Sell Ratio: {sell_ratio:.1%} ({sell_count} sell trades, \
+${total_sell_value:,.0f} total)
 Active Insiders: {active_insiders}
 
-Provide a concise but insightful prediction (2-3 sentences) explaining what this pattern means for the stock's future performance. Be specific about the implications and what investors should watch for.
+Provide a concise but insightful prediction (2-3 sentences) explaining what \
+this pattern means for the stock's future performance. Be specific about the \
+implications and what investors should watch for.
 
 Respond with ONLY the prediction text, no additional formatting."""
 

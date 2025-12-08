@@ -323,8 +323,13 @@ async def create_checkout_session(
                 }
             ],
             mode=checkout_mode,
-            success_url=f"{os.getenv('FRONTEND_URL', 'http://localhost:5174')}/billing/success?session_id={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"{os.getenv('FRONTEND_URL', 'http://localhost:5174')}/pricing",
+            success_url=(
+                f"{os.getenv('FRONTEND_URL', 'http://localhost:5174')}"
+                "/billing/success?session_id={{CHECKOUT_SESSION_ID}}"
+            ),
+            cancel_url=(
+                f"{os.getenv('FRONTEND_URL', 'http://localhost:5174')}/pricing"
+            ),
             metadata={
                 "user_id": str(current_user.id),
                 "tier": tier,

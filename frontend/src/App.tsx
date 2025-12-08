@@ -34,6 +34,7 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const SupportPage = lazy(() => import('./pages/SupportPage'));
 const BillingSuccessPage = lazy(() => import('./pages/BillingSuccessPage'));
 const BillingCancelPage = lazy(() => import('./pages/BillingCancelPage'));
+const LandingPage = lazy(() => import('./pages/LandingPage'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboardPage'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
@@ -61,6 +62,9 @@ function AppContent() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+        
+        {/* Landing Page - Public - NO LAYOUT */}
+        <Route path="/" element={<LandingPage />} />
 
         {/* All other routes - WITH LAYOUT */}
         <Route path="/*" element={
@@ -79,7 +83,7 @@ function AppContent() {
               <Route path="/admin" element={<ProtectedRoute requireSuperuser><AdminDashboard /></ProtectedRoute>} />
               
               {/* User routes - redirect admins to /admin */}
-              <Route path="/" element={<ProtectedRoute redirectAdmin><Dashboard /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute redirectAdmin><Dashboard /></ProtectedRoute>} />
               <Route path="/trades" element={<ProtectedRoute redirectAdmin><TradesPage /></ProtectedRoute>} />
               <Route path="/congressional-trades" element={<ProtectedRoute redirectAdmin><CongressionalTradesPage /></ProtectedRoute>} />
               <Route path="/market-overview" element={<ProtectedRoute redirectAdmin><MarketOverviewPage /></ProtectedRoute>} />
