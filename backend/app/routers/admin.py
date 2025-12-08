@@ -3,6 +3,7 @@ Admin Dashboard API Router
 Endpoints for user management and system administration
 """
 
+import logging
 from typing import Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -11,10 +12,13 @@ from sqlalchemy import select, func, desc
 from pydantic import BaseModel, EmailStr
 
 from app.database import get_db
+
+logger = logging.getLogger(__name__)
 from app.core.security import get_current_support_or_superuser, get_current_super_admin
 from app.models.user import User
 from app.models.payment import Payment
 from app.models.subscription import Subscription
+from app.models.contact_submission import ContactSubmission
 
 router = APIRouter()
 
@@ -684,4 +688,306 @@ async def demote_from_support(
     return {
         "message": f"User {user.email} demoted to customer",
         "user": UserDetail.model_validate(user),
+    }
+
+
+# Contact Management Endpoints
+
+class ContactSubmissionItem(BaseModel):
+    """Contact submission list item."""
+
+    id: int
+    user_id: int | None
+    name: str
+    company_name: str | None
+    email: str
+    phone: str | None
+    message: str
+    is_public: bool
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ContactSubmissionDetail(BaseModel):
+    """Contact submission detail with user info."""
+
+    id: int
+    user_id: int | None
+    user_email: str | None
+    user_username: str | None
+    name: str
+    company_name: str | None
+    email: str
+    phone: str | None
+    message: str
+    is_public: bool
+    ip_address: str | None
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ContactListResponse(BaseModel):
+    """Contact list response."""
+
+    total: int
+    page: int
+    page_size: int
+    contacts: list[ContactSubmissionItem]
+
+
+@router.get("/contacts/public", response_model=ContactListResponse)
+async def get_public_contacts(
+    current_user: User = Depends(get_current_super_admin),
+    db: AsyncSession = Depends(get_db),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    search: Optional[str] = Query(None),
+    status_filter: Optional[str] = Query(None),
+):
+    """
+    Get public contact submissions. Super Admin only.
+    """
+    query = select(ContactSubmission).where(ContactSubmission.is_public == True)
+
+    # Search filter
+    if search:
+        query = query.where(
+            (ContactSubmission.name.ilike(f"%{search}%"))
+            | (ContactSubmission.email.ilike(f"%{search}%"))
+        )
+
+    # Status filter
+    if status_filter:
+        query = query.where(ContactSubmission.status == status_filter)
+
+    # Get total count
+    count_query = select(func.count()).select_from(query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
+
+    # Apply pagination and ordering
+    query = query.order_by(desc(ContactSubmission.created_at)).offset(
+        (page - 1) * page_size
+    ).limit(page_size)
+
+    result = await db.execute(query)
+    contacts = result.scalars().all()
+
+    return ContactListResponse(
+        total=total,
+        page=page,
+        page_size=page_size,
+        contacts=[ContactSubmissionItem.model_validate(c) for c in contacts],
+    )
+
+
+@router.get("/contacts/authenticated", response_model=ContactListResponse)
+async def get_authenticated_contacts(
+    current_user: User = Depends(get_current_support_or_superuser),
+    db: AsyncSession = Depends(get_db),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    search: Optional[str] = Query(None),
+    status_filter: Optional[str] = Query(None),
+):
+    """
+    Get authenticated contact submissions. Super Admin and Support Admin.
+    """
+    query = select(ContactSubmission).where(ContactSubmission.is_public == False)
+
+    # Search filter
+    if search:
+        query = query.where(
+            (ContactSubmission.name.ilike(f"%{search}%"))
+            | (ContactSubmission.email.ilike(f"%{search}%"))
+        )
+
+    # Status filter
+    if status_filter:
+        query = query.where(ContactSubmission.status == status_filter)
+
+    # Get total count
+    count_query = select(func.count()).select_from(query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
+
+    # Apply pagination and ordering
+    query = query.order_by(desc(ContactSubmission.created_at)).offset(
+        (page - 1) * page_size
+    ).limit(page_size)
+
+    result = await db.execute(query)
+    contacts = result.scalars().all()
+
+    return ContactListResponse(
+        total=total,
+        page=page,
+        page_size=page_size,
+        contacts=[ContactSubmissionItem.model_validate(c) for c in contacts],
+    )
+
+
+@router.get("/contacts/all", response_model=ContactListResponse)
+async def get_all_contacts(
+    current_user: User = Depends(get_current_super_admin),
+    db: AsyncSession = Depends(get_db),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    search: Optional[str] = Query(None),
+    status_filter: Optional[str] = Query(None),
+    is_public_filter: Optional[bool] = Query(None),
+):
+    """
+    Get all contact submissions (both public and authenticated). Super Admin only.
+    """
+    query = select(ContactSubmission)
+
+    # Public filter
+    if is_public_filter is not None:
+        query = query.where(ContactSubmission.is_public == is_public_filter)
+
+    # Search filter
+    if search:
+        query = query.where(
+            (ContactSubmission.name.ilike(f"%{search}%"))
+            | (ContactSubmission.email.ilike(f"%{search}%"))
+        )
+
+    # Status filter
+    if status_filter:
+        query = query.where(ContactSubmission.status == status_filter)
+
+    # Get total count
+    count_query = select(func.count()).select_from(query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
+
+    # Apply pagination and ordering
+    query = query.order_by(desc(ContactSubmission.created_at)).offset(
+        (page - 1) * page_size
+    ).limit(page_size)
+
+    result = await db.execute(query)
+    contacts = result.scalars().all()
+
+    return ContactListResponse(
+        total=total,
+        page=page,
+        page_size=page_size,
+        contacts=[ContactSubmissionItem.model_validate(c) for c in contacts],
+    )
+
+
+@router.get("/contacts/{contact_id}", response_model=ContactSubmissionDetail)
+async def get_contact_detail(
+    contact_id: int,
+    current_user: User = Depends(get_current_support_or_superuser),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get contact submission detail. Super Admin and Support Admin.
+    Support admins can only see authenticated contacts.
+    """
+    result = await db.execute(
+        select(ContactSubmission).where(ContactSubmission.id == contact_id)
+    )
+    contact = result.scalar_one_or_none()
+
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact submission not found")
+
+    # Support admins can only see authenticated contacts
+    if current_user.role == "support" and contact.is_public:
+        raise HTTPException(
+            status_code=403, detail="Access denied. Support admins can only view authenticated contacts."
+        )
+
+    # Get user info if available
+    user_email = None
+    user_username = None
+    if contact.user_id:
+        try:
+        user_result = await db.execute(select(User).where(User.id == contact.user_id))
+        user = user_result.scalar_one_or_none()
+        if user:
+            user_email = user.email
+            user_username = user.username
+        except Exception as e:
+            logger.error(f"Error fetching user info for contact {contact_id}: {e}", exc_info=True)
+            # Continue without user info if there's an error
+
+    # Create detail response manually to avoid validation issues with optional fields
+    try:
+        detail = ContactSubmissionDetail(
+            id=contact.id,
+            user_id=contact.user_id,
+            user_email=user_email,
+            user_username=user_username,
+            name=contact.name,
+            company_name=contact.company_name,
+            email=contact.email,
+            phone=contact.phone,
+            message=contact.message,
+            is_public=contact.is_public,
+            ip_address=contact.ip_address,
+            status=contact.status,
+            created_at=contact.created_at,
+            updated_at=contact.updated_at,
+        )
+    return detail
+    except Exception as e:
+        logger.error(f"Error creating ContactSubmissionDetail for contact {contact_id}: {e}", exc_info=True)
+        logger.error(f"  Contact data: id={contact.id}, user_id={contact.user_id}, is_public={contact.is_public}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while retrieving contact details. Please try again later.",
+        )
+
+
+@router.patch("/contacts/{contact_id}/status")
+async def update_contact_status(
+    contact_id: int,
+    status: str = Query(..., description="New status: new, read, replied"),
+    current_user: User = Depends(get_current_support_or_superuser),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Update contact submission status. Super Admin and Support Admin.
+    """
+    if status not in ["new", "read", "replied"]:
+        raise HTTPException(
+            status_code=400, detail="Invalid status. Must be: new, read, or replied"
+        )
+
+    result = await db.execute(
+        select(ContactSubmission).where(ContactSubmission.id == contact_id)
+    )
+    contact = result.scalar_one_or_none()
+
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact submission not found")
+
+    # Support admins can only update authenticated contacts
+    if current_user.role == "support" and contact.is_public:
+        raise HTTPException(
+            status_code=403, detail="Access denied. Support admins can only update authenticated contacts."
+        )
+
+    contact.status = status
+    contact.updated_at = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(contact)
+
+    return {
+        "message": f"Contact submission status updated to {status}",
+        "contact": ContactSubmissionItem.model_validate(contact),
     }

@@ -13,6 +13,8 @@ load_dotenv()
 import logging
 import time
 import os
+import signal
+import sys
 from datetime import datetime
 from contextlib import asynccontextmanager
 from typing import Any
@@ -70,26 +72,52 @@ async def lifespan(app: FastAPI):
     logger.info("=" * 80)
 
     try:
-        # Test database connection
-        db_connected = await db_manager.check_connection()
-        if db_connected:
-            logger.info(" Database connection established")
+        # Test database connection with timeout and error handling
+        db_connected = False
+        try:
+            import asyncio
+            # Add shorter timeout to prevent hanging on connection (5 seconds)
+            # Use asyncio.wait_for with a task to ensure it can be cancelled
+            db_connected = await asyncio.wait_for(
+                db_manager.check_connection(),
+                timeout=5.0  # 5 second timeout - reduced from 10 to fail faster
+            )
+        except asyncio.TimeoutError:
+            logger.warning(" Database connection check timed out after 5s (app will start anyway)")
+            db_connected = False
+        except asyncio.CancelledError:
+            logger.warning(" Database connection check was cancelled (app will start anyway)")
+            db_connected = False
+        except Exception as db_error:
+            logger.warning(f" Database connection check failed: {db_error} (app will start anyway)")
+            db_connected = False
 
-            # Create database tables (if they don't exist)
+        if db_connected:
+            logger.info(" Database connection established")
+
+            # Create database tables (if they don't exist) with timeout
             try:
+                import asyncio
                 from app.database import Base
 
                 # Import models to register with metadata
-                from app.models import ScrapeJob, ScrapeHistory  # noqa: F401
+                from app.models import ScrapeJob, ScrapeHistory, ContactSubmission  # noqa: F401
 
+                async def _create_tables():
                 engine = db_manager.get_engine()
                 async with engine.begin() as conn:
                     await conn.run_sync(Base.metadata.create_all)
+                
+                # Add timeout to table creation to prevent hanging
+                try:
+                    await asyncio.wait_for(_create_tables(), timeout=10.0)
                 logger.info(" Database tables created/verified")
+                except asyncio.TimeoutError:
+                    logger.warning(" Database table creation timed out (tables may already exist)")
             except Exception as e:
                 logger.warning(f" Failed to create tables: {e}")
         else:
-            logger.warning(" Database connection failed (app will start anyway)")
+            logger.warning(" Database connection failed (app will start anyway)")
 
         # Log feature flags
         logger.info(
@@ -127,20 +155,47 @@ async def lifespan(app: FastAPI):
 
         logger.info("Application startup complete")
         logger.info("=" * 80)
+        logger.info("Server is ready to accept connections")
+        logger.info(f"API available at: http://0.0.0.0:8000{settings.api_v1_prefix}/docs")
 
     except Exception as e:
-        logger.error(f"Error during startup: {e}")
+        logger.error(f"Error during startup: {e}", exc_info=True)
         raise
 
+    # Yield control to FastAPI - server starts here
     yield
+    
+    # This point is reached during shutdown
+    logger.info("Lifespan yield returned - starting shutdown sequence")
 
     # Shutdown
     logger.info("Shutting down application...")
     try:
-        await db_manager.close()
-        logger.info(" Database connections closed")
+        # Stop scheduler first (with timeout to prevent hanging)
+        if settings.scheduler_enabled:
+            try:
+                from app.services.scheduler_service import scheduler_service
+                import asyncio
+                # Stop scheduler with timeout
+                await asyncio.wait_for(scheduler_service.stop(), timeout=5.0)
+                logger.info(" Scheduler stopped")
+            except asyncio.TimeoutError:
+                logger.warning(" Scheduler stop timed out, forcing shutdown")
+            except Exception as e:
+                logger.error(f" Error stopping scheduler: {e}")
     except Exception as e:
-        logger.error(f"Error during shutdown: {e}")
+        logger.error(f"Error during scheduler shutdown: {e}")
+    
+    try:
+        # Close database connections (with timeout)
+        import asyncio
+        await asyncio.wait_for(db_manager.close(), timeout=5.0)
+        logger.info(" Database connections closed")
+    except asyncio.TimeoutError:
+        logger.warning(" Database close timed out")
+    except Exception as e:
+        logger.error(f"Error during database shutdown: {e}")
+    
     logger.info("Application shutdown complete")
 
 
@@ -465,6 +520,7 @@ from app.routers import (  # noqa: E402
     contact,
     jobs,
     news,
+    public_contact,
 )
 
 # Include all routers with API v1 prefix
@@ -516,6 +572,7 @@ app.include_router(
     admin.router, prefix=f"{settings.api_v1_prefix}/admin", tags=["Admin"]
 )
 app.include_router(contact.router, prefix=f"{settings.api_v1_prefix}", tags=["Contact"])
+app.include_router(public_contact.router, prefix=f"{settings.api_v1_prefix}", tags=["Public Contact"])
 app.include_router(jobs.router, prefix=f"{settings.api_v1_prefix}", tags=["Jobs"])
 app.include_router(news.router, prefix=f"{settings.api_v1_prefix}", tags=["News"])
 from app.routers import tickets  # noqa: E402
@@ -525,13 +582,59 @@ app.include_router(tickets.router, prefix=f"{settings.api_v1_prefix}", tags=["Ti
 
 if __name__ == "__main__":
     import uvicorn
+    import uvicorn.logging
+
+    # Configure uvicorn logging to use our logger
+    uvicorn_logger = logging.getLogger("uvicorn")
+    uvicorn_logger.setLevel(getattr(logging, settings.log_level))
+    
+    # Setup signal handlers for graceful shutdown
+    def signal_handler(sig, frame):
+        """Handle SIGINT (Ctrl+C) and SIGTERM for graceful shutdown."""
+        logger.info("\nReceived shutdown signal, shutting down gracefully...")
+        sys.exit(0)
+    
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
 
     # Run with uvicorn when executed directly
     # For production, use: uvicorn app.main:app --host 0.0.0.0 --port 8000
-    uvicorn.run(
-        "app.main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=settings.debug,
-        log_level=settings.log_level.lower(),
-    )
+    logger.info("=" * 80)
+    logger.info("Starting Uvicorn server...")
+    logger.info(f"Host: 0.0.0.0, Port: 8000")
+    logger.info(f"Reload: {settings.debug}")
+    logger.info(f"Log Level: {settings.log_level.lower()}")
+    logger.info("=" * 80)
+    logger.info("Calling uvicorn.run() - server should start now...")
+    
+    try:
+        # Use log_config to ensure proper logging
+        logger.info("Initializing uvicorn server...")
+        logger.info("About to call uvicorn.run() - this will start the server")
+        
+        # Use app object directly to avoid any import delays or issues
+        # This ensures the app is fully loaded before uvicorn starts
+        uvicorn.run(
+            app,  # Pass app object directly
+            host="0.0.0.0",
+            port=8000,
+            reload=False,  # Disable reload when passing app object (reload requires string)
+            log_level=settings.log_level.lower(),
+            timeout_keep_alive=5,
+            timeout_graceful_shutdown=10,
+            access_log=True,
+        )
+    except KeyboardInterrupt:
+        logger.info("Shutdown requested by user")
+        sys.exit(0)
+    except Exception as e:
+        logger.error(f"Error starting server: {e}", exc_info=True)
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+    except KeyboardInterrupt:
+        logger.info("Shutdown requested by user")
+        sys.exit(0)
+    except Exception as e:
+        logger.error(f"Error starting server: {e}", exc_info=True)
+        sys.exit(1)

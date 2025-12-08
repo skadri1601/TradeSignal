@@ -49,8 +49,11 @@ class SchedulerService:
     async def start(self) -> None:
         """Start the scheduler with default periodic job."""
         if not self._running:
+            logger.info("Starting scheduler...")
+            # Start scheduler (this is non-blocking for AsyncIOScheduler)
             self.scheduler.start()
             self._running = True
+            logger.info("Scheduler started successfully")
 
             # Add default job: scrape all companies at configured hours
             if settings.scheduler_enabled:
@@ -89,11 +92,15 @@ class SchedulerService:
                 logger.info(
                     "Congressional scraper disabled (CONGRESSIONAL_SCRAPER_ENABLED=false)"
                 )
+            
+            logger.info("Scheduler initialization complete")
 
     async def stop(self) -> None:
         """Stop the scheduler."""
         if self._running:
-            self.scheduler.shutdown(wait=True)
+            # Use wait=False to prevent blocking on shutdown
+            # This allows faster termination
+            self.scheduler.shutdown(wait=False)
             self._running = False
             logger.info("Scheduler stopped")
 

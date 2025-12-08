@@ -20,7 +20,8 @@ import {
   HelpCircle,
   Mail,
   Briefcase,
-  Info
+  Info,
+  MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import UsageStats from '../UsageStats';
@@ -46,6 +47,7 @@ const navigation: NavItem[] = [
   { name: 'Lessons', href: '/lessons', icon: BookOpen },
   { name: 'Strategies', href: '/strategies', icon: Users },
   { name: 'Order History', href: '/orders', icon: CreditCard },
+  { name: 'Support', href: '/support', icon: MessageSquare },
   { name: 'Pricing', href: '/pricing', icon: CreditCard },
   { name: 'Admin Panel', href: '/admin', icon: Shield, adminOnly: true },
 ];
@@ -164,18 +166,31 @@ export default function Sidebar() {
       {!user?.is_superuser && (
         <div className="p-4 border-t border-gray-200">
           <UsageStats />
-          <Link to="/pricing" className="block mt-3">
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer">
-              <div className="flex items-center justify-center mb-2">
-                <div className="bg-blue-600 text-white rounded-full p-2">
-                  <TrendingUp className="w-5 h-5" />
+          
+          {user?.stripe_subscription_tier && user.stripe_subscription_tier !== 'free' ? (
+             <div className="mt-3 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg p-4 text-white shadow-md">
+                <div className="flex items-center space-x-2 mb-2">
+                   <div className="p-1.5 bg-white/20 rounded-full backdrop-blur-sm">
+                      <TrendingUp className="w-4 h-4 text-white" />
+                   </div>
+                   <span className="font-bold text-sm uppercase tracking-wider">{user.stripe_subscription_tier} PLAN</span>
                 </div>
+                <p className="text-xs text-blue-100">Your subscription is active. Enjoy premium features.</p>
+             </div>
+          ) : (
+            <Link to="/pricing" className="block mt-3">
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer border border-blue-100">
+                <div className="flex items-center justify-center mb-2">
+                  <div className="bg-blue-600 text-white rounded-full p-2 shadow-sm">
+                    <TrendingUp className="w-5 h-5" />
+                  </div>
+                </div>
+                <p className="text-xs text-center text-gray-600">
+                  Upgrade to <span className="font-semibold text-blue-600">Pro</span> for advanced features
+                </p>
               </div>
-              <p className="text-xs text-center text-gray-600">
-                Upgrade to <span className="font-semibold text-blue-600">Pro</span> for advanced features
-              </p>
-            </div>
-          </Link>
+            </Link>
+          )}
         </div>
       )}
     </aside>

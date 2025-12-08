@@ -55,7 +55,8 @@ class UserResponse(BaseModel):
     is_active: bool
     is_verified: bool
     is_superuser: bool
-    role: str = "customer"  # Add role field
+    role: str = "customer"
+    stripe_subscription_tier: str | None = None
 
     class Config:
         from_attributes = True

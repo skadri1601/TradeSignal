@@ -8,48 +8,7 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-purple-500 selection:text-white font-sans overflow-x-hidden">
-      {/* Navigation */}
-      <nav className="fixed w-full z-50 bg-black/80 backdrop-blur-md border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="bg-white/10 p-2 rounded-lg">
-              <TrendingUp className="w-6 h-6 text-purple-400" />
-            </div>
-            <span className="text-xl font-bold tracking-tight">TradeSignal</span>
-          </div>
-          
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-300">
-            <a href="#features" className="hover:text-white transition-colors">Features</a>
-            <a href="#how-it-works" className="hover:text-white transition-colors">How it Works</a>
-            <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
-            <a href="#about" className="hover:text-white transition-colors">About</a>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {isAuthenticated ? (
-              <Link 
-                to="/dashboard" 
-                className="px-5 py-2.5 bg-white text-black text-sm font-semibold rounded-full hover:bg-gray-100 transition-all hover:scale-105"
-              >
-                Go to Dashboard
-              </Link>
-            ) : (
-              <>
-                <Link to="/login" className="text-sm font-medium text-gray-300 hover:text-white transition-colors">
-                  Sign In
-                </Link>
-                <Link 
-                  to="/register" 
-                  className="px-5 py-2.5 bg-white text-black text-sm font-semibold rounded-full hover:bg-gray-100 transition-all hover:scale-105"
-                >
-                  Get Started
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
-
+      
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
         {/* Abstract Background Elements */}
@@ -314,68 +273,6 @@ const LandingPage = () => {
           </Link>
         </div>
       </section>
-
-      {/* Main Footer */}
-      <footer className="bg-black py-16 border-t border-white/10 text-sm">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8 mb-16">
-            <div className="col-span-2 lg:col-span-2">
-              <div className="flex items-center gap-2 mb-6">
-                <div className="bg-white/10 p-2 rounded-lg">
-                  <TrendingUp className="w-5 h-5 text-purple-400" />
-                </div>
-                <span className="text-lg font-bold">TradeSignal</span>
-              </div>
-              <p className="text-gray-500 mb-6 max-w-xs">
-                Discover your trading edge with AI-powered insider and congressional trading analytics.
-              </p>
-              <div className="flex gap-4">
-                <a href="#" className="bg-white/5 p-2 rounded-full hover:bg-white/10 transition-colors"><Globe className="w-4 h-4 text-gray-400" /></a>
-                <a href="#" className="bg-white/5 p-2 rounded-full hover:bg-white/10 transition-colors"><BarChart2 className="w-4 h-4 text-gray-400" /></a>
-              </div>
-            </div>
-            
-            <div>
-              <h4 className="font-bold mb-4">Products</h4>
-              <ul className="space-y-2 text-gray-500">
-                <li><a href="#" className="hover:text-white transition-colors">Insider Trades</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Congress Trades</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">AI Insights</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Alerts</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-bold mb-4">Company</h4>
-              <ul className="space-y-2 text-gray-500">
-                <li><a href="#" className="hover:text-white transition-colors">About Us</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-bold mb-4">Support</h4>
-              <ul className="space-y-2 text-gray-500">
-                <li><a href="#" className="hover:text-white transition-colors">Help Center</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Status</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
-              </ul>
-            </div>
-          </div>
-          
-          <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4 text-gray-600">
-            <p>© 2025 TradeSignal Inc. All rights reserved.</p>
-            <div className="flex gap-6">
-              <a href="#" className="hover:text-white transition-colors">Privacy</a>
-              <a href="#" className="hover:text-white transition-colors">Terms</a>
-              <a href="#" className="hover:text-white transition-colors">Cookies</a>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };

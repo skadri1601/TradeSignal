@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { 
   Users, CreditCard, Activity, Search, 
-  ExternalLink, X, Mail
+  ExternalLink, X, Mail, MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { adminApi } from '../api/admin';
@@ -245,6 +245,13 @@ export default function AdminDashboardPage() {
             >
               Support Tickets
             </button>
+            <Link
+              to="/admin/contacts"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors bg-white text-gray-600 hover:bg-gray-100"
+            >
+              <MessageSquare className="w-4 h-4" />
+              Contact Management
+            </Link>
           </div>
         </div>
 

@@ -1,288 +1,112 @@
-# TradeSignal - Future Documentation
+# TradeSignal: Production Readiness & Strategy Report
+**Date:** December 7, 2025
+**Target Launch:** December 14, 2025 (MVP)
 
-This file serves as a placeholder for future documentation, roadmaps, and technical decisions for the TradeSignal platform.
+## 1. Executive Summary
+**Overall Readiness:** 🟡 **60% (Needs Critical Fixes for MVP)**
 
-## Roadmap
+While the codebase structure is sound and "Feature Complete" on paper, the *actual user experience* in a production environment is currently compromised. Several key features rely on fallbacks that appear as "mock data" or "static text" because the necessary external integrations (Finnhub, Gemini/OpenAI, SMTP) are either unconfigured or rate-limited.
 
-### Phase 1: Core Features (Completed)
-- [x] User authentication and authorization
-- [x] Insider trades scraping and tracking
-- [x] Congressional trades monitoring
-- [x] Company and insider profiles
-- [x] Stripe billing integration (3-tier system)
-- [x] Admin dashboard
-- [x] News aggregation
-- [x] Federal Reserve calendar
-- [x] Support ticket system
+**Verdict:** Launching by Dec 14 is **High Risk** unless the data pipelines are stabilized immediately.
 
-### Phase 2: Enhanced Features (In Progress)
-- [ ] AI-powered trade analysis
-- [ ] Advanced filtering and search
-- [ ] Custom alert rules engine
-- [ ] Portfolio tracking
-- [ ] Social features (following companies/insiders)
-- [ ] Mobile app (React Native)
-- [ ] Email digests and reports
-- [ ] Data export (CSV, PDF, Excel)
+---
 
-### Phase 3: Advanced Analytics (Planned)
-- [ ] Pattern recognition and detection
-- [ ] Insider trading sentiment analysis
-- [ ] Congressional correlation analysis
-- [ ] Predictive analytics with ML models
-- [ ] Risk scoring for trades
-- [ ] Automated trading signals
-- [ ] Backtesting framework
-- [ ] Advanced charting and visualization
+## 2. Deep Feature Audit (The "Truth" List)
 
-### Phase 4: Enterprise Features (Future)
-- [ ] Team collaboration tools
-- [ ] API access for external integrations
-- [ ] Custom webhooks
-- [ ] White-label solutions
-- [ ] Data lake for historical analysis
-- [ ] Advanced permissions and roles
-- [ ] Audit logs and compliance tools
-- [ ] SSO integration (SAML, OAuth)
+### 🟢 Green: Working 100% (Production Ready)
+*   **Authentication System:** Login, Register, RBAC (User/Admin/Super Admin), and Subscription Tier enforcement (`requireTier`) are fully functional.
+*   **Billing Infrastructure:** Stripe integration (Checkout & Webhooks) is complete and correctly updates user tiers.
+*   **Frontend Routing:** Protected routes, Admin Dashboard access, and page layouts are solid.
 
-## Technical Decisions
+### 🟡 Yellow: Working but Unstable / "Mock-Like" behavior
+*   **Congressional Trading:**
+    *   *Issue:* The code attempts to fetch real data from Finnhub. If the API key is missing/invalid (common in dev), it falls back to `_fetch_fallback`.
+    *   *The "Mock" Perception:* The fallback sources (Senate/House Stock Watcher) often return stale or empty data, or rely on static JSON files. To the user, this looks like hardcoded mock data.
+    *   *Fix:* Must secure a paid/reliable Finnhub key or implement a robust nightly scraper that populates the DB so it doesn't look empty/stale.
+*   **AI Insights (Pattern Analysis):**
+    *   *Issue:* `pattern_analysis_service.py` has a hardcoded `predictions` dictionary (e.g., "Strong insider buying momentum...").
+    *   *The "Mock" Perception:* If `GEMINI_API_KEY` is missing/fails, it serves this static text. Users expecting dynamic AI see the same generic message repeatedly.
+    *   *Fix:* Ensure valid API keys in production env and implement better error handling that doesn't just default to generic text.
+*   **Earnings Data:**
+    *   *Issue:* Relies on `yfinance`. This library is essentially a scraper and frequently breaks or gets rate-limited by Yahoo.
+    *   *Fix:* Move to a stable provider (AlphaVantage/Finnhub) or accept that this feature will be intermittent.
 
-### Architecture Decisions
+### 🔴 Red: Not Working / Critical Gaps
+*   **Alerts System:**
+    *   *Status:* **Implemented but Silent**. The trigger `check_trade_against_alerts` is hooked into `TradeService.create()`.
+    *   *Why it fails:* `alerts_enabled` must be True in `.env`. More importantly, if Email/Discord/Slack webhooks aren't configured, the alert "fires" into the void. There is no UI feedback to the user that their alert failed to send.
+*   **Mobile Responsiveness:** Data tables break on mobile.
+*   **User Settings:** Avatar upload and profile management are basic/incomplete.
 
-#### Backend: FastAPI
-**Decision:** Use FastAPI for the backend API
-**Rationale:**
-- High performance with async support
-- Automatic OpenAPI documentation
-- Native Pydantic validation
-- Modern Python features (type hints)
-- Growing ecosystem and community
+---
 
-#### Database: PostgreSQL
-**Decision:** Use PostgreSQL as the primary database
-**Rationale:**
-- Robust relational database
-- JSONB support for flexible data
-- Strong ACID compliance
-- Excellent performance
-- Rich ecosystem of tools
+## 3. Roadmap to Launch (Dec 7 - Dec 14)
 
-#### Task Queue: Celery + Redis
-**Decision:** Use Celery with Redis for background tasks
-**Rationale:**
-- Mature and battle-tested
-- Flexible task scheduling
-- Redis provides fast caching
-- Good monitoring and debugging tools
+### Day 1: Data Pipeline Stabilization (The Priority)
+*   **Task:** Verify `FINNHUB_API_KEY` and `GEMINI_API_KEY` in the production environment variables.
+*   **Task:** Run a manual historical scrape for Congressional data to populate the DB with *real* recent data, so users don't see the "fallback" data.
 
-#### Frontend: React + TypeScript
-**Decision:** Use React with TypeScript
-**Rationale:**
-- Component-based architecture
-- Large ecosystem and community
-- Type safety with TypeScript
-- Excellent developer experience
-- Easy to find developers
+### Day 2: Alert Debugging
+*   **Task:** Set `LOG_LEVEL=DEBUG` and trace an alert execution.
+*   **Task:** Implement a "System Notification" (in-app bell icon) as a fallback for Email/SMS. If email fails, at least show it in the app.
 
-#### Build Tool: Vite
-**Decision:** Use Vite instead of Create React App
-**Rationale:**
-- Significantly faster development builds
-- Better HMR (Hot Module Replacement)
-- Native ES modules support
-- Modern tooling
-- Smaller bundle sizes
+### Day 3: UI/UX "De-Mocking"
+*   **Task:** Remove the static `predictions` dictionary from `pattern_analysis_service.py`. If AI fails, show "Analysis Unavailable" rather than fake analysis. Trust is key.
+*   **Task:** Fix Mobile Tables (use Card view on < md screens).
 
-### Data Scraping Strategy
+### Day 4-5: Testing & Polish
+*   **Task:** End-to-End test of the Billing -> Upgrade -> View Pro Feature flow.
+*   **Task:** Write the Privacy Policy/Terms with actual company details.
 
-#### SEC Form 4 Scraping
-- Use official SEC EDGAR API
-- Schedule scraping during market hours (9 AM - 4 PM ET)
-- Implement rate limiting to respect SEC guidelines
-- Store raw XML for future reprocessing
-- Parse and normalize data for database storage
+---
 
-#### Congressional Trades
-- Multiple data sources for redundancy
-- Daily scraping schedule
-- Cross-reference with official disclosure forms
-- Historical data backfill
+## 4. Security Hardening Roadmap (Post-Launch)
 
-### Billing & Subscriptions
+**Objective:** Harden the application against real-world threats after establishing the MVP baseline.
 
-#### Stripe Integration
-- 3-tier system: Free, Pro ($29/mo), Enterprise ($99/mo)
-- Feature gating by subscription tier
-- Webhook handling for real-time updates
-- Grace period for failed payments
-- Prorated upgrades/downgrades
+### Phase 1: Critical Security (Immediate / Pre-Launch if possible)
+*   **Priority: Urgent**
+*   **1.1 Security Middleware:** Enable HTTPS redirect, HSTS, and standard security headers in `main.py`.
+*   **1.2 Basic Rate Limiting:** Ensure the existing in-memory limiter is active on auth endpoints (`/login`, `/register`) to prevent simple brute force scripts.
+*   **1.3 Production Secrets:** Ensure `DEBUG=False` and all secrets (JWT, Stripe) are strong, random strings in the production environment.
 
-#### Rate Limiting Strategy
-- Free: 100 requests/hour
-- Pro: 1000 requests/hour
-- Enterprise: Unlimited
-- Redis-backed rate limiter
-- Per-endpoint customization
+### Phase 2: Enhanced Security (Weeks 1-2 Post-Launch)
+*   **Priority: High**
+*   **2.1 Redis Rate Limiting:** Migrate from in-memory to Redis-backed rate limiting to support distributed scaling.
+*   **2.2 CSP Hardening:** Refine Content Security Policy (CSP) to remove `unsafe-inline` and implement nonces for script execution.
+*   **2.3 Input Sanitization:** Audit all user inputs (especially profile bios and search fields) for XSS vectors.
 
-## Known Issues & Technical Debt
+### Phase 3: Advanced Security (Month 1 Post-Launch)
+*   **Priority: Medium**
+*   **3.1 Session Management:** Implement "Revoke All Sessions" functionality and view active sessions in the user profile.
+*   **3.2 Audit Logging:** Create a dedicated `audit_log` table to track sensitive actions (login failures, password changes, role updates).
+*   **3.3 2FA:** Implement TOTP-based Two-Factor Authentication for admin accounts and optional for users.
 
-### Current Known Issues
-1. None at the moment
+---
 
-### Technical Debt
-1. **Database Migrations**: Currently using `create_all()` - should implement Alembic migrations
-2. **Testing Coverage**: Need more comprehensive unit and integration tests
-3. **Error Handling**: Some endpoints need better error handling and user-friendly messages
-4. **Logging**: Consider centralizing logs with ELK stack or similar
-5. **Caching Strategy**: Implement more aggressive caching for frequently accessed data
+## 5. AI Task Delegation Plan
 
-## Performance Optimization Ideas
+To fix the "Mock Data" perception and stabilize the app:
 
-### Backend
-- [ ] Implement database query optimization and indexing
-- [ ] Add database connection pooling tuning
-- [ ] Implement response caching with Redis
-- [ ] Add CDN for static assets
-- [ ] Optimize database queries with proper indexes
-- [ ] Implement database read replicas for scaling
+### 🤖 Gemini (Me) - **Backend & Data Architect**
+*   **Focus:** Fixing the "Fake" data issues and implementing critical security.
+*   **Tasks:**
+    *   "Refactor `congressional_client.py` to fail loudly (log error) rather than silently serving stale fallback data."
+    *   "Implement the In-App Notification system (Database-stored alerts) so users see alerts even if email fails."
+    *   "Enable HTTPS redirect and security headers middleware in `main.py`."
 
-### Frontend
-- [ ] Implement service workers for offline support
-- [ ] Add image lazy loading and optimization
-- [ ] Implement virtual scrolling for large lists
-- [ ] Add more aggressive code splitting
-- [ ] Optimize bundle size with tree shaking
-- [ ] Implement progressive web app (PWA) features
+### 🖱️ Cursor - **Frontend Polish**
+*   **Focus:** Making it look professional (not like a template).
+*   **Tasks:**
+    *   "Convert the Congressional Trade table to a responsive Card layout on mobile."
+    *   "Add loading states/skeletons for AI components so users know it's 'thinking' (real) vs 'loading' (static)."
 
-## Security Enhancements
+### 🧠 Claude Code - **Documentation & Compliance**
+*   **Tasks:**
+    *   "Draft the 'Alpha' release notes, explicitly stating which data sources are live and which are beta."
+    *   "Write the help docs explaining how to configure Discord webhooks for alerts."
 
-### Planned Security Improvements
-- [ ] Implement rate limiting on auth endpoints
-- [ ] Add IP-based blocking for suspicious activity
-- [ ] Implement 2FA (two-factor authentication)
-- [ ] Add security headers (CSP, HSTS, etc.)
-- [ ] Regular security audits and penetration testing
-- [ ] Implement API key rotation
-- [ ] Add encryption at rest for sensitive data
-- [ ] Implement comprehensive audit logging
+---
 
-## Monitoring & Observability
-
-### Current Monitoring
-- Prometheus metrics
-- FastAPI request logging
-- Health check endpoints
-
-### Planned Enhancements
-- [ ] Grafana dashboards for metrics visualization
-- [ ] Error tracking with Sentry or similar
-- [ ] APM (Application Performance Monitoring)
-- [ ] Log aggregation with ELK or Loki
-- [ ] Distributed tracing with Jaeger
-- [ ] Real-time alerts for critical issues
-- [ ] User analytics and behavioral tracking
-
-## Compliance & Legal
-
-### Data Privacy
-- GDPR compliance for EU users
-- CCPA compliance for California users
-- Data retention policies
-- Right to deletion implementation
-- Data export functionality
-
-### Financial Compliance
-- Not providing financial advice disclaimer
-- Data accuracy disclaimers
-- Terms of service and privacy policy
-- Cookie consent management
-
-## Feature Specifications
-
-### AI Insights (Planned)
-**Goal:** Provide AI-powered analysis of trades and market patterns
-
-**Components:**
-1. Natural language summaries of daily trading activity
-2. Anomaly detection for unusual trades
-3. Sentiment analysis of insider behavior
-4. Pattern recognition across companies and sectors
-5. Personalized insights based on user interests
-
-**Tech Stack:**
-- OpenAI GPT-4 for text generation
-- Custom ML models for pattern detection
-- Vector database for similarity search
-- Real-time processing pipeline
-
-### Portfolio Tracking (Planned)
-**Goal:** Allow users to track their own portfolios and compare with insider activity
-
-**Features:**
-- Manual portfolio entry
-- Brokerage API integration (Plaid)
-- Performance tracking and attribution
-- Insider overlap detection
-- Alerts when insiders trade portfolio holdings
-
-### Mobile App (Future)
-**Goal:** Native mobile experience for iOS and Android
-
-**Technology:**
-- React Native for cross-platform development
-- Native modules for platform-specific features
-- Push notifications
-- Offline support with local storage
-- Face ID / Touch ID authentication
-
-## Database Schema Evolution
-
-### Planned Schema Changes
-1. Add indexes for frequently queried fields
-2. Implement partitioning for large tables (trades)
-3. Add materialized views for complex queries
-4. Consider sharding strategy for horizontal scaling
-
-## API Versioning Strategy
-
-### Current Approach
-- Single version (v1) for all endpoints
-- Backward-compatible changes only
-
-### Future Strategy
-- Implement proper API versioning (v2, v3)
-- Deprecation policy with migration guides
-- Version headers in addition to URL versioning
-- GraphQL API as alternative to REST
-
-## Contribution Guidelines
-
-### Code Standards
-- Python: Follow PEP 8, use Black for formatting
-- TypeScript: Follow Airbnb style guide
-- Git: Conventional commits format
-- Documentation: Update README for significant changes
-
-### Review Process
-1. Create feature branch from `main`
-2. Implement changes with tests
-3. Create pull request with description
-4. Pass CI/CD checks
-5. Code review by team member
-6. Merge to `main` after approval
-
-## Future Integrations
-
-### Planned Integrations
-- Trading platforms (Robinhood, TD Ameritrade, Interactive Brokers)
-- Social media (Twitter/X for sentiment analysis)
-- Financial data providers (Bloomberg, Reuters)
-- CRM systems for enterprise customers
-- Slack/Discord for team notifications
-- Zapier for workflow automation
-
-## Notes
-
-This document will be updated regularly as the project evolves. Use this as a living document to track decisions, plans, and technical debt.
-
-Last Updated: December 2024
+## 6. Immediate Action
+I recommend we start by **verifying the environment variables** for the external APIs (Finnhub, Gemini). If those are missing, 50% of the "Mock" issues are solved instantly by adding them.

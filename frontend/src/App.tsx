@@ -1,11 +1,13 @@
 import { useState, lazy, Suspense } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { CookieConsent } from './components/CookieConsent';
 import { FirstTimeDisclaimerModal } from './components/FirstTimeDisclaimerModal';
+import PublicLayout from './components/layout/PublicLayout';
+import NotFoundPublic from './pages/public/NotFoundPublic';
 
 // Lazy load pages for code splitting (Phase 4.3)
 const Dashboard = lazy(() => import('./pages/DashboardNew'));
@@ -22,6 +24,7 @@ const FedCalendarPage = lazy(() => import('./pages/FedCalendarPage'));
 const OrderHistoryPage = lazy(() => import('./pages/OrderHistoryPage'));
 const FAQPage = lazy(() => import('./pages/FAQPage'));
 const ContactPage = lazy(() => import('./pages/ContactPage'));
+const PublicContactPage = lazy(() => import('./pages/PublicContactPage'));
 const CareersPage = lazy(() => import('./pages/CareersPage'));
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
@@ -36,6 +39,8 @@ const BillingSuccessPage = lazy(() => import('./pages/BillingSuccessPage'));
 const BillingCancelPage = lazy(() => import('./pages/BillingCancelPage'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboardPage'));
+const ContactManagementPage = lazy(() => import('./pages/admin/ContactManagementPage'));
+const AIInsightsPage = lazy(() => import('./pages/AIInsightsPage'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 // Loading skeleton component
@@ -63,27 +68,25 @@ function AppContent() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
         
-        {/* Landing Page - Public - NO LAYOUT */}
-        <Route path="/" element={<LandingPage />} />
+        {/* Public Routes - Wrapped in PublicLayout (Floating Navbar) */}
+        <Route element={<PublicLayout />}>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsOfServicePage />} />
+          <Route path="/contact" element={<PublicContactPage />} />
+          {/* Add other public pages here later */}
+        </Route>
 
-        {/* All other routes - WITH LAYOUT */}
+        {/* All other routes - WITH LAYOUT (Dashboard etc.) */}
         <Route path="/*" element={
           <Layout>
             <Routes>
-              {/* Public routes */}
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="/pricing" element={<PricingPage />} />
-              <Route path="/terms" element={<TermsOfServicePage />} />
-              <Route path="/privacy" element={<PrivacyPolicyPage />} />
-              <Route path="/faq" element={<FAQPage />} />
-              <Route path="/contact" element={<ContactPage />} />
-              <Route path="/careers" element={<CareersPage />} />
-
-              {/* Admin routes - redirect non-admins */}
-              <Route path="/admin" element={<ProtectedRoute requireSuperuser><AdminDashboard /></ProtectedRoute>} />
-              
-              {/* User routes - redirect admins to /admin */}
+              {/* Dashboard routes */}
               <Route path="/dashboard" element={<ProtectedRoute redirectAdmin><Dashboard /></ProtectedRoute>} />
+              <Route path="/admin" element={<ProtectedRoute requireSuperuser><AdminDashboard /></ProtectedRoute>} />
+              <Route path="/admin/contacts" element={<ProtectedRoute requireSuperuser><ContactManagementPage /></ProtectedRoute>} />
               <Route path="/trades" element={<ProtectedRoute redirectAdmin><TradesPage /></ProtectedRoute>} />
               <Route path="/congressional-trades" element={<ProtectedRoute redirectAdmin><CongressionalTradesPage /></ProtectedRoute>} />
               <Route path="/market-overview" element={<ProtectedRoute redirectAdmin><MarketOverviewPage /></ProtectedRoute>} />
@@ -91,6 +94,7 @@ function AppContent() {
               <Route path="/fed-calendar" element={<ProtectedRoute redirectAdmin><FedCalendarPage /></ProtectedRoute>} />
               <Route path="/lessons" element={<ProtectedRoute redirectAdmin><LessonsPage /></ProtectedRoute>} />
               <Route path="/strategies" element={<ProtectedRoute redirectAdmin><StrategiesPage /></ProtectedRoute>} />
+              <Route path="/ai-insights" element={<ProtectedRoute redirectAdmin requireTier="pro"><AIInsightsPage /></ProtectedRoute>} />
               <Route path="/companies/:ticker" element={<ProtectedRoute redirectAdmin><CompanyPage /></ProtectedRoute>} />
               <Route path="/insiders/:id" element={<ProtectedRoute redirectAdmin><InsiderPage /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
@@ -99,11 +103,14 @@ function AppContent() {
               <Route path="/billing/success" element={<ProtectedRoute><BillingSuccessPage /></ProtectedRoute>} />
               <Route path="/billing/cancel" element={<ProtectedRoute><BillingCancelPage /></ProtectedRoute>} />
 
-              {/* 404 */}
-              <Route path="*" element={<NotFound />} />
+              {/* Redirect 404s to global 404 page */}
+              <Route path="*" element={<Navigate to="/404" replace />} />
             </Routes>
           </Layout>
         } />
+        
+        {/* Global 404 Route */}
+        <Route path="/404" element={<NotFoundPublic />} />
       </Routes>
     </Suspense>
   );

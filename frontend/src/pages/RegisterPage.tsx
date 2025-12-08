@@ -1,7 +1,3 @@
-/**
- * Register Page Component - Modern Split Design
- */
-
 import { useState, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -323,6 +319,13 @@ export default function RegisterPage() {
                 Sign in
               </Link>
             </p>
+          </div>
+
+          {/* Back to Home Link */}
+          <div className="text-center">
+            <Link to="/" className="text-sm font-semibold text-blue-600 hover:text-blue-500">
+              ← Back to home
+            </Link>
           </div>
         </div>
       </div>

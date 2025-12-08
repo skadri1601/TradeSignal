@@ -1,28 +1,44 @@
-import { useState } from 'react';
-import { Send, Mail, MessageSquare, MapPin } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Mail, MessageSquare, MapPin } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import ContactForm, { ContactFormData } from '../components/contact/ContactForm';
 import apiClient from '../api/client';
 
 export default function ContactPage() {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    subject: '',
-    message: '',
-  });
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [initialData, setInitialData] = useState<Partial<ContactFormData>>({});
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (user) {
+      setInitialData({
+        name: user.full_name || user.username || '',
+        email: user.email || '',
+        phone: user.phone_number || '',
+      });
+    }
+  }, [user]);
+
+  const handleSubmit = async (data: ContactFormData) => {
     setIsSubmitting(true);
     setSubmitStatus('idle');
 
     try {
-      const response = await apiClient.post('/api/v1/contact/', formData);
+      const response = await apiClient.post('/api/v1/contact/', {
+        name: data.name,
+        company_name: data.company_name || undefined,
+        email: data.email,
+        phone: data.phone || undefined,
+        message: data.message,
+      });
       
       if (response.data.success) {
         setSubmitStatus('success');
-        setFormData({ name: '', email: '', subject: '', message: '' });
+        // Reset form after successful submission
+        setTimeout(() => {
+          setSubmitStatus('idle');
+        }, 5000);
       } else {
         setSubmitStatus('error');
       }
@@ -48,96 +64,12 @@ export default function ContactPage() {
         <div className="lg:col-span-2">
           <div className="card">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Send us a message</h2>
-            
-            {submitStatus === 'success' && (
-              <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-green-800">
-                  Thank you! Your message has been sent. We'll get back to you within 24 hours.
-                </p>
-              </div>
-            )}
-
-            {submitStatus === 'error' && (
-              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-800">
-                  There was an error sending your message. Please try again or email us directly.
-                </p>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                  Name *
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
-                  Subject *
-                </label>
-                <select
-                  id="subject"
-                  required
-                  value={formData.subject}
-                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Select a subject</option>
-                  <option value="billing">Billing & Payments</option>
-                  <option value="technical">Technical Support</option>
-                  <option value="feature">Feature Request</option>
-                  <option value="bug">Report a Bug</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-
-              <div>
-                <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
-                  Message *
-                </label>
-                <textarea
-                  id="message"
-                  required
-                  rows={6}
-                  value={formData.message}
-                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Tell us how we can help..."
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full flex items-center justify-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Send className="h-5 w-5" />
-                <span>{isSubmitting ? 'Sending...' : 'Send Message'}</span>
-              </button>
-            </form>
+            <ContactForm
+              onSubmit={handleSubmit}
+              initialData={initialData}
+              isSubmitting={isSubmitting}
+              submitStatus={submitStatus}
+            />
           </div>
         </div>
 

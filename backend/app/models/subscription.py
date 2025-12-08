@@ -4,10 +4,15 @@ Subscription model for freemium/premium tier management.
 
 from datetime import datetime
 from enum import Enum
+from typing import TYPE_CHECKING
 from sqlalchemy import String, Integer, Boolean, DateTime, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.user import User
+
 
 
 class SubscriptionTier(str, Enum):
@@ -89,6 +94,9 @@ class Subscription(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
+
+    # Relationship
+    user: Mapped["User"] = relationship("User", back_populates="subscription")
 
     def __repr__(self) -> str:
         return f"<Subscription(user_id={self.user_id}, tier={self.tier}, status={self.status})>"

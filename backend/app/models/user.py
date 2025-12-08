@@ -11,6 +11,8 @@ from app.database import Base
 
 if TYPE_CHECKING:
     from app.models.payment import Payment
+    from app.models.subscription import Subscription
+
 
 
 class User(Base):
@@ -80,6 +82,15 @@ class User(Base):
 
     # Relationships
     payments: Mapped[list["Payment"]] = relationship("Payment", back_populates="user")
+    subscription: Mapped[Optional["Subscription"]] = relationship(
+        "Subscription", back_populates="user", uselist=False, lazy="selectin"
+    )
+
+    @property
+    def stripe_subscription_tier(self) -> Optional[str]:
+        if self.subscription:
+            return self.subscription.tier
+        return None
 
     def __repr__(self) -> str:
         return f"<User(id={self.id}, username={self.username}, email={self.email})>"

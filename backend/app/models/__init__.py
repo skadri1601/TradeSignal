@@ -21,6 +21,7 @@ from app.models.user import User
 from app.models.payment import Payment, PaymentStatus, PaymentType
 from app.models.job import Job
 from app.models.job_application import JobApplication, ApplicationStatus
+from app.models.contact_submission import ContactSubmission
 
 __all__ = [
     "Company",
@@ -49,4 +50,5 @@ __all__ = [
     "Job",
     "JobApplication",
     "ApplicationStatus",
+    "ContactSubmission",
 ]

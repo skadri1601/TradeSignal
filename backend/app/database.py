@@ -6,6 +6,7 @@ Provides async engine, session factory, and FastAPI dependency.
 """
 
 import logging
+import asyncio
 from typing import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -71,7 +72,15 @@ class DatabaseManager:
                     pool_size=10,  # Number of persistent connections to maintain
                     max_overflow=20,  # Allow additional burst connections when pool is full
                     pool_recycle=3600,  # Recycle connections after 1 hour
+                    pool_timeout=30,  # Wait max 30 seconds for connection from pool
                     poolclass=pool_class,
+                    connect_args={
+                        "command_timeout": 10,  # 10 second timeout for SQL commands
+                        "server_settings": {
+                            "application_name": "tradesignal_backend"
+                        },
+                        "timeout": 10,  # Connection establishment timeout (10 seconds)
+                    },
                 )
                 logger.info(
                     f"Database engine created successfully (environment: {settings.environment})"
@@ -136,11 +145,30 @@ class DatabaseManager:
         Used by health check endpoint to verify database status.
         """
         try:
+            import asyncio
             engine = self.get_engine()
-            async with engine.connect() as conn:
+            
+            # Create a connection with timeout protection
+            async def _connect_and_test():
+                conn = await engine.connect()
+                try:
                 await conn.execute(text("SELECT 1"))
+                    return True
+                finally:
+                    await conn.close()
+            
+            # Wrap the entire operation in a timeout
+            try:
+                result = await asyncio.wait_for(_connect_and_test(), timeout=4.0)
+                if result:
             logger.info("Database connection check: OK")
-            return True
+                return result
+            except asyncio.TimeoutError:
+                logger.warning("Database connection check timed out after 4s")
+                return False
+        except asyncio.CancelledError:
+            logger.warning("Database connection check was cancelled")
+            raise  # Re-raise CancelledError so it can be handled upstream
         except SQLAlchemyError as e:
             logger.error(f"Database connection check failed: {e}")
             return False
@@ -155,10 +183,22 @@ class DatabaseManager:
         Should be called during application shutdown.
         """
         if self._engine is not None:
-            await self._engine.dispose()
-            logger.info("Database engine closed successfully")
-            self._engine = None
-            self._session_factory = None
+            try:
+                # Dispose engine with timeout to prevent hanging
+                import asyncio
+                # For async engines, dispose() is async
+                await asyncio.wait_for(
+                    self._engine.dispose(),
+                    timeout=3.0
+                )
+                logger.info("Database engine closed successfully")
+            except asyncio.TimeoutError:
+                logger.warning("Database engine dispose timed out, forcing close")
+            except Exception as e:
+                logger.error(f"Error closing database engine: {e}")
+            finally:
+                self._engine = None
+                self._session_factory = None
 
 
 # Global database manager instance
@@ -218,13 +258,55 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         # Allow HTTPException (like 401 Unauthorized) to propagate without modification
         # This ensures authentication errors return proper status codes instead of 500
         raise
+    except (TimeoutError, asyncio.TimeoutError) as timeout_error:
+        # Handle connection timeout errors specifically
+        logger.error(
+            f"Database connection timeout in get_db: {timeout_error}",
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database connection timeout. Please try again later.",
+        )
+    except asyncio.CancelledError as cancelled_error:
+        # Handle cancelled connections that lead to timeout errors
+        logger.error(
+            f"Database connection cancelled in get_db (likely timeout): {cancelled_error}",
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database connection timeout. Please try again later.",
+        )
     except SQLAlchemyError as db_error:
+        # Check if the underlying error is a timeout
+        error_str = str(db_error).lower()
+        if "timeout" in error_str or "timed out" in error_str:
+            logger.error(
+                f"Database connection timeout (via SQLAlchemy): {db_error}",
+                exc_info=True
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database connection timeout. Please try again later.",
+            )
         logger.error(f"Database connection error in get_db: {db_error}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database connection error. Please try again later.",
         )
     except Exception as e:
+        # Check if the underlying error is a timeout
+        error_str = str(e).lower()
+        if "timeout" in error_str or "timed out" in error_str:
+            logger.error(
+                f"Database connection timeout (unexpected): {e}",
+                exc_info=True
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database connection timeout. Please try again later.",
+            )
         logger.error(f"Unexpected error in get_db: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

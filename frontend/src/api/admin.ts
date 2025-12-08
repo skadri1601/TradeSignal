@@ -103,3 +103,103 @@ export const adminApi = {
     if (!res.ok) throw new Error('Failed to delete user');
   }
 };
+
+export interface ContactSubmission {
+  id: number;
+  user_id: number | null;
+  name: string;
+  company_name: string | null;
+  email: string;
+  phone: string | null;
+  message: string;
+  is_public: boolean;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContactListResponse {
+  contacts: ContactSubmission[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export const contactAdminApi = {
+  getPublicContacts: async (
+    page = 1,
+    pageSize = 20,
+    status?: string,
+    search?: string
+  ): Promise<ContactListResponse> => {
+    const url = new URL(`${API_BASE_URL}/api/v1/admin/contacts/public`);
+    url.searchParams.append('page', page.toString());
+    url.searchParams.append('page_size', pageSize.toString());
+    if (status) url.searchParams.append('status', status);
+    if (search) url.searchParams.append('search', search);
+
+    const res = await fetch(url.toString(), {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to fetch public contacts');
+    return res.json();
+  },
+
+  getAuthenticatedContacts: async (
+    page = 1,
+    pageSize = 20,
+    status?: string,
+    search?: string
+  ): Promise<ContactListResponse> => {
+    const url = new URL(`${API_BASE_URL}/api/v1/admin/contacts/authenticated`);
+    url.searchParams.append('page', page.toString());
+    url.searchParams.append('page_size', pageSize.toString());
+    if (status) url.searchParams.append('status', status);
+    if (search) url.searchParams.append('search', search);
+
+    const res = await fetch(url.toString(), {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to fetch authenticated contacts');
+    return res.json();
+  },
+
+  getAllContacts: async (
+    page = 1,
+    pageSize = 20,
+    status?: string,
+    is_public?: boolean,
+    search?: string
+  ): Promise<ContactListResponse> => {
+    const url = new URL(`${API_BASE_URL}/api/v1/admin/contacts/all`);
+    url.searchParams.append('page', page.toString());
+    url.searchParams.append('page_size', pageSize.toString());
+    if (status) url.searchParams.append('status', status);
+    if (is_public !== undefined) url.searchParams.append('is_public', is_public.toString());
+    if (search) url.searchParams.append('search', search);
+
+    const res = await fetch(url.toString(), {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to fetch all contacts');
+    return res.json();
+  },
+
+  getContactDetail: async (contactId: number): Promise<ContactSubmission> => {
+    const res = await fetch(`${API_BASE_URL}/api/v1/admin/contacts/${contactId}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to fetch contact detail');
+    return res.json();
+  },
+
+  updateContactStatus: async (contactId: number, status: string): Promise<ContactSubmission> => {
+    const res = await fetch(`${API_BASE_URL}/api/v1/admin/contacts/${contactId}/status`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ status }),
+    });
+    if (!res.ok) throw new Error('Failed to update contact status');
+    return res.json();
+  },
+};
