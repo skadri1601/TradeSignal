@@ -248,8 +248,6 @@ async def get_significant_trades(
     **Parameters:**
     - limit: Maximum trades to return (1-500, default: 100)
     """
-    from app.config import settings as app_settings
-
     filters = TradeFilter(significant_only=True)
     trades, _ = await TradeService.get_all(
         db=db,

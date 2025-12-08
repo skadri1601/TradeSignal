@@ -1,6 +1,7 @@
 [flake8]
-max-line-length = 1200
-exclude = 
+max-line-length = 127
+max-complexity = 30
+exclude =
     __pycache__,
     *.pyc,
     .git,
@@ -9,7 +10,7 @@ exclude =
     env,
     migrations,
     alembic
-ignore = 
+ignore =
     E402,
     W503,
     E203,

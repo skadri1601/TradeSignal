@@ -6,10 +6,10 @@ Business logic for trade operations.
 
 import logging
 from typing import Optional, List
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_, desc
+from sqlalchemy import select, func, and_, desc
 from sqlalchemy.orm import selectinload
 
 from app.models import Trade, Company, Insider

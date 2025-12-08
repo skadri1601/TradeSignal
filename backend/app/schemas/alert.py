@@ -4,7 +4,7 @@ Pydantic schemas for Alert API endpoints.
 Request/response validation for alert management.
 """
 
-from pydantic import BaseModel, Field, field_validator, HttpUrl
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 from datetime import datetime
 

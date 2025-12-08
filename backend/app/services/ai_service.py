@@ -587,30 +587,36 @@ Write a 2-3 sentence news summary highlighting the most important aspects."""
         self, company_name: str, ticker: str, trade_summary: str, days_back: int
     ) -> Dict[str, Any]:
         """Generate deep AI-powered analysis for a company."""
-        system_prompt = """You are a senior financial analyst and insider trading expert with deep market knowledge.
-
-Provide a comprehensive analysis with:
-1. **Analysis**: 3-4 sentence analytical summary going beyond surface-level observations. Identify patterns, anomalies, and implications.
-
-2. **Sentiment**: BULLISH, BEARISH, or NEUTRAL based on holistic assessment
-
-3. **Key Insights** (4-6 bullet points):
-   - Identify specific patterns (clustering, timing, unusual behavior)
-   - Highlight significant insiders and their roles
-   - Compare transaction sizes to historical norms if notable
-   - Note any coordinated activity or changes in behavior
-   - Assess potential motivations (tax planning, liquidity needs, conviction)
-   - Provide actionable intelligence for investors
-
-Be analytical, not descriptive. Focus on "why" and "what it means", not just "what happened".
-Consider the broader context: insider roles, transaction sizes, timing, patterns, and market implications.
-
-Respond ONLY in this exact JSON format:
-{
-  "analysis": "your detailed analytical summary",
-  "sentiment": "BULLISH|BEARISH|NEUTRAL",
-  "insights": ["insight 1", "insight 2", "insight 3", "insight 4"]
-}"""
+        system_prompt = (
+            "You are a senior financial analyst and insider trading expert "
+            "with deep market knowledge.\n\n"
+            "Provide a comprehensive analysis with:\n"
+            "1. **Analysis**: 3-4 sentence analytical summary going beyond "
+            "surface-level observations. Identify patterns, anomalies, and "
+            "implications.\n\n"
+            "2. **Sentiment**: BULLISH, BEARISH, or NEUTRAL based on "
+            "holistic assessment\n\n"
+            "3. **Key Insights** (4-6 bullet points):\n"
+            "   - Identify specific patterns (clustering, timing, unusual "
+            "behavior)\n"
+            "   - Highlight significant insiders and their roles\n"
+            "   - Compare transaction sizes to historical norms if notable\n"
+            "   - Note any coordinated activity or changes in behavior\n"
+            "   - Assess potential motivations (tax planning, liquidity needs, "
+            "conviction)\n"
+            "   - Provide actionable intelligence for investors\n\n"
+            "Be analytical, not descriptive. Focus on \"why\" and \"what it "
+            "means\", not just \"what happened\".\n"
+            "Consider the broader context: insider roles, transaction sizes, "
+            "timing, patterns, and market implications.\n\n"
+            "Respond ONLY in this exact JSON format:\n"
+            "{\n"
+            '  "analysis": "your detailed analytical summary",\n'
+            '  "sentiment": "BULLISH|BEARISH|NEUTRAL",\n'
+            '  "insights": ["insight 1", "insight 2", "insight 3", '
+            '"insight 4"]\n'
+            "}"
+        )
 
         user_prompt = (
             f"Provide a deep analysis of insider trading activity for {company_name} "
@@ -756,7 +762,8 @@ TOP TRADES (chronological):
 NOTABLE C-SUITE ACTIVITY:
 {chr(10).join(c_suite_trades[:5]) if c_suite_trades else "None"}
 
-Write a 4-5 sentence analysis that identifies patterns, highlights significant trades, and provides actionable insights for investors."""
+Write a 4-5 sentence analysis that identifies patterns, highlights significant
+trades, and provides actionable insights for investors."""
 
         errors: List[str] = []
 
@@ -1141,21 +1148,31 @@ INSIDER ROLE DISTRIBUTION:
 
 CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE:
 1. You have access to data from ALL {len(all_companies)} companies listed above
-2. You have data on ALL INSIDER ROLES: CEOs, CFOs, Directors, Officers, 10% Owners, Presidents, VPs, etc.
-3. The "top" lists are just examples - you can query any company or insider from the full database
-4. When asked about "biggest trades", cite the SPECIFIC INSIDERS and their ROLES from the lists above
+2. You have data on ALL INSIDER ROLES: CEOs, CFOs, Directors, Officers,
+   10% Owners, Presidents, VPs, etc.
+3. The "top" lists are just examples - you can query any company or insider
+   from the full database
+4. When asked about "biggest trades", cite the SPECIFIC INSIDERS and their
+   ROLES from the lists above
 5. Format: "[Insider Name] ([Title/Role]) at [Ticker] bought/sold [amount]"
-6. If a value shows "Not Disclosed", explain the SEC filing didn't include the value
-7. NEVER say "I'm not sure" or "I don't have access" - you have complete database access
-8. Be PRECISE and CONFIDENT - this is real SEC Form 4 data from the last 30 days
-9. When discussing insiders, mention their specific roles (CEO, CFO, Director, etc.) to provide context
-10. Use the insider role distribution to provide insights about which types of insiders are most active
-11. Reference specific recent trades when relevant to show you're using real-time data
+6. If a value shows "Not Disclosed", explain the SEC filing didn't include
+   the value
+7. NEVER say "I'm not sure" or "I don't have access" - you have complete
+   database access
+8. Be PRECISE and CONFIDENT - this is real SEC Form 4 data from the last
+   30 days
+9. When discussing insiders, mention their specific roles (CEO, CFO,
+   Director, etc.) to provide context
+10. Use the insider role distribution to provide insights about which types
+    of insiders are most active
+11. Reference specific recent trades when relevant to show you're using
+    real-time data
 12. Provide quantitative details (trade counts, values, dates) when available
 13. Compare and contrast different companies/insiders when asked about trends
 14. Be analytical, not just descriptive - explain what the data means
 
-Answer using this real-time data from the complete insider trading database. Be specific, cite numbers, and reference actual insiders and companies."""
+Answer using this real-time data from the complete insider trading database.
+Be specific, cite numbers, and reference actual insiders and companies."""
         )
 
         errors: List[str] = []

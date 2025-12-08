@@ -15,7 +15,6 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 import logging
 import time
-import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select

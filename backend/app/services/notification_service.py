@@ -367,17 +367,30 @@ class NotificationService:
 <html>
 <head>
     <style>
-        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; }}
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
+               Roboto, Helvetica, Arial, sans-serif; line-height: 1.6;
+               color: #333; }}
         .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-        .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center; }}
-        .content {{ background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }}
-        .trade-info {{ background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid {'#10b981' if trade.transaction_type == 'BUY' else '#ef4444'}; }}
-        .trade-title {{ font-size: 20px; font-weight: bold; margin-bottom: 15px; color: #1f2937; }}
-        .detail-row {{ display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e5e7eb; }}
+        .header {{ background: linear-gradient(135deg, #667eea 0%,
+                   #764ba2 100%); color: white; padding: 30px;
+                   border-radius: 10px 10px 0 0; text-align: center; }}
+        .content {{ background: #f9fafb; padding: 30px;
+                    border-radius: 0 0 10px 10px; }}
+        .trade-info {{ background: white; padding: 20px; border-radius: 8px;
+                       margin: 20px 0; border-left: 4px solid
+                       {'#10b981' if trade.transaction_type == 'BUY'
+                       else '#ef4444'}; }}
+        .trade-title {{ font-size: 20px; font-weight: bold;
+                        margin-bottom: 15px; color: #1f2937; }}
+        .detail-row {{ display: flex; justify-content: space-between;
+                       padding: 10px 0; border-bottom: 1px solid #e5e7eb; }}
         .detail-label {{ font-weight: 600; color: #6b7280; }}
         .detail-value {{ color: #1f2937; }}
-        .button {{ display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; }}
-        .footer {{ text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; }}
+        .button {{ display: inline-block; background: #667eea; color: white;
+                   padding: 12px 30px; text-decoration: none;
+                   border-radius: 6px; margin: 20px 0; }}
+        .footer {{ text-align: center; color: #6b7280; font-size: 12px;
+                   margin-top: 30px; }}
     </style>
 </head>
 <body>
@@ -497,16 +510,26 @@ class NotificationService:
 <html>
 <head>
     <style>
-        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; }}
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
+               Roboto, Helvetica, Arial, sans-serif; line-height: 1.6;
+               color: #333; }}
         .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-        .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center; }}
-        .content {{ background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }}
-        .info-box {{ background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea; }}
-        .detail-row {{ display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e5e7eb; }}
+        .header {{ background: linear-gradient(135deg, #667eea 0%,
+                   #764ba2 100%); color: white; padding: 30px;
+                   border-radius: 10px 10px 0 0; text-align: center; }}
+        .content {{ background: #f9fafb; padding: 30px;
+                    border-radius: 0 0 10px 10px; }}
+        .info-box {{ background: white; padding: 20px; border-radius: 8px;
+                     margin: 20px 0; border-left: 4px solid #667eea; }}
+        .detail-row {{ display: flex; justify-content: space-between;
+                       padding: 10px 0; border-bottom: 1px solid #e5e7eb; }}
         .detail-label {{ font-weight: 600; color: #6b7280; }}
         .detail-value {{ color: #1f2937; }}
-        .button {{ display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; }}
-        .footer {{ text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; }}
+        .button {{ display: inline-block; background: #667eea; color: white;
+                   padding: 12px 30px; text-decoration: none;
+                   border-radius: 6px; margin: 20px 0; }}
+        .footer {{ text-align: center; color: #6b7280; font-size: 12px;
+                   margin-top: 30px; }}
     </style>
 </head>
 <body>
@@ -614,12 +637,20 @@ class NotificationService:
 <html>
 <head>
     <style>
-        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; }}
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
+               Roboto, Helvetica, Arial, sans-serif; line-height: 1.6;
+               color: #333; }}
         .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-        .header {{ background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center; }}
-        .content {{ background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }}
-        .success-box {{ background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981; }}
-        .footer {{ text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; }}
+        .header {{ background: linear-gradient(135deg, #10b981 0%,
+                   #059669 100%); color: white; padding: 30px;
+                   border-radius: 10px 10px 0 0; text-align: center; }}
+        .content {{ background: #f9fafb; padding: 30px;
+                    border-radius: 0 0 10px 10px; }}
+        .success-box {{ background: white; padding: 20px;
+                        border-radius: 8px; margin: 20px 0;
+                        border-left: 4px solid #10b981; }}
+        .footer {{ text-align: center; color: #6b7280; font-size: 12px;
+                   margin-top: 30px; }}
     </style>
 </head>
 <body>
@@ -629,9 +660,17 @@ class NotificationService:
         </div>
         <div class="content">
             <div class="success-box">
-                <h2 style="color: #1f2937; margin-top: 0;">Email Configuration Verified</h2>
-                <p style="color: #6b7280;">Your alert <strong>"{alert_name}"</strong> is configured correctly to send email notifications!</p>
-                <p style="color: #6b7280; margin-bottom: 0;">You'll receive emails like this when your alert criteria are met.</p>
+                <h2 style="color: #1f2937; margin-top: 0;">
+                    Email Configuration Verified
+                </h2>
+                <p style="color: #6b7280;">
+                    Your alert <strong>"{alert_name}"</strong> is configured
+                    correctly to send email notifications!
+                </p>
+                <p style="color: #6b7280; margin-bottom: 0;">
+                    You'll receive emails like this when your alert criteria
+                    are met.
+                </p>
             </div>
             <div class="footer">
                 <p>Powered by TradeSignal - Real-time Insider Trading Intelligence</p>

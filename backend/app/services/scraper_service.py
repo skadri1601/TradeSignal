@@ -6,7 +6,7 @@ Orchestrates fetching Form 4 filings from SEC and saving to database.
 
 import logging
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
