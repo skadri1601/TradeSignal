@@ -28,7 +28,7 @@ export default function TradeList({ trades }: TradeListProps) {
       <table className="table">
         <thead>
           <tr>
-            <th>Date</th>
+            <th>Filing Date</th>
             <th>Company</th>
             <th>Insider</th>
             <th>Type</th>
@@ -52,13 +52,14 @@ export default function TradeList({ trades }: TradeListProps) {
               priceNumber = totalValueNumber / sharesNumber;
             }
 
+
             return (
               <tr key={trade.id}>
-              <td className="text-gray-600">{formatDate(trade.transaction_date)}</td>
-              <td className="font-medium text-gray-900">
+              <td className="text-gray-400">{formatDate(trade.filing_date)}</td>
+              <td className="font-medium text-white">
                 <a
                   href={`/companies/${trade.company?.ticker ?? trade.company_id}`}
-                  className="hover:text-blue-600"
+                  className="hover:text-blue-400 transition-colors"
                 >
                   {trade.company?.name ? (
                     <>
@@ -73,7 +74,7 @@ export default function TradeList({ trades }: TradeListProps) {
                 </a>
               </td>
               <td>
-                <a href={`/insiders/${trade.insider_id}`} className="text-gray-600 hover:text-blue-600">
+                <a href={`/insiders/${trade.insider_id}`} className="text-gray-400 hover:text-blue-400 transition-colors">
                   {trade.insider?.name ?? `Insider #${trade.insider_id}`}
                 </a>
               </td>
@@ -91,11 +92,11 @@ export default function TradeList({ trades }: TradeListProps) {
                   {trade.transaction_type}
                 </span>
               </td>
-              <td className="text-right font-mono">{formatShares(trade.shares)}</td>
-              <td className="text-right font-mono">
+              <td className="text-right font-mono text-gray-300">{formatShares(trade.shares)}</td>
+              <td className="text-right font-mono text-gray-300">
                 {priceNumber ? formatCurrency(priceNumber) : 'N/A'}
               </td>
-              <td className="text-right font-mono font-semibold">
+              <td className="text-right font-mono font-bold text-white">
                 {totalValueNumber ? formatCurrency(totalValueNumber) : 'N/A'}
               </td>
               <td>
@@ -103,7 +104,7 @@ export default function TradeList({ trades }: TradeListProps) {
                   href={trade.sec_filing_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 inline-flex items-center"
+                  className="text-blue-400 hover:text-blue-300 inline-flex items-center transition-colors"
                 >
                   <ExternalLink className="h-4 w-4" />
                 </a>

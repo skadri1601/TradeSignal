@@ -15,7 +15,9 @@ export default function SupportPage() {
   const { data: tickets, isLoading } = useQuery({
     queryKey: ['my-tickets'],
     queryFn: ticketsApi.getMyTickets,
-    refetchInterval: 15000, // Live updates
+    staleTime: 60 * 1000, // Consider fresh for 1 minute
+    refetchInterval: 60 * 1000, // Auto-refresh every 1 minute (reduced from 15s)
+    refetchOnWindowFocus: false,
   });
 
   // Mutations

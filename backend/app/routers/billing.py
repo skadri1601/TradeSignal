@@ -21,6 +21,7 @@ from app.models.subscription import Subscription, SubscriptionTier, Subscription
 from app.models.payment import Payment, PaymentStatus, PaymentType
 from app.models.user import User
 from app.core.security import get_current_active_user
+from app.utils.order_number import generate_order_number
 
 
 class CheckoutRequest(BaseModel):
@@ -109,6 +110,10 @@ async def get_subscription(
                 "current_period_start": None,
                 "current_period_end": None,
                 "cancel_at_period_end": False,
+                "billing_period": None,
+                "price_paid": None,
+                "order_number": None,
+                "stripe_order_number": None,
             }
 
         return {
@@ -122,6 +127,10 @@ async def get_subscription(
             if subscription.current_period_end
             else None,
             "cancel_at_period_end": subscription.cancel_at_period_end,
+            "billing_period": subscription.billing_period,
+            "price_paid": float(subscription.price_paid) if subscription.price_paid else None,
+            "order_number": subscription.order_number,
+            "stripe_order_number": subscription.stripe_order_number,
         }
     except Exception as e:
         logger.error(
@@ -136,6 +145,10 @@ async def get_subscription(
             "current_period_start": None,
             "current_period_end": None,
             "cancel_at_period_end": False,
+            "billing_period": None,
+            "price_paid": None,
+            "order_number": None,
+            "stripe_order_number": None,
             "error": "Failed to fetch subscription details",
         }
 
@@ -434,6 +447,8 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         amount_total = session.get("amount_total", 0) / 100.0  # Convert from cents
         currency = session.get("currency", "usd").upper()
 
+        stripe_order_number = None
+        stripe_price_id_from_subscription = None
         if stripe_subscription_id:
             stripe_subscription = stripe.Subscription.retrieve(stripe_subscription_id)
             subscription.stripe_subscription_id = stripe_subscription_id
@@ -446,11 +461,50 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
             )
             stripe_customer_id = stripe_subscription.customer
 
-            # Get payment amount from the latest invoice
+            # Get price ID from subscription items
+            if stripe_subscription.items and stripe_subscription.items.data:
+                price_item = stripe_subscription.items.data[0]
+                if price_item.price:
+                    stripe_price_id_from_subscription = price_item.price.id
+
+            # Get payment amount and invoice number from the latest invoice
             if stripe_subscription.latest_invoice:
                 invoice = stripe.Invoice.retrieve(stripe_subscription.latest_invoice)
                 amount_total = invoice.amount_paid / 100.0
                 currency = invoice.currency.upper()
+                stripe_order_number = invoice.get("number") or invoice.get("id")
+
+        # Update stripe_price_id if we got it from subscription
+        if stripe_price_id_from_subscription:
+            subscription.stripe_price_id = stripe_price_id_from_subscription
+
+        # Determine billing_period from metadata or stripe_price_id
+        if not billing_period or billing_period not in ["monthly", "yearly"]:
+            # Try to determine from stripe_price_id if available
+            price_id_to_check = subscription.stripe_price_id or stripe_price_id_from_subscription
+            if price_id_to_check:
+                price_id_lower = price_id_to_check.lower()
+                if "_yearly" in price_id_lower:
+                    billing_period = "yearly"
+                elif "_monthly" in price_id_lower:
+                    billing_period = "monthly"
+                else:
+                    billing_period = "monthly"  # Default
+            else:
+                billing_period = "monthly"  # Default
+
+        # Generate order number if not already set
+        if not subscription.order_number:
+            try:
+                subscription.order_number = await generate_order_number(user_id, db)
+            except Exception as e:
+                logger.error(f"Error generating order number: {e}", exc_info=True)
+                # Continue without order number rather than failing webhook
+
+        # Set admin tracking fields
+        subscription.billing_period = billing_period
+        subscription.price_paid = amount_total if amount_total > 0 else None
+        subscription.stripe_order_number = stripe_order_number or session.get("id")
 
         subscription.tier = tier
         subscription.status = SubscriptionStatus.ACTIVE.value
@@ -568,6 +622,12 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                     )
                 except Exception as e:
                     logger.error(f"Error retrieving subscription details: {e}")
+
+            # Update price_paid and stripe_order_number from invoice
+            subscription.price_paid = amount_paid if amount_paid > 0 else subscription.price_paid
+            invoice_number = invoice.get("number") or invoice.get("id")
+            if invoice_number:
+                subscription.stripe_order_number = invoice_number
 
             subscription.status = SubscriptionStatus.ACTIVE.value
             subscription.is_active = True

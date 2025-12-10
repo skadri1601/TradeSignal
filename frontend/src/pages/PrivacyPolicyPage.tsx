@@ -23,19 +23,32 @@ const PrivacyPolicyPage = () => {
 
         <Section title="2. How We Use Your Information">
           <ul className="list-disc ml-6 space-y-2">
-            <li>To provide and maintain our insider trading intelligence platform.</li>
-            <li>To process your subscription payments and manage your account status.</li>
-            <li>To send you real-time trade alerts, push notifications, and newsletters (if subscribed).</li>
-            <li>To improve our AI-powered insights and algorithms based on usage patterns.</li>
-            <li>To provide customer support and respond to your inquiries.</li>
+            <li>To provide and maintain our insider trading intelligence platform (Alpha release).</li>
+            <li>To process your subscription payments and manage your account status via Stripe.</li>
+            <li>To send you real-time trade alerts via email, push notifications, Discord, Slack, SMS, and webhooks.</li>
+            <li>To provide AI-powered insights and analysis (Beta feature, requires API key configuration).</li>
+            <li>To improve our services and algorithms based on aggregated, anonymized usage patterns.</li>
+            <li>To provide customer support and respond to your inquiries through our ticket system.</li>
             <li>To detect and prevent fraud, abuse, and security incidents.</li>
+            <li>To comply with legal obligations and enforce our Terms of Service.</li>
           </ul>
         </Section>
 
         <Section title="3. Sharing of Information">
           <p>We do not sell your personal information. We may share information with:</p>
           <ul className="list-disc ml-6 space-y-2 mt-4">
-            <li><strong>Service Providers:</strong> Third-party vendors like Stripe (payments), Supabase (database), and email providers who assist in our operations.</li>
+            <li><strong>Service Providers:</strong> Third-party vendors who assist in our operations, including:
+              <ul className="list-disc ml-6 mt-2 space-y-1">
+                <li><strong>Stripe</strong> - Payment processing for subscriptions</li>
+                <li><strong>PostgreSQL</strong> - Database hosting and data storage</li>
+                <li><strong>Redis</strong> - Caching and session management</li>
+                <li><strong>Email Services</strong> - Resend, Brevo, or SendGrid for email notifications</li>
+                <li><strong>Twilio</strong> - SMS notifications (Pro/Enterprise tiers only)</li>
+                <li><strong>Discord & Slack</strong> - Webhook notifications (Pro/Enterprise tiers only)</li>
+                <li><strong>Market Data Providers</strong> - Finnhub, Alpha Vantage, CoinGecko, FRED API for financial data</li>
+                <li><strong>AI Services</strong> - Google Gemini or OpenAI for AI-powered insights (optional, requires API key)</li>
+              </ul>
+            </li>
             <li><strong>Legal Requirements:</strong> If required by law, court order, or government regulation.</li>
             <li><strong>Business Transfers:</strong> In connection with a merger, sale, or asset transfer, though we will notify you before your data is transferred.</li>
           </ul>

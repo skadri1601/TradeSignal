@@ -375,6 +375,7 @@ class PatternAnalysisService:
                     "buys": 0,
                     "sells": 0,
                     "total_value": 0,
+                    "role": insider.title or insider.relationship or "Insider",
                 }
 
             if trade.transaction_type == "BUY":
@@ -384,16 +385,12 @@ class PatternAnalysisService:
             insider_activity[insider.name]["total_value"] += trade_value
 
         # Calculate metrics with NaN protection
-        total_buy_value = sum(
-            b["value"]
-            for b in buys
-            if isinstance(b.get("value"), (int, float)) and b["value"] == b["value"]
-        )
-        total_sell_value = sum(
-            s["value"]
-            for s in sells
-            if isinstance(s.get("value"), (int, float)) and s["value"] == s["value"]
-        )
+        # Filter for meaningful trades (Value > 0) for pattern detection
+        meaningful_buys = [b for b in buys if b["value"] > 0]
+        meaningful_sells = [s for s in sells if s["value"] > 0]
+
+        total_buy_value = sum(b["value"] for b in meaningful_buys)
+        total_sell_value = sum(s["value"] for s in meaningful_sells)
 
         # Ensure values are never NaN
         if not isinstance(total_buy_value, (int, float)) or (
@@ -433,15 +430,15 @@ class PatternAnalysisService:
         ):
             sell_ratio = 0.0
 
-        # Detect patterns
+        # Detect patterns using MEANINGFUL trades only
         pattern = "NEUTRAL"
         trend = "NEUTRAL"
         confidence = 0.5
 
         # Pattern 1: Buying Momentum
-        if buy_ratio > 0.7 and len(buys) >= 3:
+        if buy_ratio > 0.7 and len(meaningful_buys) >= 3:
             # Check if recent buys are increasing
-            recent_buys = sorted(buys, key=lambda x: x["date"], reverse=True)[:5]
+            recent_buys = sorted(meaningful_buys, key=lambda x: x["date"], reverse=True)[:5]
             if len(recent_buys) >= 3:
                 values = [b["value"] for b in recent_buys]
                 if values[0] > values[-1]:  # Increasing trend
@@ -450,9 +447,9 @@ class PatternAnalysisService:
                     confidence = min(0.9, 0.6 + (buy_ratio - 0.7) * 0.5)
 
         # Pattern 2: Selling Pressure
-        elif sell_ratio > 0.7 and len(sells) >= 3:
+        elif sell_ratio > 0.7 and len(meaningful_sells) >= 3:
             # Check if recent sells are increasing
-            recent_sells = sorted(sells, key=lambda x: x["date"], reverse=True)[:5]
+            recent_sells = sorted(meaningful_sells, key=lambda x: x["date"], reverse=True)[:5]
             if len(recent_sells) >= 3:
                 values = [s["value"] for s in recent_sells]
                 if values[0] > values[-1]:  # Increasing trend
@@ -461,12 +458,14 @@ class PatternAnalysisService:
                     confidence = min(0.9, 0.6 + (sell_ratio - 0.7) * 0.5)
 
         # Pattern 3: Cluster (multiple insiders trading together)
+        # Use total_value filter for insiders
         active_insiders = len(
             [i for i in insider_activity.values() if i["total_value"] > 0]
         )
-        if active_insiders >= 3 and len(trades_with_insiders) >= 5:
+        # Only count meaningful trades for clustering to avoid noise
+        if active_insiders >= 3 and (len(meaningful_buys) + len(meaningful_sells)) >= 5:
             # Check if trades are clustered in time
-            dates = sorted([t[0].transaction_date for t in trades_with_insiders])
+            dates = sorted([t[0].transaction_date for t in trades_with_insiders if t[0].total_value > 0])
             if len(dates) >= 3:
                 time_span = (dates[-1] - dates[0]).days
                 if time_span <= 30:  # Clustered within 30 days
@@ -480,10 +479,12 @@ class PatternAnalysisService:
                         confidence = 0.75
 
         # Pattern 4: Reversal (pattern change)
-        if len(buys) >= 2 and len(sells) >= 2:
+        if len(meaningful_buys) >= 2 and len(meaningful_sells) >= 2:
             # Check if recent activity reversed
             recent_trades = sorted(
-                trades_with_insiders, key=lambda x: x[0].transaction_date, reverse=True
+                [t for t in trades_with_insiders if (t[0].total_value or 0) > 0], 
+                key=lambda x: x[0].transaction_date, 
+                reverse=True
             )[:6]
 
             recent_types = [t[0].transaction_type for t in recent_trades]
@@ -554,6 +555,35 @@ class PatternAnalysisService:
         # Try to use Gemini AI for enhanced prediction
         try:
             from app.config import settings as gemini_settings
+            
+            # Fetch recent news
+            news_context = "No recent news found."
+            try:
+                from app.services.news_service import NewsService
+                news_service = NewsService(self.db)
+                recent_news = await news_service.get_company_news(company.ticker, limit=3)
+                if recent_news:
+                    news_context = "\n".join(
+                        [f"- {n.get('headline')} ({datetime.fromtimestamp(n.get('datetime', 0)).strftime('%Y-%m-%d')})" for n in recent_news]
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to fetch news for pattern analysis: {e}")
+
+            # Identify key insiders (C-suite/Directors)
+            insider_activity_map = analysis.get("analysis", {}).get("insider_activity", {})
+            key_insiders = []
+            for name, data in insider_activity_map.items():
+                role = str(data.get("role", "")).upper()
+                if any(t in role for t in ["CEO", "CFO", "COO", "PRESIDENT", "CHIEF", "DIRECTOR", "CHAIRMAN"]):
+                    action = "Buying" if data["buys"] > data["sells"] else "Selling" if data["sells"] > data["buys"] else "Mixed"
+                    
+                    # Smart value formatting
+                    total_val = data['total_value']
+                    value_str = f"${total_val:,.0f}" if total_val > 0 else "Value Not Disclosed"
+                    
+                    key_insiders.append(f"{name} ({data.get('role')}) - {action} ({value_str})")
+            
+            key_insiders_str = "\n".join(key_insiders[:5]) if key_insiders else "No C-suite/Director activity."
 
             if gemini_settings.gemini_api_key and gemini_settings.enable_ai_insights:
                 import google.generativeai as genai
@@ -568,21 +598,38 @@ class PatternAnalysisService:
 
 Analyze the following insider trading pattern for {company.name} ({company.ticker}):
 
+TRADING METRICS (Calculated from market transactions only):
 Pattern Type: {pattern}
 Trend: {trend}
 Confidence: {confidence:.1%}
-Buy Ratio: {buy_ratio:.1%} ({buy_count} buy trades, ${total_buy_value:,.0f} total)
-Sell Ratio: {sell_ratio:.1%} ({sell_count} sell trades, \
-${total_sell_value:,.0f} total)
+Buy Ratio: {buy_ratio:.1%} (Based on ${total_buy_value:,.0f} meaningful buy volume)
+Sell Ratio: {sell_ratio:.1%} (Based on ${total_sell_value:,.0f} meaningful sell volume)
 Active Insiders: {active_insiders}
 
-Provide a concise but insightful prediction (2-3 sentences) explaining what \
-this pattern means for the stock's future performance. Be specific about the \
-implications and what investors should watch for.
+KEY INSIDERS INVOLVED:
+{key_insiders_str}
+
+RECENT MARKET NEWS:
+{news_context}
+
+Provide a concise but insightful prediction (2-3 sentences) explaining what this pattern means for the stock's future performance.
+
+CRITICAL INSTRUCTIONS:
+1. **PATTERN LOGIC:** The "Pattern Type" and "Ratios" above EXCLUDE trades with $0/undisclosed values to filter out grants and gifts. Trust these metrics as representing true market conviction.
+2. **HANDLING MISSING VALUES:** If you see "Value Not Disclosed" in the "KEY INSIDERS" list, these are likely the grants/gifts we filtered out of the ratios. acknowledge them as relevant context (e.g. "CEO received shares") but do not treat them as market selling/buying pressure.
+3. Focus on the relationship between the *market* activity (the metrics) and the news.
+4. ANSWER DIRECTLY. Do not start with "Here is the analysis" or repeat these instructions.
 
 Respond with ONLY the prediction text, no additional formatting."""
 
-                response = await model.generate_content_async(prompt)
+                # Increase max tokens to prevent cutoff
+                response = await model.generate_content_async(
+                    prompt,
+                    generation_config={
+                        "max_output_tokens": 1000, 
+                        "temperature": 0.2
+                    }
+                )
                 ai_prediction = response.text.strip()
 
                 # Use AI prediction if available
@@ -591,42 +638,16 @@ Respond with ONLY the prediction text, no additional formatting."""
                 raise ValueError("Gemini not configured")
         except Exception as e:
             logger.debug(
-                f"Gemini AI not available for pattern prediction: {e}, using fallback"
+                f"Gemini AI not available for pattern prediction: {e}, returning structured error"
             )
-            # Fallback to static predictions
-            predictions = {
-                "BUYING_MOMENTUM": (
-                    f"Strong insider buying momentum detected for {company.ticker}. "
-                    f"{buy_count} buy transactions totaling ${total_buy_value:,.0f} "
-                    "suggest insiders have positive conviction. Multiple insiders "
-                    f"({active_insiders}) are accumulating shares, indicating "
-                    "potential upside."
-                ),
-                "SELLING_PRESSURE": (
-                    f"Significant insider selling pressure detected for {company.ticker}. "
-                    f"{sell_count} sell transactions totaling ${total_sell_value:,.0f} "
-                    "suggest insiders are reducing positions. This may indicate concerns "
-                    "about valuation or upcoming challenges."
-                ),
-                "CLUSTER": (
-                    f"Clustered insider activity detected for {company.ticker}. "
-                    f"{active_insiders} insiders trading together within a short "
-                    "timeframe may indicate significant corporate events, earnings "
-                    "announcements, or strategic changes ahead."
-                ),
-                "REVERSAL": (
-                    f"Pattern reversal detected for {company.ticker}. Recent insider "
-                    "activity shows a shift from previous trends, suggesting changing "
-                    "sentiment among company insiders."
-                ),
-                "NEUTRAL": (
-                    f"Mixed insider activity for {company.ticker}. No clear "
-                    f"directional pattern detected. {buy_count} buys and {sell_count} "
-                    "sells suggest balanced insider sentiment."
-                ),
-                "NO_ACTIVITY": f"No recent insider activity for {company.ticker}.",
+            return {
+                "prediction": "AI analysis unavailable",
+                "recommendation": "HOLD",
+                "risk_level": "UNKNOWN",
+                "error": "AI analysis unavailable",
+                "reason": str(e),
+                "fallback_available": False,
             }
-            prediction = predictions.get(pattern, predictions["NEUTRAL"])
 
         # Generate recommendation
         if trend == "BULLISH" and confidence > 0.6:

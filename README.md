@@ -267,11 +267,39 @@ Please follow the existing code style and include tests for new features.
 
 This project is proprietary software. All rights reserved.
 
+## Documentation
+
+### User Documentation
+
+- **[Getting Started Guide](docs/GETTING_STARTED.md)** - New user guide and first steps
+- **[FAQ](docs/FAQ.md)** - Frequently asked questions
+- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and solutions
+- **[Release Notes](docs/RELEASE_NOTES_ALPHA_v1.0.0.md)** - Alpha v1.0.0 release notes and data source status
+- **[Changelog](CHANGELOG.md)** - Version history and changes
+
+### Feature Guides
+
+- **[Insider Trades Guide](docs/FEATURES/INSIDER_TRADES.md)** - How to use insider trading features
+- **[Congressional Trades Guide](docs/FEATURES/CONGRESSIONAL_TRADES.md)** - Congressional trade monitoring (Beta)
+- **[AI Insights Guide](docs/FEATURES/AI_INSIGHTS.md)** - AI-powered analysis features (Beta)
+
+### Alerts & Notifications
+
+- **[Alerts Setup Guide](docs/ALERTS_SETUP.md)** - How to create and manage alerts
+- **[Discord Webhooks Guide](docs/ALERTS_DISCORD_WEBHOOKS.md)** - Setting up Discord webhook notifications
+
+### Developer Documentation
+
+- **[Backend README](backend/README.md)** - Backend setup and development
+- **[Frontend README](frontend/README.md)** - Frontend setup and development
+- **API Documentation** - Interactive API docs at `http://localhost:8000/docs` (Swagger UI)
+
 ## Support
 
-- Documentation: [backend/README.md](backend/README.md), [frontend/README.md](frontend/README.md)
-- Issues: Create a GitHub issue
-- Email: support@tradesignal.com
+- **Documentation:** See [docs/](docs/) directory for user guides
+- **Email Support:** support@tradesignal.com
+- **Issues:** Create a GitHub issue
+- **Technical Docs:** [backend/README.md](backend/README.md), [frontend/README.md](frontend/README.md)
 
 ## Roadmap
 

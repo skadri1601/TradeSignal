@@ -22,6 +22,8 @@ from app.models.payment import Payment, PaymentStatus, PaymentType
 from app.models.job import Job
 from app.models.job_application import JobApplication, ApplicationStatus
 from app.models.contact_submission import ContactSubmission
+from app.models.notification import Notification
+from app.models.processed_filing import ProcessedFiling
 
 __all__ = [
     "Company",
@@ -51,4 +53,6 @@ __all__ = [
     "JobApplication",
     "ApplicationStatus",
     "ContactSubmission",
+    "Notification",
+    "ProcessedFiling",
 ]

@@ -55,51 +55,51 @@ export default function LessonsPage() {
   ];
 
   const colorMap: Record<string, string> = {
-    blue: 'from-blue-500 to-blue-600',
-    green: 'from-green-500 to-green-600',
-    purple: 'from-purple-500 to-purple-600',
-    orange: 'from-orange-500 to-orange-600',
+    blue: 'from-blue-600 to-blue-800',
+    green: 'from-green-600 to-green-800',
+    purple: 'from-purple-600 to-purple-800',
+    orange: 'from-orange-600 to-orange-800',
   };
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-          <GraduationCap className="w-8 h-8 mr-3 text-blue-600" />
+        <h1 className="text-3xl font-bold text-white flex items-center">
+          <GraduationCap className="w-8 h-8 mr-3 text-purple-400" />
           Trading Lessons
         </h1>
-        <p className="text-gray-600 mt-2">
+        <p className="text-gray-400 mt-2">
           Master the art of insider trading analysis with our educational content
         </p>
       </div>
 
       {/* Progress Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-gray-900/50 backdrop-blur-sm rounded-xl border border-white/10 p-4">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-gray-600 text-sm">Lessons Completed</p>
+            <p className="text-gray-400 text-sm">Lessons Completed</p>
             <CheckCircle className="w-5 h-5 text-green-500" />
           </div>
-          <p className="text-3xl font-bold text-gray-900">0/{lessons.length}</p>
+          <p className="text-3xl font-bold text-white">0/{lessons.length}</p>
         </div>
 
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
+        <div className="bg-gray-900/50 backdrop-blur-sm rounded-xl border border-white/10 p-4">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-gray-600 text-sm">Total Learning Time</p>
+            <p className="text-gray-400 text-sm">Total Learning Time</p>
             <BookOpen className="w-5 h-5 text-blue-500" />
           </div>
-          <p className="text-3xl font-bold text-gray-900">
+          <p className="text-3xl font-bold text-white">
             {lessons.reduce((acc, l) => acc + parseInt(l.duration), 0)} min
           </p>
         </div>
 
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
+        <div className="bg-gray-900/50 backdrop-blur-sm rounded-xl border border-white/10 p-4">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-gray-600 text-sm">Your Level</p>
+            <p className="text-gray-400 text-sm">Your Level</p>
             <Target className="w-5 h-5 text-purple-500" />
           </div>
-          <p className="text-3xl font-bold text-gray-900">Beginner</p>
+          <p className="text-3xl font-bold text-white">Beginner</p>
         </div>
       </div>
 
@@ -110,23 +110,23 @@ export default function LessonsPage() {
           return (
             <div
               key={lesson.id}
-              className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+              className="bg-gray-900/50 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden hover:border-purple-500/50 transition-all duration-300 cursor-pointer"
             >
               <div className={`h-32 bg-gradient-to-br ${colorMap[lesson.color]} p-6 flex items-center justify-center`}>
                 <Icon className="w-16 h-16 text-white" />
               </div>
               <div className="p-6">
                 <div className="flex items-start justify-between mb-3">
-                  <h3 className="font-bold text-lg text-gray-900">{lesson.title}</h3>
+                  <h3 className="font-bold text-lg text-white">{lesson.title}</h3>
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    lesson.level === 'Beginner' ? 'bg-green-100 text-green-700' :
-                    lesson.level === 'Intermediate' ? 'bg-blue-100 text-blue-700' :
-                    'bg-purple-100 text-purple-700'
+                    lesson.level === 'Beginner' ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
+                    lesson.level === 'Intermediate' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
+                    'bg-purple-500/20 text-purple-300 border border-purple-500/30'
                   }`}>
                     {lesson.level}
                   </span>
                 </div>
-                <p className="text-gray-600 text-sm mb-4">{lesson.description}</p>
+                <p className="text-gray-400 text-sm mb-4">{lesson.description}</p>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">{lesson.duration}</span>
                   <button 
@@ -138,7 +138,7 @@ export default function LessonsPage() {
                         { type: 'info', title: 'TradeSignal' }
                       );
                     }}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
                   >
                     Start Lesson
                   </button>
@@ -150,19 +150,19 @@ export default function LessonsPage() {
       </div>
 
       {/* Coming Soon Banner */}
-      <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl p-8 border border-yellow-200">
+      <div className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-8 border border-white/10">
         <div className="flex items-start space-x-4">
-          <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
-            <AlertCircle className="w-6 h-6 text-yellow-600" />
+          <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
+            <AlertCircle className="w-6 h-6 text-yellow-400" />
           </div>
           <div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Interactive Lessons Coming Soon!</h3>
-            <p className="text-gray-600 mb-4">
+            <h3 className="text-xl font-bold text-white mb-2">Interactive Lessons Coming Soon!</h3>
+            <p className="text-gray-400 mb-4">
               We're creating comprehensive video tutorials, quizzes, and hands-on exercises to help you become an expert in insider trading analysis.
             </p>
             <button
               onClick={() => navigate('/trades')}
-              className="px-6 py-3 bg-yellow-600 text-white rounded-lg font-medium hover:bg-yellow-700 transition-colors"
+              className="px-6 py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors"
             >
               Start Analyzing Trades Now →
             </button>

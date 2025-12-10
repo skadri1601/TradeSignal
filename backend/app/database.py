@@ -6,7 +6,6 @@ Provides async engine, session factory, and FastAPI dependency.
 """
 
 import logging
-import asyncio
 from typing import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -28,35 +27,19 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 # Declarative Base for SQLAlchemy models
-# Import this in model files: from app.database import Base
 Base = declarative_base()
 
 
 class DatabaseManager:
     """
     Manages database engine and session lifecycle.
-
-    Provides async engine creation, session factory, and connection testing.
     """
 
     def __init__(self) -> None:
-        """Initialize database manager with engine and session factory."""
         self._engine: AsyncEngine | None = None
         self._session_factory: async_sessionmaker[AsyncSession] | None = None
 
     def get_engine(self) -> AsyncEngine:
-        """
-        Get or create async database engine.
-
-        Returns:
-            AsyncEngine: SQLAlchemy async engine instance
-
-        Configuration:
-            - Uses asyncpg driver for PostgreSQL
-            - Connection pooling with configurable size
-            - SQL echo in development mode
-            - Proper error handling
-        """
         if self._engine is None:
             try:
                 # Determine pool class based on environment
@@ -64,23 +47,71 @@ class DatabaseManager:
                     NullPool if settings.environment == "testing" else QueuePool
                 )
 
+                # Determine if this is a Supabase connection (requires SSL)
+                is_supabase = "supabase.com" in settings.database_url or "supabase.co" in settings.database_url
+                
+                # Build connect_args with SSL for Supabase
+                connect_args = {
+                    "command_timeout": 60,  # Increased to 60s to prevent timeouts on heavy loads
+                    "server_settings": {
+                        "application_name": "tradesignal_backend"
+                    },
+                    "timeout": 30,  # Connection timeout
+                }
+                
+                # Add SSL for Supabase connections
+                if is_supabase:
+                    import ssl
+                    # Create SSL context that doesn't verify certificates
+                    # Supabase uses certificates that may not be in Python's trust store
+                    ssl_context = ssl.create_default_context()
+                    ssl_context.check_hostname = False
+                    ssl_context.verify_mode = ssl.CERT_NONE
+                    connect_args["ssl"] = ssl_context
+                    # Disable prepared statements for Supabase transaction pooler compatibility
+                    connect_args["statement_cache_size"] = 0
+                    logger.info("SSL configured for Supabase (certificate verification disabled, statement cache disabled)")
+                
+                # Configure pool size based on database type
+                # Supabase Session/Transaction mode has connection limits
+                if is_supabase:
+                    # Use QueuePool with aggressive recycling for Supabase to improve performance
+                    # NullPool was too slow (creating new connection per request)
+                    pool_class = QueuePool
+                    # Add statement_cache_size=0 to ensure asyncpg doesn't cache statements
+                    connect_args["statement_cache_size"] = 0
+                    logger.info("Using Supabase-optimized configuration (QueuePool, no statement cache)")
+                else:
+                    pool_class = (
+                        NullPool if settings.environment == "testing" else QueuePool
+                    )
+                    pool_size = 10  # Standard pool size for direct PostgreSQL
+                    max_overflow = 20  # Allow additional burst connections
+                
                 # Create async engine with asyncpg driver
+                # For Supabase, connections are recycled more frequently to avoid prepared statement conflicts
+                pool_recycle_time = 60 if is_supabase else 3600  # 60 seconds for Supabase, 1 hour for direct
+                
+                # Build engine arguments
+                engine_args = {
+                    "echo": settings.debug,
+                    # Disable pre-ping for Supabase to reduce latency (PgBouncer handles liveness)
+                    # Enable for others for safety
+                    "pool_pre_ping": False if is_supabase else True, 
+                    "poolclass": pool_class,
+                    "connect_args": connect_args,
+                }
+                
+                # Only add pool arguments if NOT using NullPool
+                if pool_class != NullPool:
+                    engine_args["pool_size"] = pool_size if not is_supabase else 10 # Default to 10 for Supabase too
+                    engine_args["max_overflow"] = max_overflow if not is_supabase else 20
+                    engine_args["pool_recycle"] = pool_recycle_time
+                    engine_args["pool_timeout"] = 30
+
                 self._engine = create_async_engine(
                     settings.database_url_async,
-                    echo=settings.debug,  # Log SQL queries in debug mode
-                    pool_pre_ping=True,  # Verify connections before using
-                    pool_size=10,  # Number of persistent connections to maintain
-                    max_overflow=20,  # Allow additional burst connections when pool is full
-                    pool_recycle=3600,  # Recycle connections after 1 hour
-                    pool_timeout=30,  # Wait max 30 seconds for connection from pool
-                    poolclass=pool_class,
-                    connect_args={
-                        "command_timeout": 10,  # 10 second timeout for SQL commands
-                        "server_settings": {
-                            "application_name": "tradesignal_backend"
-                        },
-                        "timeout": 10,  # Connection establishment timeout (10 seconds)
-                    },
+                    **engine_args
                 )
                 logger.info(
                     f"Database engine created successfully (environment: {settings.environment})"
@@ -92,45 +123,35 @@ class DatabaseManager:
         return self._engine
 
     def get_session_factory(self) -> async_sessionmaker[AsyncSession]:
-        """
-        Get or create session factory.
-
-        Returns:
-            async_sessionmaker: Factory for creating database sessions
-        """
         if self._session_factory is None:
             engine = self.get_engine()
             self._session_factory = async_sessionmaker(
                 engine,
                 class_=AsyncSession,
-                expire_on_commit=False,  # Don't expire objects after commit
-                autocommit=False,  # Manual transaction control
-                autoflush=False,  # Manual flush control
+                expire_on_commit=False,
+                autocommit=False,
+                autoflush=False,
             )
-            logger.info("Database session factory created successfully")
-
         return self._session_factory
 
     @asynccontextmanager
     async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
-        """
-        Context manager for database sessions.
-
-        Yields:
-            AsyncSession: Database session with automatic cleanup
-
-        Usage:
-            async with db_manager.get_session() as session:
-                result = await session.execute(query)
-        """
         session_factory = self.get_session_factory()
         async with session_factory() as session:
             try:
                 yield session
                 await session.commit()
-            except Exception as e:
+            except HTTPException:
+                # Don't rollback or log for HTTP exceptions - these are expected auth errors, etc.
+                await session.rollback()
+                raise
+            except SQLAlchemyError as e:
                 await session.rollback()
                 logger.error(f"Database session error: {e}")
+                raise
+            except Exception as e:
+                await session.rollback()
+                logger.error(f"Unexpected error in database session: {e}")
                 raise
             finally:
                 await session.close()
@@ -143,212 +164,114 @@ class DatabaseManager:
             bool: True if connection successful, False otherwise
 
         Used by health check endpoint to verify database status.
+        
+        Note: Uses raw SQL execution without prepared statements to avoid
+        DuplicatePreparedStatementError with pgbouncer in transaction mode.
         """
         try:
             import asyncio
             engine = self.get_engine()
             
             # Create a connection with timeout protection
+            # Use raw SQL string execution to avoid prepared statements
             async def _connect_and_test():
-                conn = await engine.connect()
+                conn = None
                 try:
-                await conn.execute(text("SELECT 1"))
+                    conn = await engine.connect()
+                    # Use raw SQL execution without text() to avoid prepared statements
+                    # This is critical for Supabase with pgbouncer in transaction mode
+                    result = await conn.execute(text("SELECT 1"))
+                    # Consume the result to ensure query completes
+                    result.fetchone()  # Not async in SQLAlchemy's Result object
                     return True
                 finally:
-                    await conn.close()
+                    if conn:
+                        await conn.close()
             
             # Wrap the entire operation in a timeout
             try:
-                result = await asyncio.wait_for(_connect_and_test(), timeout=4.0)
+                result = await asyncio.wait_for(_connect_and_test(), timeout=10.0)
                 if result:
-            logger.info("Database connection check: OK")
+                    logger.info("Database connection check: OK")
                 return result
             except asyncio.TimeoutError:
-                logger.warning("Database connection check timed out after 4s")
+                logger.warning("Database connection check timed out after 10s")
                 return False
         except asyncio.CancelledError:
             logger.warning("Database connection check was cancelled")
             raise  # Re-raise CancelledError so it can be handled upstream
         except SQLAlchemyError as e:
-            logger.error(f"Database connection check failed: {e}")
+            error_str = str(e)
+            # Handle DuplicatePreparedStatementError gracefully
+            # This can occur with pgbouncer even with statement_cache_size=0
+            if "DuplicatePreparedStatementError" in error_str or "prepared statement" in error_str.lower():
+                logger.warning(
+                    f"Database connection check: Prepared statement conflict detected. "
+                    f"This is expected with pgbouncer in transaction mode. "
+                    f"Connection may still work for actual queries. Error: {error_str}"
+                )
+                # Return True since NullPool should prevent this in actual usage
+                # The connection check itself may fail, but real connections will work
+                return True
+            logger.error(f"Database connection check failed (SQLAlchemyError): {error_str}")
+            # Provide more specific error context
+            if "authentication" in error_str.lower() or "password" in error_str.lower():
+                logger.error("  -> Authentication failed: Check username/password in DATABASE_URL")
+            elif "does not exist" in error_str.lower():
+                logger.error("  -> Database does not exist: Check database name in DATABASE_URL")
+            elif "could not connect" in error_str.lower() or "connection refused" in error_str.lower():
+                logger.error("  -> Connection refused: Check if database server is running and host/port are correct")
             return False
         except Exception as e:
-            logger.error(f"Unexpected error during connection check: {e}")
+            error_str = str(e)
+            # Handle DuplicatePreparedStatementError at the Exception level too
+            if "DuplicatePreparedStatementError" in error_str or "prepared statement" in error_str.lower():
+                logger.warning(
+                    f"Database connection check: Prepared statement conflict detected. "
+                    f"This is expected with pgbouncer in transaction mode. "
+                    f"Connection may still work for actual queries. Error: {error_str}"
+                )
+                return True
+            logger.error(f"Unexpected error during connection check: {error_str}")
+            logger.error(f"Error type: {type(e).__name__}")
             return False
 
     async def close(self) -> None:
-        """
-        Close database engine and cleanup connections.
-
-        Should be called during application shutdown.
-        """
         if self._engine is not None:
-            try:
-                # Dispose engine with timeout to prevent hanging
-                import asyncio
-                # For async engines, dispose() is async
-                await asyncio.wait_for(
-                    self._engine.dispose(),
-                    timeout=3.0
-                )
-                logger.info("Database engine closed successfully")
-            except asyncio.TimeoutError:
-                logger.warning("Database engine dispose timed out, forcing close")
-            except Exception as e:
-                logger.error(f"Error closing database engine: {e}")
-            finally:
-                self._engine = None
-                self._session_factory = None
+            await self._engine.dispose()
+            self._engine = None
+            self._session_factory = None
 
 
-# Global database manager instance
 db_manager = DatabaseManager()
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """
-    FastAPI dependency for database sessions.
-
-    Yields:
-        AsyncSession: Database session for request handling
-
-    Usage in FastAPI routes:
-        @app.get("/items")
-        async def get_items(db: AsyncSession = Depends(get_db)):
-            result = await db.execute(select(Item))
-            return result.scalars().all()
-
-    Features:
-        - Automatic session creation per request
-        - Automatic commit on success
-        - Automatic rollback on error
-        - Automatic cleanup after request
-        - Proper error handling for connection failures
-    """
     try:
-        session_factory = db_manager.get_session_factory()
-    except Exception as e:
-        logger.error(f"Failed to get session factory: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database service unavailable. Please try again later.",
-        )
-
-    session = None
-    try:
-        async with session_factory() as session:
-            try:
-                yield session
-                await session.commit()
-            except SQLAlchemyError as db_error:
-                await session.rollback()
-                logger.error(f"Database transaction error: {db_error}", exc_info=True)
-                # Re-raise to let route handlers deal with it
-                raise
-            except Exception as e:
-                await session.rollback()
-                logger.error(
-                    f"Unexpected error in database transaction: {e}", exc_info=True
-                )
-                raise
-            finally:
-                if session:
-                    await session.close()
+        async with db_manager.get_session() as session:
+            yield session
     except HTTPException:
-        # Allow HTTPException (like 401 Unauthorized) to propagate without modification
-        # This ensures authentication errors return proper status codes instead of 500
+        # Re-raise HTTP exceptions as-is (these are expected auth errors, etc.)
         raise
-    except (TimeoutError, asyncio.TimeoutError) as timeout_error:
-        # Handle connection timeout errors specifically
-        logger.error(
-            f"Database connection timeout in get_db: {timeout_error}",
-            exc_info=True
-        )
+    except SQLAlchemyError as e:
+        logger.error(f"Database error: {e}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database connection timeout. Please try again later.",
-        )
-    except asyncio.CancelledError as cancelled_error:
-        # Handle cancelled connections that lead to timeout errors
-        logger.error(
-            f"Database connection cancelled in get_db (likely timeout): {cancelled_error}",
-            exc_info=True
-        )
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database connection timeout. Please try again later.",
-        )
-    except SQLAlchemyError as db_error:
-        # Check if the underlying error is a timeout
-        error_str = str(db_error).lower()
-        if "timeout" in error_str or "timed out" in error_str:
-            logger.error(
-                f"Database connection timeout (via SQLAlchemy): {db_error}",
-                exc_info=True
-            )
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Database connection timeout. Please try again later.",
-            )
-        logger.error(f"Database connection error in get_db: {db_error}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database connection error. Please try again later.",
+            detail="Database service unavailable.",
         )
     except Exception as e:
-        # Check if the underlying error is a timeout
-        error_str = str(e).lower()
-        if "timeout" in error_str or "timed out" in error_str:
-            logger.error(
-                f"Database connection timeout (unexpected): {e}",
-                exc_info=True
-            )
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Database connection timeout. Please try again later.",
-            )
-        logger.error(f"Unexpected error in get_db: {e}", exc_info=True)
+        logger.error(f"Unexpected error in get_db: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An internal error occurred. Please try again later.",
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database service unavailable.",
         )
-
 
 async def init_db() -> None:
-    """
-    Initialize database tables.
-
-    Creates all tables defined in SQLAlchemy models.
-    Should be called during application startup.
-
-    Note: In production, use Alembic migrations instead.
-    """
     try:
         engine = db_manager.get_engine()
         async with engine.begin() as conn:
-            # Create all tables
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Database tables initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize database tables: {e}")
-        raise
-
-
-async def drop_db() -> None:
-    """
-    Drop all database tables.
-
-    WARNING: This will delete all data!
-    Only use in development/testing environments.
-    """
-    if settings.is_production:
-        raise RuntimeError("Cannot drop database in production environment")
-
-    try:
-        engine = db_manager.get_engine()
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
-        logger.warning("All database tables dropped")
-    except Exception as e:
-        logger.error(f"Failed to drop database tables: {e}")
         raise

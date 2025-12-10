@@ -7,8 +7,9 @@ export default function MarketOverviewCard() {
   const { data: quotes, isLoading, error, refetch } = useQuery({
     queryKey: ['market-overview'],
     queryFn: () => stocksApi.getMarketOverview(), // Fetch all companies with live data
-    refetchInterval: 15000, // Auto-refresh every 15 seconds
-    staleTime: 10000, // Consider data stale after 10 seconds
+    staleTime: 60 * 1000, // Consider fresh for 1 minute
+    refetchInterval: 60 * 1000, // Auto-refresh every 1 minute (reduced from 15s)
+    refetchOnWindowFocus: false,
   });
 
   if (isLoading) {

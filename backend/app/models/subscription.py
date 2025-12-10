@@ -5,7 +5,7 @@ Subscription model for freemium/premium tier management.
 from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING
-from sqlalchemy import String, Integer, Boolean, DateTime, ForeignKey
+from sqlalchemy import String, Integer, Boolean, DateTime, ForeignKey, Numeric, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -72,6 +72,12 @@ class Subscription(Base):
         String(255), nullable=True
     )
     stripe_price_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # Admin tracking fields
+    billing_period: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    price_paid: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    order_number: Mapped[str | None] = mapped_column(String(50), nullable=True, unique=True, index=True)
+    stripe_order_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Billing period
     current_period_start: Mapped[datetime | None] = mapped_column(

@@ -1,5 +1,5 @@
 /**
- * User Profile Page
+ * User Profile Page - Dark Mode
  * Allows users to view and edit their profile information
  */
 
@@ -221,568 +221,566 @@ export default function ProfilePage() {
   };
 
   if (!user) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] text-white">Loading...</div>;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Profile Settings</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Manage your account information and preferences
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-white">Profile Settings</h1>
+        <p className="mt-2 text-sm text-gray-400">
+          Manage your account information and preferences
+        </p>
+      </div>
+
+      {/* Message Alert */}
+      {message && (
+        <div className={`mb-6 p-4 rounded-lg flex items-start ${
+          message.type === 'success' ? 'bg-green-900/20 border border-green-500/30' : 'bg-red-900/20 border border-red-500/30'
+        }`}>
+          {message.type === 'success' ? (
+            <CheckCircle2 className="h-5 w-5 text-green-400 mt-0.5 mr-3 flex-shrink-0" />
+          ) : (
+            <AlertCircle className="h-5 w-5 text-red-400 mt-0.5 mr-3 flex-shrink-0" />
+          )}
+          <p className={`text-sm ${message.type === 'success' ? 'text-green-300' : 'text-red-300'}`}>
+            {message.text}
           </p>
         </div>
+      )}
 
-        {/* Message Alert */}
-        {message && (
-          <div className={`mb-6 p-4 rounded-lg flex items-start ${
-            message.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
-          }`}>
-            {message.type === 'success' ? (
-              <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
-            ) : (
-              <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
+      <div className="space-y-6">
+        {/* Profile Information Card */}
+        <div className="bg-gray-900/50 backdrop-blur-sm shadow-lg rounded-2xl border border-white/10">
+          <div className="px-6 py-4 border-b border-white/10 flex justify-between items-center">
+            <h2 className="text-lg font-semibold text-white">Profile Information</h2>
+            {!isEditing && (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="text-sm text-blue-400 hover:text-blue-300 font-medium transition-colors"
+              >
+                Edit Profile
+              </button>
             )}
-            <p className={`text-sm ${message.type === 'success' ? 'text-green-800' : 'text-red-800'}`}>
-              {message.text}
-            </p>
-          </div>
-        )}
-
-        <div className="space-y-6">
-          {/* Profile Information Card */}
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-gray-900">Profile Information</h2>
-              {!isEditing && (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  Edit Profile
-                </button>
-              )}
-            </div>
-
-            <form onSubmit={handleProfileUpdate} className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Username (Read-only) */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Username
-                  </label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                    <input
-                      type="text"
-                      value={user.username}
-                      disabled
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-                    />
-                  </div>
-                </div>
-
-                {/* Full Name */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Full Name
-                  </label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                    <input
-                      type="text"
-                      value={profile.full_name}
-                      onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                      disabled={!isEditing}
-                      className={`w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg ${
-                        isEditing ? 'bg-white' : 'bg-gray-50'
-                      }`}
-                      placeholder="John Doe"
-                    />
-                  </div>
-                </div>
-
-                {/* Date of Birth */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Date of Birth
-                  </label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                    <input
-                      type="date"
-                      value={profile.date_of_birth}
-                      onChange={(e) => setProfile({ ...profile, date_of_birth: e.target.value })}
-                      disabled={!isEditing}
-                      className={`w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg ${
-                        isEditing ? 'bg-white' : 'bg-gray-50'
-                      }`}
-                    />
-                  </div>
-                </div>
-
-                {/* Phone Number */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Phone Number
-                  </label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                    <input
-                      type="tel"
-                      value={profile.phone_number}
-                      onChange={(e) => setProfile({ ...profile, phone_number: e.target.value })}
-                      disabled={!isEditing}
-                      className={`w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg ${
-                        isEditing ? 'bg-white' : 'bg-gray-50'
-                      }`}
-                      placeholder="+1 (555) 123-4567"
-                    />
-                  </div>
-                </div>
-
-                {/* Avatar URL */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Avatar URL
-                  </label>
-                  <div className="relative">
-                    <Image className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                    <input
-                      type="url"
-                      value={profile.avatar_url}
-                      onChange={(e) => setProfile({ ...profile, avatar_url: e.target.value })}
-                      disabled={!isEditing}
-                      className={`w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg ${
-                        isEditing ? 'bg-white' : 'bg-gray-50'
-                      }`}
-                      placeholder="https://example.com/avatar.jpg"
-                    />
-                  </div>
-                </div>
-
-                {/* Bio */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Bio
-                  </label>
-                  <div className="relative">
-                    <FileText className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                    <textarea
-                      value={profile.bio}
-                      onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
-                      disabled={!isEditing}
-                      rows={4}
-                      maxLength={500}
-                      className={`w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg resize-none ${
-                        isEditing ? 'bg-white' : 'bg-gray-50'
-                      }`}
-                      placeholder="Tell us about yourself..."
-                    />
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    {profile.bio?.length || 0}/500 characters
-                  </p>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              {isEditing && (
-                <div className="mt-6 flex gap-3">
-                  <button
-                    type="submit"
-                    disabled={isSaving}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    {isSaving ? 'Saving...' : 'Save Changes'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsEditing(false);
-                      setProfile({
-                        full_name: user.full_name || '',
-                        date_of_birth: user.date_of_birth || '',
-                        phone_number: user.phone_number || '',
-                        bio: user.bio || '',
-                        avatar_url: user.avatar_url || ''
-                      });
-                    }}
-                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
-            </form>
           </div>
 
-          {/* Email Change Card */}
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+          <form onSubmit={handleProfileUpdate} className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Username (Read-only) */}
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Email Address</h2>
-                <p className="text-sm text-gray-600 mt-1">{user.email}</p>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Username
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-2.5 h-5 w-5 text-gray-500" />
+                  <input
+                    type="text"
+                    value={user.username}
+                    disabled
+                    className="w-full pl-10 pr-3 py-2 border border-white/10 rounded-lg bg-black/30 text-gray-500 cursor-not-allowed"
+                  />
+                </div>
               </div>
-              {!showEmailChange && (
-                <button
-                  onClick={() => setShowEmailChange(true)}
-                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  Change Email
-                </button>
-              )}
+
+              {/* Full Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Full Name
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-2.5 h-5 w-5 text-gray-500" />
+                  <input
+                    type="text"
+                    value={profile.full_name}
+                    onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                    disabled={!isEditing}
+                    className={`w-full pl-10 pr-3 py-2 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${
+                      isEditing ? 'bg-black/50' : 'bg-black/30 text-gray-400'
+                    }`}
+                    placeholder="John Doe"
+                  />
+                </div>
+              </div>
+
+              {/* Date of Birth */}
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Date of Birth
+                </label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-2.5 h-5 w-5 text-gray-500" />
+                  <input
+                    type="date"
+                    value={profile.date_of_birth}
+                    onChange={(e) => setProfile({ ...profile, date_of_birth: e.target.value })}
+                    disabled={!isEditing}
+                    className={`w-full pl-10 pr-3 py-2 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${
+                      isEditing ? 'bg-black/50' : 'bg-black/30 text-gray-400'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Phone Number */}
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Phone Number
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-2.5 h-5 w-5 text-gray-500" />
+                  <input
+                    type="tel"
+                    value={profile.phone_number}
+                    onChange={(e) => setProfile({ ...profile, phone_number: e.target.value })}
+                    disabled={!isEditing}
+                    className={`w-full pl-10 pr-3 py-2 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${
+                      isEditing ? 'bg-black/50' : 'bg-black/30 text-gray-400'
+                    }`}
+                    placeholder="+1 (555) 123-4567"
+                  />
+                </div>
+              </div>
+
+              {/* Avatar URL */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Avatar URL
+                </label>
+                <div className="relative">
+                  <Image className="absolute left-3 top-2.5 h-5 w-5 text-gray-500" />
+                  <input
+                    type="url"
+                    value={profile.avatar_url}
+                    onChange={(e) => setProfile({ ...profile, avatar_url: e.target.value })}
+                    disabled={!isEditing}
+                    className={`w-full pl-10 pr-3 py-2 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${
+                      isEditing ? 'bg-black/50' : 'bg-black/30 text-gray-400'
+                    }`}
+                    placeholder="https://example.com/avatar.jpg"
+                  />
+                </div>
+              </div>
+
+              {/* Bio */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Bio
+                </label>
+                <div className="relative">
+                  <FileText className="absolute left-3 top-2.5 h-5 w-5 text-gray-500" />
+                  <textarea
+                    value={profile.bio}
+                    onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
+                    disabled={!isEditing}
+                    rows={4}
+                    maxLength={500}
+                    className={`w-full pl-10 pr-3 py-2 border border-white/10 rounded-lg resize-none text-white placeholder-gray-600 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${
+                      isEditing ? 'bg-black/50' : 'bg-black/30 text-gray-400'
+                    }`}
+                    placeholder="Tell us about yourself..."
+                  />
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  {profile.bio?.length || 0}/500 characters
+                </p>
+              </div>
             </div>
 
-            {showEmailChange && (
-              <form onSubmit={handleEmailChange} className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    New Email
-                  </label>
-                  <input
-                    type="email"
-                    value={newEmail}
-                    onChange={(e) => setNewEmail(e.target.value)}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    placeholder="new@example.com"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Confirm Password
-                  </label>
-                  <input
-                    type="password"
-                    value={emailPassword}
-                    onChange={(e) => setEmailPassword(e.target.value)}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    placeholder="••••••••"
-                  />
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    type="submit"
-                    disabled={isSaving}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {isSaving ? 'Updating...' : 'Update Email'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowEmailChange(false);
-                      setNewEmail('');
-                      setEmailPassword('');
-                    }}
-                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
+            {/* Action Buttons */}
+            {isEditing && (
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors disabled:opacity-50 font-medium"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {isSaving ? 'Saving...' : 'Save Changes'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setProfile({
+                      full_name: user.full_name || '',
+                      date_of_birth: user.date_of_birth || '',
+                      phone_number: user.phone_number || '',
+                      bio: user.bio || '',
+                      avatar_url: user.avatar_url || ''
+                    });
+                  }}
+                  className="px-4 py-2 border border-white/20 text-gray-300 rounded-lg hover:bg-white/10 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </form>
+        </div>
+
+        {/* Email Change Card */}
+        <div className="bg-gray-900/50 backdrop-blur-sm shadow-lg rounded-2xl border border-white/10">
+          <div className="px-6 py-4 border-b border-white/10 flex justify-between items-center">
+            <div>
+              <h2 className="text-lg font-semibold text-white">Email Address</h2>
+              <p className="text-sm text-gray-400 mt-1">{user.email}</p>
+            </div>
+            {!showEmailChange && (
+              <button
+                onClick={() => setShowEmailChange(true)}
+                className="text-sm text-blue-400 hover:text-blue-300 font-medium transition-colors"
+              >
+                Change Email
+              </button>
             )}
           </div>
 
-          {/* Password Change Card */}
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-gray-900">Password</h2>
-              {!showPasswordChange && (
+          {showEmailChange && (
+            <form onSubmit={handleEmailChange} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  New Email
+                </label>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 bg-black/50 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  placeholder="new@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Confirm Password
+                </label>
+                <input
+                  type="password"
+                  value={emailPassword}
+                  onChange={(e) => setEmailPassword(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 bg-black/50 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  placeholder="••••••••"
+                />
+              </div>
+              <div className="flex gap-3">
                 <button
-                  onClick={() => setShowPasswordChange(true)}
-                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  type="submit"
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors disabled:opacity-50 font-medium"
                 >
-                  Change Password
+                  {isSaving ? 'Updating...' : 'Update Email'}
                 </button>
-              )}
-            </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEmailChange(false);
+                    setNewEmail('');
+                    setEmailPassword('');
+                  }}
+                  className="px-4 py-2 border border-white/20 text-gray-300 rounded-lg hover:bg-white/10 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
 
-            {showPasswordChange && (
-              <form onSubmit={handlePasswordChange} className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Current Password
-                  </label>
-                  <input
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    placeholder="••••••••"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    New Password
-                  </label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    required
-                    minLength={8}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    placeholder="••••••••"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Confirm New Password
-                  </label>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    placeholder="••••••••"
-                  />
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    type="submit"
-                    disabled={isSaving}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {isSaving ? 'Changing...' : 'Change Password'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowPasswordChange(false);
-                      setCurrentPassword('');
-                      setNewPassword('');
-                      setConfirmPassword('');
-                    }}
-                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
+        {/* Password Change Card */}
+        <div className="bg-gray-900/50 backdrop-blur-sm shadow-lg rounded-2xl border border-white/10">
+          <div className="px-6 py-4 border-b border-white/10 flex justify-between items-center">
+            <h2 className="text-lg font-semibold text-white">Password</h2>
+            {!showPasswordChange && (
+              <button
+                onClick={() => setShowPasswordChange(true)}
+                className="text-sm text-blue-400 hover:text-blue-300 font-medium transition-colors"
+              >
+                Change Password
+              </button>
             )}
           </div>
 
-          {/* Account Status */}
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Account Status</h2>
-            <div className="space-y-3">
+          {showPasswordChange && (
+            <form onSubmit={handlePasswordChange} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Current Password
+                </label>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 bg-black/50 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  placeholder="••••••••"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  New Password
+                </label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  className="w-full px-3 py-2 bg-black/50 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  placeholder="••••••••"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Confirm New Password
+                </label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 bg-black/50 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  placeholder="••••••••"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors disabled:opacity-50 font-medium"
+                >
+                  {isSaving ? 'Changing...' : 'Change Password'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordChange(false);
+                    setCurrentPassword('');
+                    setNewPassword('');
+                    setConfirmPassword('');
+                  }}
+                  className="px-4 py-2 border border-white/20 text-gray-300 rounded-lg hover:bg-white/10 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+
+        {/* Account Status */}
+        <div className="bg-gray-900/50 backdrop-blur-sm shadow-lg rounded-2xl border border-white/10 p-6">
+          <h2 className="text-lg font-semibold text-white mb-4">Account Status</h2>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-400">Account Status</span>
+              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                user.is_active ? 'bg-green-500/20 text-green-300 border border-green-500/30' : 'bg-red-500/20 text-red-300 border border-red-500/30'
+              }`}>
+                {user.is_active ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-400">Email Verification</span>
+              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                user.is_verified ? 'bg-green-500/20 text-green-300 border border-green-500/30' : 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
+              }`}>
+                {user.is_verified ? 'Verified' : 'Not Verified'}
+              </span>
+            </div>
+            {user.is_superuser && (
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Account Status</span>
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  user.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                }`}>
-                  {user.is_active ? 'Active' : 'Inactive'}
+                <span className="text-sm text-gray-400">Role</span>
+                <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                  Administrator
                 </span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Email Verification</span>
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  user.is_verified ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                }`}>
-                  {user.is_verified ? 'Verified' : 'Not Verified'}
-                </span>
-              </div>
-              {user.is_superuser && (
+            )}
+            {/* Hide subscription info for admins */}
+            {!isAdmin && (
+              <>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Role</span>
-                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
-                    Administrator
-                  </span>
+                  <span className="text-sm text-gray-400">Subscription Tier</span>
+                  {subscriptionLoading ? (
+                    <span className="text-xs text-gray-500">Loading...</span>
+                  ) : (
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center ${
+                      subscription?.tier === 'enterprise' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
+                      subscription?.tier === 'pro' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
+                      subscription?.tier === 'plus' || subscription?.tier === 'basic' ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
+                      'bg-gray-800 text-gray-400 border border-gray-700'
+                    }`}>
+                      {subscription?.tier === 'enterprise' && <Crown className="w-3 h-3 mr-1" />}
+                      {subscription?.tier ? subscription.tier.charAt(0).toUpperCase() + subscription.tier.slice(1) : 'Free'}
+                    </span>
+                  )}
                 </div>
-              )}
-              {/* Hide subscription info for admins */}
-              {!isAdmin && (
-                <>
+                {subscription && subscription.is_active && subscription.current_period_end && (
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Subscription Tier</span>
-                    {subscriptionLoading ? (
-                      <span className="text-xs text-gray-400">Loading...</span>
-                    ) : (
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center ${
-                        subscription?.tier === 'enterprise' ? 'bg-purple-100 text-purple-700' :
-                        subscription?.tier === 'pro' ? 'bg-blue-100 text-blue-700' :
-                        subscription?.tier === 'plus' || subscription?.tier === 'basic' ? 'bg-green-100 text-green-700' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
-                        {subscription?.tier === 'enterprise' && <Crown className="w-3 h-3 mr-1" />}
-                        {subscription?.tier ? subscription.tier.charAt(0).toUpperCase() + subscription.tier.slice(1) : 'Free'}
-                      </span>
-                    )}
+                    <span className="text-sm text-gray-400">Renews On</span>
+                    <span className="text-xs text-gray-300">
+                      {new Date(subscription.current_period_end).toLocaleDateString()}
+                    </span>
                   </div>
-                  {subscription && subscription.is_active && subscription.current_period_end && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Renews On</span>
-                      <span className="text-xs text-gray-700">
-                        {new Date(subscription.current_period_end).toLocaleDateString()}
-                      </span>
-                    </div>
-                  )}
-                  {subscription && subscription.cancel_at_period_end && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Status</span>
-                      <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
-                        Cancels at period end
-                      </span>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Membership Management - Only for users with active subscriptions */}
-          {!isAdmin && subscription && subscription.is_active && subscription.tier !== 'free' && (
-            <div className="bg-white shadow rounded-lg p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Membership Management</h2>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <h3 className="font-medium text-gray-900">Order History</h3>
-                    <p className="text-sm text-gray-600">View your payment history and receipts</p>
-                  </div>
-                  <button
-                    onClick={() => navigate('/orders')}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    View Orders
-                  </button>
-                </div>
-
-                {subscription.status !== 'paused' && !subscription.cancel_at_period_end && (
-                  <>
-                    <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                      <div>
-                        <h3 className="font-medium text-gray-900 flex items-center">
-                          <Pause className="w-4 h-4 mr-2 text-yellow-600" />
-                          Pause Membership
-                        </h3>
-                        <p className="text-sm text-gray-600">Temporarily pause billing for up to 3 months</p>
-                      </div>
-                      <button
-                        onClick={async () => {
-                          showConfirm(
-                            'Are you sure you want to pause your membership? Billing will resume automatically after 3 months.',
-                            async () => {
-                              try {
-                            setIsPausing(true);
-                            await pauseSubscription();
-                            setMessage({ type: 'success', text: 'Membership paused successfully' });
-                            // Refresh subscription
-                            const sub = await getSubscription();
-                            setSubscription(sub);
-                          } catch (error: any) {
-                            setMessage({ type: 'error', text: error.message || 'Failed to pause membership' });
-                          } finally {
-                                setIsPausing(false);
-                              }
-                            },
-                            { type: 'warning', title: 'TradeSignal' }
-                          );
-                        }}
-                        disabled={isPausing}
-                        className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors disabled:opacity-50"
-                      >
-                        {isPausing ? 'Pausing...' : 'Pause'}
-                      </button>
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg border border-red-200">
-                      <div>
-                        <h3 className="font-medium text-gray-900 flex items-center">
-                          <XCircle className="w-4 h-4 mr-2 text-red-600" />
-                          Cancel Membership
-                        </h3>
-                        <p className="text-sm text-gray-600">Cancel at the end of your billing period</p>
-                      </div>
-                      <button
-                        onClick={async () => {
-                          showConfirm(
-                            'Are you sure you want to cancel your membership? You will retain access until the end of your billing period.',
-                            async () => {
-                              try {
-                            setIsCanceling(true);
-                            await cancelSubscription();
-                            setMessage({ type: 'success', text: 'Membership will be canceled at the end of your billing period' });
-                            // Refresh subscription
-                            const sub = await getSubscription();
-                            setSubscription(sub);
-                          } catch (error: any) {
-                            setMessage({ type: 'error', text: error.message || 'Failed to cancel membership' });
-                          } finally {
-                                setIsCanceling(false);
-                              }
-                            },
-                            { type: 'warning', title: 'TradeSignal' }
-                          );
-                        }}
-                        disabled={isCanceling}
-                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-                      >
-                        {isCanceling ? 'Canceling...' : 'Cancel'}
-                      </button>
-                    </div>
-                  </>
                 )}
+                {subscription && subscription.cancel_at_period_end && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-400">Status</span>
+                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+                      Cancels at period end
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
 
-                {subscription.status === 'paused' && (
-                  <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
+        {/* Membership Management - Only for users with active subscriptions */}
+        {!isAdmin && subscription && subscription.is_active && subscription.tier !== 'free' && (
+          <div className="bg-gray-900/50 backdrop-blur-sm shadow-lg rounded-2xl border border-white/10 p-6">
+            <h2 className="text-lg font-semibold text-white mb-4">Membership Management</h2>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/5">
+                <div>
+                  <h3 className="font-medium text-white">Order History</h3>
+                  <p className="text-sm text-gray-400">View your payment history and receipts</p>
+                </div>
+                <button
+                  onClick={() => navigate('/orders')}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors font-medium"
+                >
+                  View Orders
+                </button>
+              </div>
+
+              {subscription.status !== 'paused' && !subscription.cancel_at_period_end && (
+                <>
+                  <div className="flex items-center justify-between p-4 bg-yellow-900/20 rounded-lg border border-yellow-500/30">
                     <div>
-                      <h3 className="font-medium text-gray-900 flex items-center">
-                        <Play className="w-4 h-4 mr-2 text-green-600" />
-                        Resume Membership
+                      <h3 className="font-medium text-yellow-200 flex items-center">
+                        <Pause className="w-4 h-4 mr-2 text-yellow-400" />
+                        Pause Membership
                       </h3>
-                      <p className="text-sm text-gray-600">Resume your paused membership</p>
+                      <p className="text-sm text-yellow-200/70">Temporarily pause billing for up to 3 months</p>
                     </div>
                     <button
                       onClick={async () => {
-                        try {
-                          setIsResuming(true);
-                          await resumeSubscription();
-                          setMessage({ type: 'success', text: 'Membership resumed successfully' });
+                        showConfirm(
+                          'Are you sure you want to pause your membership? Billing will resume automatically after 3 months.',
+                          async () => {
+                            try {
+                          setIsPausing(true);
+                          await pauseSubscription();
+                          setMessage({ type: 'success', text: 'Membership paused successfully' });
                           // Refresh subscription
                           const sub = await getSubscription();
                           setSubscription(sub);
                         } catch (error: any) {
-                          setMessage({ type: 'error', text: error.message || 'Failed to resume membership' });
+                          setMessage({ type: 'error', text: error.message || 'Failed to pause membership' });
                         } finally {
-                          setIsResuming(false);
-                        }
+                              setIsPausing(false);
+                            }
+                          },
+                          { type: 'warning', title: 'TradeSignal' }
+                        );
                       }}
-                      disabled={isResuming}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                      disabled={isPausing}
+                      className="px-4 py-2 bg-yellow-600/80 text-white rounded-lg hover:bg-yellow-600 transition-colors disabled:opacity-50 font-medium"
                     >
-                      {isResuming ? 'Resuming...' : 'Resume'}
+                      {isPausing ? 'Pausing...' : 'Pause'}
                     </button>
                   </div>
-                )}
 
-                <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center justify-between p-4 bg-red-900/20 rounded-lg border border-red-500/30">
+                    <div>
+                      <h3 className="font-medium text-red-200 flex items-center">
+                        <XCircle className="w-4 h-4 mr-2 text-red-400" />
+                        Cancel Membership
+                      </h3>
+                      <p className="text-sm text-red-200/70">Cancel at the end of your billing period</p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        showConfirm(
+                          'Are you sure you want to cancel your membership? You will retain access until the end of your billing period.',
+                          async () => {
+                            try {
+                          setIsCanceling(true);
+                          await cancelSubscription();
+                          setMessage({ type: 'success', text: 'Membership will be canceled at the end of your billing period' });
+                          // Refresh subscription
+                          const sub = await getSubscription();
+                          setSubscription(sub);
+                        } catch (error: any) {
+                          setMessage({ type: 'error', text: error.message || 'Failed to cancel membership' });
+                        } finally {
+                              setIsCanceling(false);
+                            }
+                          },
+                          { type: 'warning', title: 'TradeSignal' }
+                        );
+                      }}
+                      disabled={isCanceling}
+                      className="px-4 py-2 bg-red-600/80 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 font-medium"
+                    >
+                      {isCanceling ? 'Canceling...' : 'Cancel'}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {subscription.status === 'paused' && (
+                <div className="flex items-center justify-between p-4 bg-green-900/20 rounded-lg border border-green-500/30">
                   <div>
-                    <h3 className="font-medium text-gray-900 flex items-center">
-                      <HelpCircle className="w-4 h-4 mr-2 text-blue-600" />
-                      Need Help?
+                    <h3 className="font-medium text-green-200 flex items-center">
+                      <Play className="w-4 h-4 mr-2 text-green-400" />
+                      Resume Membership
                     </h3>
-                    <p className="text-sm text-gray-600">Contact our support team for billing questions</p>
+                    <p className="text-sm text-green-200/70">Resume your paused membership</p>
                   </div>
                   <button
-                    onClick={() => navigate('/contact')}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    onClick={async () => {
+                      try {
+                        setIsResuming(true);
+                        await resumeSubscription();
+                        setMessage({ type: 'success', text: 'Membership resumed successfully' });
+                        // Refresh subscription
+                        const sub = await getSubscription();
+                        setSubscription(sub);
+                      } catch (error: any) {
+                        setMessage({ type: 'error', text: error.message || 'Failed to resume membership' });
+                      } finally {
+                        setIsResuming(false);
+                      }
+                    }}
+                    disabled={isResuming}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors disabled:opacity-50 font-medium"
                   >
-                    Contact Support
+                    {isResuming ? 'Resuming...' : 'Resume'}
                   </button>
                 </div>
+              )}
+
+              <div className="flex items-center justify-between p-4 bg-blue-900/20 rounded-lg border border-blue-500/30">
+                <div>
+                  <h3 className="font-medium text-blue-200 flex items-center">
+                    <HelpCircle className="w-4 h-4 mr-2 text-blue-400" />
+                    Need Help?
+                  </h3>
+                  <p className="text-sm text-blue-200/70">Contact our support team for billing questions</p>
+                </div>
+                <button
+                  onClick={() => navigate('/contact')}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors font-medium"
+                >
+                  Contact Support
+                </button>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Custom Confirm Modal */}

@@ -49,23 +49,23 @@ interface FAQItemProps {
 
 function FAQItemComponent({ item, isOpen, onToggle }: FAQItemProps) {
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden transition-all duration-200 hover:shadow-md">
+    <div className="border border-white/10 rounded-xl overflow-hidden transition-all duration-300 hover:border-purple-500/30 bg-white/5">
       <button
         onClick={onToggle}
-        className="w-full px-6 py-4 flex items-center justify-between text-left bg-white hover:bg-gray-50 transition-colors"
+        className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-white/5 transition-colors"
       >
-        <span className="font-semibold text-gray-900 pr-4">{item.question}</span>
+        <span className="font-semibold text-white pr-4">{item.question}</span>
         <div className="flex-shrink-0">
           {isOpen ? (
-            <ChevronUp className="w-5 h-5 text-gray-600" />
+            <ChevronUp className="w-5 h-5 text-purple-400" />
           ) : (
-            <ChevronDown className="w-5 h-5 text-gray-600" />
+            <ChevronDown className="w-5 h-5 text-gray-400" />
           )}
         </div>
       </button>
       {isOpen && (
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-          <p className="text-gray-700 leading-relaxed">{item.answer}</p>
+        <div className="px-6 py-4 bg-black/20 border-t border-white/5">
+          <p className="text-gray-400 leading-relaxed">{item.answer}</p>
         </div>
       )}
     </div>
@@ -81,8 +81,8 @@ export default function FAQSection() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">
-        Here are some frequently asked Questions
+      <h2 className="text-2xl font-bold text-white mb-6">
+        Frequently Asked Questions
       </h2>
       <div className="space-y-3">
         {faqData.map((item, index) => (

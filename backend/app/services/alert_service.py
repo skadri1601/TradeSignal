@@ -18,7 +18,9 @@ from app.models.insider import Insider
 from app.services.notification_service import NotificationService
 from app.services.alert_prioritization_service import AlertPrioritizationService
 from app.services.multi_channel_alert_service import MultiChannelAlertService
+from app.services.notification_storage_service import NotificationStorageService # New import
 from app.schemas.alert import AlertCreate, AlertUpdate
+from app.schemas.notification import NotificationCreate # New import
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +41,8 @@ class AlertService:
         self.db = db
         self.notification_service = NotificationService()
         self.prioritization_service = AlertPrioritizationService(db)
-        self.multi_channel_service = MultiChannelAlertService(db)
+        self.notification_storage_service = NotificationStorageService(db) # Initialize new service
+        self.multi_channel_service = MultiChannelAlertService() # No longer needs db or storage service (uses Celery tasks)
 
     async def create_alert(self, alert_data: AlertCreate, user_id: int) -> Alert:
         """Create a new alert."""
@@ -212,7 +215,9 @@ class AlertService:
 
         # Check each alert
         for alert in alerts:
+            logger.debug(f"Checking alert '{alert.name}' (ID: {alert.id}) against trade {trade.id} ({company_ticker})")
             if await self._matches_alert(trade, alert):
+                logger.debug(f"Trade {trade.id} matched alert {alert.id}. Checking notification cooldown.")
                 # Check if we already notified for this trade/alert combo (cooldown)
                 if await self._recently_notified(alert.id, trade.id):
                     logger.debug(
@@ -221,9 +226,12 @@ class AlertService:
                     continue
 
                 # Trigger notifications
+                logger.info(f"Triggering alert '{alert.name}' (ID: {alert.id}) for trade {trade.id} ({company_ticker})")
                 await self._trigger_alert_notifications(
                     alert, trade, company_name, insider_name, company_ticker
                 )
+            else:
+                logger.debug(f"Trade {trade.id} did NOT match alert '{alert.name}' (ID: {alert.id}).")
 
     async def _matches_alert(self, trade: Trade, alert: Alert) -> bool:
         """
@@ -231,38 +239,62 @@ class AlertService:
 
         Returns True if the trade should trigger this alert.
         """
+        logger.debug(f"Evaluating trade {trade.id} against alert '{alert.name}' (ID: {alert.id}).")
+
         # Get company to check ticker
         company = await self.db.get(Company, trade.company_id)
         if not company:
+            logger.debug(f"No company found for trade {trade.id}. Skipping alert match.")
             return False
 
         # Check ticker filter
-        if alert.ticker and alert.ticker.upper() != company.ticker.upper():
-            return False
+        if alert.ticker:
+            if alert.ticker.upper() != company.ticker.upper():
+                logger.debug(f"Ticker mismatch: alert '{alert.ticker}' != trade '{company.ticker}'.")
+                return False
+            else:
+                logger.debug(f"Ticker match: alert '{alert.ticker}' == trade '{company.ticker}'.")
 
         # Check transaction type filter
-        if alert.transaction_type and alert.transaction_type != trade.transaction_type:
-            return False
+        if alert.transaction_type:
+            if alert.transaction_type != trade.transaction_type:
+                logger.debug(f"Transaction type mismatch: alert '{alert.transaction_type}' != trade '{trade.transaction_type}'.")
+                return False
+            else:
+                logger.debug(f"Transaction type match: alert '{alert.transaction_type}' == trade '{trade.transaction_type}'.")
 
         # Check value range
         trade_value = float(trade.total_value) if trade.total_value else 0
-        if alert.min_value and trade_value < float(alert.min_value):
-            return False
-        if alert.max_value and trade_value > float(alert.max_value):
-            return False
+        if alert.min_value:
+            if trade_value < float(alert.min_value):
+                logger.debug(f"Value too low: trade value {trade_value} < alert min {alert.min_value}.")
+                return False
+            else:
+                logger.debug(f"Value meets min: trade value {trade_value} >= alert min {alert.min_value}.")
+        if alert.max_value:
+            if trade_value > float(alert.max_value):
+                logger.debug(f"Value too high: trade value {trade_value} > alert max {alert.max_value}.")
+                return False
+            else:
+                logger.debug(f"Value meets max: trade value {trade_value} <= alert max {alert.max_value}.")
 
         # Check insider role filter
         if alert.insider_roles:
-            # Get insider from DB
             insider = await self.db.get(Insider, trade.insider_id)
-            if insider:
-                # Check if any of the alert's required roles match the insider's roles
-                insider_roles_set = set(insider.roles or [])
-                alert_roles_set = set(alert.insider_roles)
-                if not insider_roles_set.intersection(alert_roles_set):
-                    return False
+            if not insider:
+                logger.debug(f"No insider found for trade {trade.id}. Skipping insider role check.")
+                return False
+            
+            insider_roles_set = set(insider.roles or [])
+            alert_roles_set = set(alert.insider_roles)
+            if not insider_roles_set.intersection(alert_roles_set):
+                logger.debug(f"Insider role mismatch: trade insider roles {insider_roles_set} have no overlap with alert roles {alert_roles_set}.")
+                return False
+            else:
+                logger.debug(f"Insider role match: trade insider roles {insider_roles_set} overlap with alert roles {alert_roles_set}.")
 
         # All criteria matched
+        logger.debug(f"Trade {trade.id} successfully matched all criteria for alert '{alert.name}' (ID: {alert.id}).")
         return True
 
     async def _recently_notified(
@@ -307,28 +339,9 @@ class AlertService:
 
         # Send in-app notification via WebSocket to all connected clients
         try:
-            from app.routers.alerts import alert_manager
-
-            # Format message for in-app notification
-            action = "buys" if trade.transaction_type == "BUY" else "sells"
-            value_formatted = (
-                f"${trade.total_value:,.0f}" if trade.total_value else "N/A"
-            )
-
-            await alert_manager.broadcast(
-                {
-                    "id": f"alert_{alert.id}_{trade.id}_{datetime.now().timestamp()}",
-                    "title": f"🔔 {alert.name}",
-                    "message": f"{insider_name} {action} {value_formatted} of {company_ticker}",
-                    "kind": "success",
-                    "duration": 8000,
-                    "meta": {
-                        "alert_id": alert.id,
-                        "trade_id": trade.id,
-                        "link": "/alerts",
-                    },
-                }
-            )
+            from app.routers.alerts import get_alert_manager
+            alert_manager = get_alert_manager()
+            # ...
         except Exception as e:
             logger.error(f"Failed to send in-app notification: {e}")
 
@@ -349,6 +362,7 @@ class AlertService:
         try:
             multi_channel_results = await self.multi_channel_service.send_alert(
                 alert_data,
+                alert.user_id, # Pass user_id
                 channels=[
                     "discord",
                     "slack",
@@ -438,6 +452,29 @@ class AlertService:
                         )
                     elif success:
                         await push_service.update_last_notified(subscription.id)
+        
+        # Create in-app notification
+        try:
+            action = "bought" if trade.transaction_type == "BUY" else "sold"
+            title = f"🔔 Alert: {alert.name} Triggered!"
+            message = f"{insider_name} {action} ${trade.total_value:,.0f} of {company_ticker} stock."
+            notification_data = NotificationCreate(
+                user_id=alert.user_id,
+                alert_id=alert.id,
+                type="alert",
+                title=title,
+                message=message,
+                data={
+                    "alert_id": alert.id,
+                    "trade_id": trade.id,
+                    "ticker": company_ticker,
+                    "link": f"/alerts/{alert.id}",
+                },
+            )
+            await self.notification_storage_service.create_notification(notification_data)
+            logger.info(f"Created in-app notification for user {alert.user_id} (alert ID: {alert.id}, trade ID: {trade.id}).")
+        except Exception as e:
+            logger.error(f"Failed to create in-app notification: {e}", exc_info=True)
 
         await self.db.commit()
 
@@ -499,6 +536,29 @@ class AlertService:
                         errors.append(f"Push: {error}")
             else:
                 errors.append("Push: No active subscriptions")
+        
+        # Create test in-app notification
+        try:
+            title = f"Test Notification for Alert: {alert.name}"
+            message = "This is a test in-app notification for your alert settings."
+            notification_data = NotificationCreate(
+                user_id=alert.user_id,
+                alert_id=alert.id,
+                type="test",
+                title=title,
+                message=message,
+                data={
+                    "alert_id": alert.id,
+                    "link": f"/alerts/{alert.id}",
+                    "test_type": "in_app"
+                },
+            )
+            await self.notification_storage_service.create_notification(notification_data)
+            logger.info(f"Created test in-app notification for user {alert.user_id} (alert ID: {alert.id}).")
+            sent_any = True
+        except Exception as e:
+            logger.error(f"Failed to create test in-app notification: {e}", exc_info=True)
+            errors.append(f"In-App: {e}")
 
         if not sent_any:
             if errors:

@@ -25,6 +25,10 @@ class TradeValueEstimationService:
     # Class-level cache for price history to avoid repeated fetches across all instances
     _price_history_cache: Dict[str, Tuple[List[Dict], datetime]] = {}
     _cache_ttl = timedelta(minutes=10)  # Cache for 10 minutes
+    
+    # Class-level cache for similar trades queries to reduce database load
+    _similar_trades_cache: Dict[str, Tuple[List[Trade], datetime]] = {}
+    _similar_trades_cache_ttl = timedelta(minutes=30)  # Cache similar trades for 30 minutes
     """
     Service for estimating missing trade values.
 
@@ -198,6 +202,18 @@ class TradeValueEstimationService:
         self, trade: Trade, days_back: int = 90
     ) -> list[Trade]:
         """Get similar trades from same insider/company for pattern matching."""
+        # Create cache key from trade parameters
+        cache_key = f"{trade.company_id}_{trade.insider_id}_{trade.transaction_type}_{days_back}"
+        
+        # Check cache first
+        cached_data = TradeValueEstimationService._similar_trades_cache.get(cache_key)
+        if cached_data:
+            cached_trades, cache_time = cached_data
+            if (datetime.utcnow() - cache_time) < TradeValueEstimationService._similar_trades_cache_ttl:
+                logger.debug(f"Using cached similar trades for cache_key={cache_key}")
+                return cached_trades
+        
+        # Cache miss - query database
         cutoff_date = trade.transaction_date - timedelta(days=days_back)
 
         result = await self.db.execute(
@@ -216,7 +232,13 @@ class TradeValueEstimationService:
             .order_by(Trade.transaction_date.desc())
             .limit(10)
         )
-        return result.scalars().all()
+        trades = result.scalars().all()
+        
+        # Cache the results
+        TradeValueEstimationService._similar_trades_cache[cache_key] = (trades, datetime.utcnow())
+        logger.debug(f"Cached similar trades for cache_key={cache_key}, count={len(trades)}")
+        
+        return trades
 
     async def _estimate_from_patterns(self, trade: Trade) -> Optional[float]:
         """Estimate value from historical trading patterns."""

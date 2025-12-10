@@ -20,6 +20,8 @@ services:
   redis:
     image: redis:7-alpine
     container_name: tradesignal-redis
+    ports:
+      - "6379:6379"  # Expose Redis to host for Celery worker
     volumes:
       - redis_data:/data
     command: ["redis-server", "--appendonly", "yes"]

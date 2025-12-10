@@ -24,10 +24,6 @@ export interface CheckoutSessionResponse {
 
 export interface UsageStats {
   tier: string;
-  usage: {
-    ai_requests_today: number;
-    alerts_count: number;
-  };
   limits: {
     ai_requests_per_day: number;
     alerts_max: number;
@@ -36,10 +32,16 @@ export interface UsageStats {
     companies_tracked: number;
     historical_data_days: number;
   };
+  usage: {
+    ai_requests: number;
+    alerts_triggered: number;
+    api_calls: number;
+    companies_viewed: number;
+  };
   remaining: {
     ai_requests: number;
-    alerts: number;
   };
+  reset_at: string;
 }
 
 export interface PricingTier {
@@ -81,6 +83,10 @@ export interface SubscriptionResponse {
   current_period_start: string | null;
   current_period_end: string | null;
   cancel_at_period_end: boolean;
+  billing_period?: 'monthly' | 'yearly';
+  price_paid?: number;
+  order_number?: string;
+  stripe_order_number?: string;
 }
 
 /**

@@ -78,26 +78,26 @@ export default function CreateAlertModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-lg">
-        <h2 className="text-2xl font-bold mb-4">Create New Alert</h2>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-gray-900/90 backdrop-blur-md p-8 rounded-lg shadow-xl border border-white/10 w-full max-w-lg">
+        <h2 className="text-2xl font-bold mb-4 text-white">Create New Alert</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Name</label>
+            <label className="block text-sm font-medium text-gray-300">Name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="input"
+              className="mt-1 block w-full rounded-md border-gray-700 bg-gray-800 text-white shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Alert Type</label>
+            <label className="block text-sm font-medium text-gray-300">Alert Type</label>
             <select
               value={alertType}
               onChange={(e) => setAlertType(e.target.value as AlertType)}
-              className="input"
+              className="mt-1 block w-full rounded-md border-gray-700 bg-gray-800 text-white shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm"
             >
               <option value="large_trade">Large Trade</option>
               <option value="company_watch">Company Watch</option>
@@ -105,31 +105,31 @@ export default function CreateAlertModal({
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Ticker</label>
+            <label className="block text-sm font-medium text-gray-300">Ticker</label>
             <input
               type="text"
               value={ticker}
               onChange={(e) => setTicker(e.target.value)}
-              className="input"
+              className="mt-1 block w-full rounded-md border-gray-700 bg-gray-800 text-white shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Minimum Value ($)</label>
+            <label className="block text-sm font-medium text-gray-300">Minimum Value ($)</label>
             <input
               type="number"
               value={minValue}
               onChange={(e) => setMinValue(e.target.value)}
-              className="input"
+              className="mt-1 block w-full rounded-md border-gray-700 bg-gray-800 text-white shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Transaction Type</label>
+            <label className="block text-sm font-medium text-gray-300">Transaction Type</label>
             <select
               value={transactionType}
               onChange={(e) =>
                 setTransactionType(e.target.value as "BUY" | "SELL" | "")
               }
-              className="input"
+              className="mt-1 block w-full rounded-md border-gray-700 bg-gray-800 text-white shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm"
             >
               <option value="">Any</option>
               <option value="BUY">Buy</option>
@@ -137,21 +137,21 @@ export default function CreateAlertModal({
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Notification Channels</label>
-            <div className="grid grid-cols-2 gap-2">
+            <label className="block text-sm font-medium text-gray-300 mb-2">Notification Channels</label>
+            <div className="grid grid-cols-2 gap-2 text-gray-300">
               {/* Email */}
-              <label className="flex items-center p-2 border rounded hover:bg-gray-50 cursor-pointer">
+              <label className="flex items-center p-2 border border-gray-700 rounded hover:bg-gray-800 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={notificationChannels.includes("email")}
                   onChange={() => handleChannelChange("email")}
-                  className="mr-2"
+                  className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-600 rounded bg-gray-700"
                 />
                 <span>Email</span>
               </label>
 
               {/* Browser Push */}
-              <label className="flex items-center p-2 border rounded hover:bg-gray-50 cursor-pointer">
+              <label className="flex items-center p-2 border border-gray-700 rounded hover:bg-gray-800 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={notificationChannels.includes("push")}
@@ -171,11 +171,11 @@ export default function CreateAlertModal({
                     }
                   }}
                   disabled={!supported || loading}
-                  className="mr-2"
+                  className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-600 rounded bg-gray-700"
                 />
                 <div className="flex items-center gap-1">
                   {notificationChannels.includes("push") ? (
-                    <Bell className="h-4 w-4 text-green-600" />
+                    <Bell className="h-4 w-4 text-green-400" />
                   ) : (
                     <BellOff className="h-4 w-4 text-gray-400" />
                   )}
@@ -184,74 +184,74 @@ export default function CreateAlertModal({
               </label>
 
               {/* Discord */}
-              <label className="flex items-center p-2 border rounded hover:bg-gray-50 cursor-pointer">
+              <label className="flex items-center p-2 border border-gray-700 rounded hover:bg-gray-800 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={notificationChannels.includes("discord")}
                   onChange={() => handleChannelChange("discord")}
-                  className="mr-2"
+                  className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-600 rounded bg-gray-700"
                 />
                 <div className="flex items-center gap-1">
-                  <Hash className="h-4 w-4 text-indigo-600" />
+                  <Hash className="h-4 w-4 text-purple-400" />
                   <span>Discord</span>
                 </div>
               </label>
 
               {/* Slack */}
-              <label className="flex items-center p-2 border rounded hover:bg-gray-50 cursor-pointer">
+              <label className="flex items-center p-2 border border-gray-700 rounded hover:bg-gray-800 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={notificationChannels.includes("slack")}
                   onChange={() => handleChannelChange("slack")}
-                  className="mr-2"
+                  className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-600 rounded bg-gray-700"
                 />
                 <div className="flex items-center gap-1">
-                  <MessageSquare className="h-4 w-4 text-green-600" />
+                  <MessageSquare className="h-4 w-4 text-green-400" />
                   <span>Slack</span>
                 </div>
               </label>
 
               {/* SMS - Pro Only */}
-              <label className={`flex items-center p-2 border rounded ${isPro ? 'hover:bg-gray-50 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
+              <label className={`flex items-center p-2 border border-gray-700 rounded ${isPro ? 'hover:bg-gray-800 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
                 <input
                   type="checkbox"
                   checked={notificationChannels.includes("sms")}
                   onChange={() => handleChannelChange("sms")}
                   disabled={!isPro}
-                  className="mr-2"
+                  className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-600 rounded bg-gray-700"
                 />
                 <div className="flex items-center gap-1">
-                  <Smartphone className="h-4 w-4 text-blue-600" />
+                  <Smartphone className="h-4 w-4 text-blue-400" />
                   <span>SMS</span>
-                  {!isPro && <Crown className="h-3 w-3 text-yellow-500 ml-1" aria-label="Pro tier required" />}
+                  {!isPro && <Crown className="h-3 w-3 text-yellow-400 ml-1" aria-label="Pro tier required" />}
                 </div>
               </label>
 
               {/* Custom Webhook */}
-              <label className="flex items-center p-2 border rounded hover:bg-gray-50 cursor-pointer">
+              <label className="flex items-center p-2 border border-gray-700 rounded hover:bg-gray-800 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={notificationChannels.includes("webhook")}
                   onChange={() => handleChannelChange("webhook")}
-                  className="mr-2"
+                  className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-600 rounded bg-gray-700"
                 />
                 <span>Webhook</span>
               </label>
             </div>
             {!isPro && (
-              <p className="text-xs text-gray-500 mt-2">
-                SMS notifications require a Pro subscription. <a href="/pricing" className="text-blue-600 hover:underline">Upgrade now</a>
+              <p className="text-xs text-gray-400 mt-2">
+                SMS notifications require a Pro subscription. <a href="/pricing" className="text-purple-400 hover:underline">Upgrade now</a>
               </p>
             )}
           </div>
           {notificationChannels.includes("email") && (
             <div>
-              <label className="block text-sm font-medium text-gray-700">Email Address</label>
+              <label className="block text-sm font-medium text-gray-300">Email Address</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="input"
+                className="mt-1 block w-full rounded-md border-gray-700 bg-gray-800 text-white shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm"
                 placeholder="alerts@example.com"
                 required
               />
@@ -259,9 +259,9 @@ export default function CreateAlertModal({
           )}
           {notificationChannels.includes("discord") && (
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-300">
                 <div className="flex items-center gap-1">
-                  <Hash className="h-4 w-4 text-indigo-600" />
+                  <Hash className="h-4 w-4 text-purple-400" />
                   Discord Webhook URL
                 </div>
               </label>
@@ -269,20 +269,20 @@ export default function CreateAlertModal({
                 type="url"
                 value={discordWebhookUrl}
                 onChange={(e) => setDiscordWebhookUrl(e.target.value)}
-                className="input"
+                className="mt-1 block w-full rounded-md border-gray-700 bg-gray-800 text-white shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm"
                 placeholder="https://discord.com/api/webhooks/..."
                 required
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-400 mt-1">
                 Get this from Discord: Server Settings → Integrations → Webhooks
               </p>
             </div>
           )}
           {notificationChannels.includes("slack") && (
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-300">
                 <div className="flex items-center gap-1">
-                  <MessageSquare className="h-4 w-4 text-green-600" />
+                  <MessageSquare className="h-4 w-4 text-green-400" />
                   Slack Webhook URL
                 </div>
               </label>
@@ -290,20 +290,20 @@ export default function CreateAlertModal({
                 type="url"
                 value={slackWebhookUrl}
                 onChange={(e) => setSlackWebhookUrl(e.target.value)}
-                className="input"
+                className="mt-1 block w-full rounded-md border-gray-700 bg-gray-800 text-white shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm"
                 placeholder="https://hooks.slack.com/services/..."
                 required
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-400 mt-1">
                 Get this from Slack: Apps → Incoming Webhooks
               </p>
             </div>
           )}
           {notificationChannels.includes("sms") && (
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-300">
                 <div className="flex items-center gap-1">
-                  <Smartphone className="h-4 w-4 text-blue-600" />
+                  <Smartphone className="h-4 w-4 text-blue-400" />
                   Phone Number
                 </div>
               </label>
@@ -311,33 +311,33 @@ export default function CreateAlertModal({
                 type="tel"
                 value={smsPhoneNumber}
                 onChange={(e) => setSmsPhoneNumber(e.target.value)}
-                className="input"
+                className="mt-1 block w-full rounded-md border-gray-700 bg-gray-800 text-white shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm"
                 placeholder="+1 (555) 123-4567"
                 required
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-400 mt-1">
                 Include country code. SMS charges may apply.
               </p>
             </div>
           )}
           {notificationChannels.includes("webhook") && (
             <div>
-              <label className="block text-sm font-medium text-gray-700">Custom Webhook URL</label>
+              <label className="block text-sm font-medium text-gray-300">Custom Webhook URL</label>
               <input
                 type="url"
                 value={webhookUrl}
                 onChange={(e) => setWebhookUrl(e.target.value)}
-                className="input"
+                className="mt-1 block w-full rounded-md border-gray-700 bg-gray-800 text-white shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm"
                 placeholder="https://your-server.com/webhook"
                 required
               />
             </div>
           )}
           <div className="flex justify-end mt-4">
-            <button type="button" onClick={onClose} className="btn btn-secondary">
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-700 text-white hover:bg-gray-600 transition-colors">
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary ml-2" disabled={mutation.isPending}>
+            <button type="submit" className="px-4 py-2 rounded-lg text-sm font-medium bg-purple-600 text-white hover:bg-purple-700 transition-colors ml-2" disabled={mutation.isPending}>
               {mutation.isPending ? "Creating..." : "Create"}
             </button>
           </div>

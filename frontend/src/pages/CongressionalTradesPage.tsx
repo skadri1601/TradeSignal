@@ -152,7 +152,7 @@ export default function CongressionalTradesPage() {
   if (error) {
     return (
       <div className="text-center py-12">
-        <p className="text-red-600">Error loading congressional trades. Please try again.</p>
+        <p className="text-red-400">Error loading congressional trades. Please try again.</p>
       </div>
     );
   }
@@ -163,16 +163,16 @@ export default function CongressionalTradesPage() {
       
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Congressional Trades</h1>
-        <p className="mt-2 text-gray-600">Track stock trading by US House and Senate members</p>
+        <h1 className="text-3xl font-bold text-white">Congressional Trades</h1>
+        <p className="mt-2 text-gray-400">Track stock trading by US House and Senate members</p>
       </div>
 
       {/* Filters */}
-      <div className="card">
+      <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10 p-6">
         <form className="space-y-4" onSubmit={handleApplyFilters}>
           <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-4">
             <div className="flex flex-col">
-              <label htmlFor="ticker" className="text-sm font-medium text-gray-700">
+              <label htmlFor="ticker" className="text-sm font-medium text-gray-300 mb-1">
                 Ticker
               </label>
               <CompanyAutocomplete
@@ -183,7 +183,7 @@ export default function CongressionalTradesPage() {
             </div>
 
             <div className="flex flex-col">
-              <label htmlFor="chamber" className="text-sm font-medium text-gray-700">
+              <label htmlFor="chamber" className="text-sm font-medium text-gray-300 mb-1">
                 Chamber
               </label>
               <select
@@ -191,7 +191,7 @@ export default function CongressionalTradesPage() {
                 name="chamber"
                 value={filterForm.chamber}
                 onChange={handleFilterInputChange}
-                className="input"
+                className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-purple-500 outline-none transition-all"
               >
                 <option value="ALL">All</option>
                 <option value="HOUSE">House</option>
@@ -200,7 +200,7 @@ export default function CongressionalTradesPage() {
             </div>
 
             <div className="flex flex-col">
-              <label htmlFor="state" className="text-sm font-medium text-gray-700">
+              <label htmlFor="state" className="text-sm font-medium text-gray-300 mb-1">
                 State
               </label>
               <input
@@ -211,12 +211,12 @@ export default function CongressionalTradesPage() {
                 value={filterForm.state}
                 onChange={handleFilterInputChange}
                 placeholder="e.g. CA, NY"
-                className="input uppercase"
+                className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-purple-500 outline-none transition-all uppercase"
               />
             </div>
 
             <div className="flex flex-col">
-              <label htmlFor="party" className="text-sm font-medium text-gray-700">
+              <label htmlFor="party" className="text-sm font-medium text-gray-300 mb-1">
                 Party
               </label>
               <select
@@ -224,7 +224,7 @@ export default function CongressionalTradesPage() {
                 name="party"
                 value={filterForm.party}
                 onChange={handleFilterInputChange}
-                className="input"
+                className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-purple-500 outline-none transition-all"
               >
                 <option value="ALL">All</option>
                 <option value="DEMOCRAT">Democrat</option>
@@ -234,7 +234,7 @@ export default function CongressionalTradesPage() {
             </div>
 
             <div className="flex flex-col">
-              <label htmlFor="transactionType" className="text-sm font-medium text-gray-700">
+              <label htmlFor="transactionType" className="text-sm font-medium text-gray-300 mb-1">
                 Transaction Type
               </label>
               <select
@@ -242,7 +242,7 @@ export default function CongressionalTradesPage() {
                 name="transactionType"
                 value={filterForm.transactionType}
                 onChange={handleFilterInputChange}
-                className="input"
+                className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-purple-500 outline-none transition-all"
               >
                 <option value="ALL">All</option>
                 <option value="BUY">Buy</option>
@@ -251,7 +251,7 @@ export default function CongressionalTradesPage() {
             </div>
 
             <div className="flex flex-col">
-              <label htmlFor="ownerType" className="text-sm font-medium text-gray-700">
+              <label htmlFor="ownerType" className="text-sm font-medium text-gray-300 mb-1">
                 Owner Type
               </label>
               <select
@@ -259,7 +259,7 @@ export default function CongressionalTradesPage() {
                 name="ownerType"
                 value={filterForm.ownerType}
                 onChange={handleFilterInputChange}
-                className="input"
+                className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-purple-500 outline-none transition-all"
               >
                 <option value="ALL">All</option>
                 <option value="Self">Self</option>
@@ -270,7 +270,7 @@ export default function CongressionalTradesPage() {
             </div>
 
             <div className="flex flex-col">
-              <label htmlFor="minValue" className="text-sm font-medium text-gray-700">
+              <label htmlFor="minValue" className="text-sm font-medium text-gray-300 mb-1">
                 Min Value (USD)
               </label>
               <input
@@ -282,12 +282,12 @@ export default function CongressionalTradesPage() {
                 value={filterForm.minValue}
                 onChange={handleFilterInputChange}
                 placeholder="e.g. 50000"
-                className="input"
+                className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-purple-500 outline-none transition-all"
               />
             </div>
 
             <div className="flex flex-col">
-              <label htmlFor="maxValue" className="text-sm font-medium text-gray-700">
+              <label htmlFor="maxValue" className="text-sm font-medium text-gray-300 mb-1">
                 Max Value (USD)
               </label>
               <input
@@ -299,12 +299,12 @@ export default function CongressionalTradesPage() {
                 value={filterForm.maxValue}
                 onChange={handleFilterInputChange}
                 placeholder="e.g. 1000000"
-                className="input"
+                className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-purple-500 outline-none transition-all"
               />
             </div>
 
             <div className="flex flex-col">
-              <label htmlFor="startDate" className="text-sm font-medium text-gray-700">
+              <label htmlFor="startDate" className="text-sm font-medium text-gray-300 mb-1">
                 Start Date
               </label>
               <input
@@ -313,12 +313,12 @@ export default function CongressionalTradesPage() {
                 type="date"
                 value={filterForm.startDate}
                 onChange={handleFilterInputChange}
-                className="input"
+                className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-purple-500 outline-none transition-all [color-scheme:dark]"
               />
             </div>
 
             <div className="flex flex-col">
-              <label htmlFor="endDate" className="text-sm font-medium text-gray-700">
+              <label htmlFor="endDate" className="text-sm font-medium text-gray-300 mb-1">
                 End Date
               </label>
               <input
@@ -327,7 +327,7 @@ export default function CongressionalTradesPage() {
                 type="date"
                 value={filterForm.endDate}
                 onChange={handleFilterInputChange}
-                className="input"
+                className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-purple-500 outline-none transition-all [color-scheme:dark]"
               />
             </div>
 
@@ -338,16 +338,16 @@ export default function CongressionalTradesPage() {
                   name="significantOnly"
                   checked={filterForm.significantOnly}
                   onChange={handleFilterInputChange}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-gray-600 bg-black/50 text-purple-600 focus:ring-purple-500"
                 />
-                <span className="text-sm font-medium text-gray-700">Significant Only (&gt;$100k)</span>
+                <span className="text-sm font-medium text-gray-300">Significant Only (&gt;$100k)</span>
               </label>
             </div>
           </div>
 
           {/* Date Range Presets */}
-          <div className="flex flex-wrap gap-2">
-            <span className="text-sm font-medium text-gray-700 self-center">Quick Select:</span>
+          <div className="flex flex-wrap gap-2 pt-4 border-t border-white/10">
+            <span className="text-sm font-medium text-gray-400 self-center">Quick Select:</span>
             <button
               type="button"
               onClick={() => {
@@ -360,7 +360,7 @@ export default function CongressionalTradesPage() {
                   endDate: end.toISOString().split('T')[0],
                 }));
               }}
-              className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+              className="px-3 py-1 text-sm bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-lg hover:bg-blue-500/30 transition-colors"
             >
               Last 7 Days
             </button>
@@ -376,7 +376,7 @@ export default function CongressionalTradesPage() {
                   endDate: end.toISOString().split('T')[0],
                 }));
               }}
-              className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+              className="px-3 py-1 text-sm bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-lg hover:bg-blue-500/30 transition-colors"
             >
               Last 30 Days
             </button>
@@ -392,7 +392,7 @@ export default function CongressionalTradesPage() {
                   endDate: end.toISOString().split('T')[0],
                 }));
               }}
-              className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+              className="px-3 py-1 text-sm bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-lg hover:bg-blue-500/30 transition-colors"
             >
               Last 90 Days
             </button>
@@ -405,27 +405,34 @@ export default function CongressionalTradesPage() {
                   endDate: '',
                 }));
               }}
-              className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              className="px-3 py-1 text-sm bg-white/10 text-gray-300 border border-white/10 rounded-lg hover:bg-white/20 transition-colors"
             >
               Clear Dates
             </button>
           </div>
 
           {validationError && (
-            <p className="text-sm text-red-600">{validationError}</p>
+            <p className="text-sm text-red-400">{validationError}</p>
           )}
 
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="text-sm text-gray-500">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t border-white/10">
+            <div className="text-sm text-gray-400">
               {hasActiveFilters
                 ? 'Filters applied.'
                 : 'Filter congressional trades by ticker, chamber, state, party, type, owner, value, and date.'}
             </div>
             <div className="flex gap-3">
-              <button type="button" className="btn btn-secondary" onClick={handleResetFilters}>
+              <button 
+                type="button" 
+                className="px-4 py-2 border border-white/20 text-gray-300 rounded-lg hover:bg-white/10 transition-colors font-medium" 
+                onClick={handleResetFilters}
+              >
                 Reset
               </button>
-              <button type="submit" className="btn btn-primary">
+              <button 
+                type="submit" 
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 transition-colors font-medium shadow-lg shadow-purple-500/20"
+              >
                 Apply Filters
               </button>
             </div>
@@ -434,52 +441,52 @@ export default function CongressionalTradesPage() {
       </div>
 
       {/* Summary */}
-      <div className="card">
+      <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10 p-6">
         {statsLoading ? (
           <div className="flex items-center justify-center h-24">
             <LoadingSpinner />
           </div>
         ) : statsError ? (
-          <div className="text-sm text-red-600">Unable to load trade statistics.</div>
+          <div className="text-sm text-red-400">Unable to load trade statistics.</div>
         ) : (
           <div>
             {statsFetching && (
-              <div className="mb-3 text-xs text-blue-600">Refreshing summary...</div>
+              <div className="mb-3 text-xs text-blue-400">Refreshing summary...</div>
             )}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                <p className="text-sm text-gray-600">Total Trades</p>
-                <p className="mt-1 text-2xl font-semibold text-gray-900">
+              <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                <p className="text-sm text-gray-400">Total Trades</p>
+                <p className="mt-1 text-2xl font-semibold text-white">
                   {formatNumber(stats?.total_trades ?? 0)}
                 </p>
               </div>
-              <div className="rounded-xl border border-green-200 bg-green-50 p-4">
-                <p className="text-sm text-gray-600">Buy Trades</p>
-                <p className="mt-1 text-2xl font-semibold text-green-600">
+              <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                <p className="text-sm text-gray-400">Buy Trades</p>
+                <p className="mt-1 text-2xl font-semibold text-green-400">
                   {formatNumber(stats?.total_buys ?? 0)}
                 </p>
               </div>
-              <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-                <p className="text-sm text-gray-600">Sell Trades</p>
-                <p className="mt-1 text-2xl font-semibold text-red-600">
+              <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                <p className="text-sm text-gray-400">Sell Trades</p>
+                <p className="mt-1 text-2xl font-semibold text-red-400">
                   {formatNumber(stats?.total_sells ?? 0)}
                 </p>
               </div>
-              <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
-                <p className="text-sm text-gray-600">House Trades</p>
-                <p className="mt-1 text-2xl font-semibold text-blue-600">
+              <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                <p className="text-sm text-gray-400">House Trades</p>
+                <p className="mt-1 text-2xl font-semibold text-blue-400">
                   {formatNumber(stats?.house_trade_count ?? 0)}
                 </p>
               </div>
-              <div className="rounded-xl border border-purple-200 bg-purple-50 p-4">
-                <p className="text-sm text-gray-600">Senate Trades</p>
-                <p className="mt-1 text-2xl font-semibold text-purple-600">
+              <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                <p className="text-sm text-gray-400">Senate Trades</p>
+                <p className="mt-1 text-2xl font-semibold text-purple-400">
                   {formatNumber(stats?.senate_trade_count ?? 0)}
                 </p>
               </div>
-              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                <p className="text-sm text-gray-600">Total Value</p>
-                <p className="mt-1 text-2xl font-semibold text-gray-900">
+              <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                <p className="text-sm text-gray-400">Total Value</p>
+                <p className="mt-1 text-2xl font-semibold text-white">
                   {formatCurrencyCompact(stats?.total_value ?? 0)}
                 </p>
                 <p className="text-xs text-gray-500">Estimated</p>
@@ -488,30 +495,30 @@ export default function CongressionalTradesPage() {
 
             {/* Party Breakdown */}
             {stats && (stats.democrat_buy_count > 0 || stats.republican_buy_count > 0) && (
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <h3 className="text-sm font-medium text-gray-700 mb-4">Party Breakdown</h3>
+              <div className="mt-6 pt-6 border-t border-white/10">
+                <h3 className="text-sm font-medium text-gray-300 mb-4">Party Breakdown</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="rounded-xl border border-blue-200 bg-blue-50 p-3">
-                    <p className="text-xs text-gray-600">Democrat Buys</p>
-                    <p className="mt-1 text-xl font-semibold text-blue-600">
+                  <div className="rounded-xl border border-blue-500/20 bg-blue-900/10 p-3">
+                    <p className="text-xs text-gray-400">Democrat Buys</p>
+                    <p className="mt-1 text-xl font-semibold text-blue-400">
                       {formatNumber(stats.democrat_buy_count)}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-blue-200 bg-blue-50 p-3">
-                    <p className="text-xs text-gray-600">Democrat Sells</p>
-                    <p className="mt-1 text-xl font-semibold text-blue-600">
+                  <div className="rounded-xl border border-blue-500/20 bg-blue-900/10 p-3">
+                    <p className="text-xs text-gray-400">Democrat Sells</p>
+                    <p className="mt-1 text-xl font-semibold text-blue-400">
                       {formatNumber(stats.democrat_sell_count)}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-red-200 bg-red-50 p-3">
-                    <p className="text-xs text-gray-600">Republican Buys</p>
-                    <p className="mt-1 text-xl font-semibold text-red-600">
+                  <div className="rounded-xl border border-red-500/20 bg-red-900/10 p-3">
+                    <p className="text-xs text-gray-400">Republican Buys</p>
+                    <p className="mt-1 text-xl font-semibold text-red-400">
                       {formatNumber(stats.republican_buy_count)}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-red-200 bg-red-50 p-3">
-                    <p className="text-xs text-gray-600">Republican Sells</p>
-                    <p className="mt-1 text-xl font-semibold text-red-600">
+                  <div className="rounded-xl border border-red-500/20 bg-red-900/10 p-3">
+                    <p className="text-xs text-gray-400">Republican Sells</p>
+                    <p className="mt-1 text-xl font-semibold text-red-400">
                       {formatNumber(stats.republican_sell_count)}
                     </p>
                   </div>
@@ -521,21 +528,21 @@ export default function CongressionalTradesPage() {
 
             {/* Most Active */}
             {stats && (stats.most_active_congressperson || stats.most_active_company) && (
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <h3 className="text-sm font-medium text-gray-700 mb-4">Most Active</h3>
+              <div className="mt-6 pt-6 border-t border-white/10">
+                <h3 className="text-sm font-medium text-gray-300 mb-4">Most Active</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {stats.most_active_congressperson && (
-                    <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-                      <p className="text-xs text-gray-600">Most Active Member</p>
-                      <p className="mt-1 text-lg font-semibold text-gray-900">
+                    <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                      <p className="text-xs text-gray-400">Most Active Member</p>
+                      <p className="mt-1 text-lg font-semibold text-white">
                         {stats.most_active_congressperson}
                       </p>
                     </div>
                   )}
                   {stats.most_active_company && (
-                    <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-                      <p className="text-xs text-gray-600">Most Traded Company</p>
-                      <p className="mt-1 text-lg font-semibold text-gray-900">
+                    <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                      <p className="text-xs text-gray-400">Most Traded Company</p>
+                      <p className="mt-1 text-lg font-semibold text-white">
                         {stats.most_active_company}
                       </p>
                     </div>
@@ -548,7 +555,7 @@ export default function CongressionalTradesPage() {
       </div>
 
       {/* Trades Table */}
-      <div className="card">
+      <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10 p-6">
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
             <LoadingSpinner />
@@ -556,28 +563,28 @@ export default function CongressionalTradesPage() {
         ) : (
           <>
             {isFetching && (
-              <div className="mb-4 text-sm text-blue-600">Updating results...</div>
+              <div className="mb-4 text-sm text-blue-400">Updating results...</div>
             )}
             <CongressionalTradeList trades={data?.items || []} />
 
             {/* Pagination */}
             {data && data.pages > 1 && (
-              <div className="flex items-center justify-between mt-6 pt-6 border-t">
-                <div className="text-sm text-gray-600">
+              <div className="flex items-center justify-between mt-6 pt-6 border-t border-white/10">
+                <div className="text-sm text-gray-400">
                   Page {data.page} of {data.pages} ({data.total} total trades)
                 </div>
                 <div className="flex space-x-2">
                   <button
                     onClick={() => setPage(p => Math.max(1, p - 1))}
                     disabled={!data.has_prev}
-                    className="btn btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 border border-white/10 text-gray-300 rounded-lg hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Previous
                   </button>
                   <button
                     onClick={() => setPage(p => p + 1)}
                     disabled={!data.has_next}
-                    className="btn btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 border border-white/10 text-gray-300 rounded-lg hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Next
                   </button>

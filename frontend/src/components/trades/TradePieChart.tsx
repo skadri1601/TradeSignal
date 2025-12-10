@@ -37,7 +37,7 @@ export default function TradePieChart({ stats, mode }: TradePieChartProps) {
   }, [chartData]);
 
   // Always use bar chart for consistency - looks more professional
-  const useBarChart = true;
+  const useBarChart = false;
 
   const formatValue = (value: number) => {
     if (mode === 'count') {

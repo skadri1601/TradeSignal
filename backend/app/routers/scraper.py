@@ -31,98 +31,93 @@ class ScrapeRequest(BaseModel):
 class ScrapeResponse(BaseModel):
     """Response from scrape operation."""
 
-    success: bool = Field(..., description="Whether scrape succeeded")
-    filings_processed: int = Field(..., description="Number of filings processed")
-    trades_created: int = Field(..., description="Number of trades created")
-    errors: Optional[list] = Field(None, description="Any errors encountered")
-    message: Optional[str] = Field(None, description="Additional message")
+    success: bool = Field(..., description="Whether scrape initiation succeeded")
+    message: str = Field(..., description="Additional message")
+    task_id: Optional[str] = Field(None, description="Celery task ID if scraping was initiated")
 
 
-@router.post("/scrape", response_model=ScrapeResponse, status_code=200)
+@router.post("/scrape", response_model=ScrapeResponse, status_code=202) # Use 202 Accepted for async operation
 async def scrape_company_filings(
     request: ScrapeRequest, db: AsyncSession = Depends(get_db)
 ):
     """
-    Scrape Form 4 filings for a company.
-
-    Fetches recent insider trading Form 4 filings from SEC EDGAR
-    and saves them to the database.
+    Initiate asynchronous scraping of Form 4 filings for a company.
 
     **Parameters:**
     - `ticker`: Stock ticker symbol (e.g., "AAPL")
     - `cik`: SEC Central Index Key (alternative to ticker)
-    - `days_back`: How many days back to fetch (default: 30, max: 365)
-    - `max_filings`: Maximum filings to process (default: 100, max: 100)
 
     **Returns:**
-    - Summary of scraping operation (filings processed, trades created)
-
-    **Example:**
-    ```json
-    {
-      "ticker": "AAPL",
-      "days_back": 30,
-      "max_filings": 50
-    }
-    ```
-
-    **Note:** SEC rate limits to 10 requests/second. Large scrapes may take time.
+    - A message indicating that the scraping task has been initiated and its task ID.
     """
     if not request.ticker and not request.cik:
         raise HTTPException(status_code=400, detail="Must provide either ticker or CIK")
 
     logger.info(
-        f"Scrape request: {request.ticker or request.cik} "
-        f"(last {request.days_back} days)"
+        f"Scrape initiation request received for: {request.ticker or request.cik}"
     )
 
     try:
         scraper = ScraperService()
         result = await scraper.scrape_company_trades(
-            db=db,
+            db=db, # Pass db for company lookup
             ticker=request.ticker,
             cik=request.cik,
-            days_back=request.days_back,
-            max_filings=request.max_filings,
+            # days_back and max_filings are now handled by background task config
         )
 
-        return ScrapeResponse(**result)
+        return ScrapeResponse(
+            success=True,
+            message=result.get("message", "Scraping task initiated."),
+            task_id=result.get("task_id"),
+        )
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     except Exception as e:
-        logger.error(f"Scrape failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Scraping failed: {str(e)}")
+        logger.error(f"Scrape initiation failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Scraping initiation failed: {str(e)}")
 
 
-@router.get("/scrape/{ticker}", response_model=ScrapeResponse)
+@router.get("/scrape/{ticker}", response_model=ScrapeResponse, status_code=202) # Use 202 Accepted for async operation
 async def scrape_by_ticker(
     ticker: str,
-    days_back: int = Query(30, ge=1, le=365, description="Days to look back"),
-    max_filings: int = Query(100, ge=1, le=100, description="Max filings"),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Quick scrape by ticker (GET endpoint).
+    Initiate asynchronous scraping of Form 4 filings for a company by ticker.
 
-    Convenience endpoint for scraping a company by ticker.
+    **Parameters:**
+    - `ticker`: Stock ticker symbol
 
-    **Example:** `GET /api/v1/scraper/AAPL?days_back=30`
+    **Returns:**
+    - A message indicating that the scraping task has been initiated and its task ID.
+
+    **Example:** `GET /api/v1/scraper/AAPL`
     """
-    logger.info(f"Quick scrape: {ticker} (last {days_back} days)")
+    logger.info(f"Quick scrape initiation request for: {ticker}")
 
     try:
         scraper = ScraperService()
         result = await scraper.scrape_company_trades(
-            db=db, ticker=ticker, days_back=days_back, max_filings=max_filings
+            db=db, # Pass db for company lookup
+            ticker=ticker,
+            # days_back and max_filings are now handled by background task config
         )
 
-        return ScrapeResponse(**result)
+        return ScrapeResponse(
+            success=True,
+            message=result.get("message", f"Scraping task initiated for {ticker}."),
+            task_id=result.get("task_id"),
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     except Exception as e:
-        logger.error(f"Scrape failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Scraping failed: {str(e)}")
+        logger.error(f"Scrape initiation failed for {ticker}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Scraping initiation failed: {str(e)}")
 
 
 @router.get("/test", response_model=dict)

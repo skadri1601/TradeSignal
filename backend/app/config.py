@@ -216,6 +216,16 @@ class Settings(BaseSettings):
         description="Hours to cache congressional trade data",
         alias="CONGRESSIONAL_CACHE_TTL_HOURS",
     )
+    use_fallback_sources: bool = Field(
+        default=True,
+        description="Whether to use fallback sources for congressional data if Finnhub fails",
+        alias="USE_FALLBACK_SOURCES",
+    )
+    congressional_fallback_max_age_days: int = Field(
+        default=7,
+        description="Maximum age in days for fallback congressional trade data to be considered fresh",
+        alias="CONGRESSIONAL_FALLBACK_MAX_AGE_DAYS",
+    )
 
     # Alert & Notification Configuration
     alerts_enabled: bool = Field(
@@ -439,15 +449,24 @@ class Settings(BaseSettings):
 
         Supports both asyncpg and psycopg drivers.
         Converts postgresql:// to postgresql+asyncpg:// by default.
+        Force Port 5432 for Supabase to avoid Transaction Mode (PgBouncer) issues.
         """
-        if self.database_url.startswith("postgresql://"):
-            return self.database_url.replace(
+        url = self.database_url
+        
+        # FIX: Force Port 5432 for Supabase connections to bypass Transaction Mode pooler
+        # Transaction Mode (6543) breaks SQLAlchemy/asyncpg prepared statements
+        if "supabase.com" in url or "supabase.co" in url:
+            if ":6543" in url:
+                url = url.replace(":6543", ":5432")
+        
+        if url.startswith("postgresql://"):
+            return url.replace(
                 "postgresql://", "postgresql+asyncpg://", 1
             )
-        elif self.database_url.startswith("postgresql+asyncpg://"):
-            return self.database_url
-        elif self.database_url.startswith("postgresql+psycopg://"):
-            return self.database_url
+        elif url.startswith("postgresql+asyncpg://"):
+            return url
+        elif url.startswith("postgresql+psycopg://"):
+            return url
         else:
             raise ValueError(
                 "DATABASE_URL must start with 'postgresql://', 'postgresql+asyncpg://', or 'postgresql+psycopg://'"

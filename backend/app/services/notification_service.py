@@ -1,38 +1,39 @@
 """
 Notification Service for TradeSignal.
 
-Sends notifications via webhooks (Slack, Discord, custom endpoints) and email.
-Handles retries, timeouts, and error logging.
+Enqueues tasks for sending notifications via webhooks (Slack, Discord, custom endpoints),
+email, and web push.
 """
 
 import logging
 import os
-import httpx
-from typing import Optional
+from typing import Optional, Dict, Any
 from datetime import datetime
-
 from app.models.trade import Trade
 from app.models.alert import Alert
+from app.models.push_subscription import PushSubscription # For type hinting
 from app.config import settings
+from app.tasks.alert_tasks import (
+    send_webhook_notification_task,
+    send_test_webhook_notification_task,
+    send_email_notification_task,
+    send_subscription_confirmation_email_task,
+    send_test_email_notification_task,
+    send_push_notification_task,
+    send_test_push_notification_task,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class NotificationService:
     """
-    Service for sending notifications via various channels.
-
-    Currently supports:
-    - Webhook notifications (Slack, Discord, custom HTTPS endpoints)
-    - Email notifications (SendGrid)
-
-    Future support:
-    - Browser push notifications (Phase 5C)
+    Service for enqueuing notification tasks via various channels.
     """
 
     def __init__(self):
-        self.timeout = 10.0  # seconds
-        self.max_retries = 3
+        # No direct external clients needed anymore
+        pass
 
     async def send_webhook_notification(
         self,
@@ -41,328 +42,33 @@ class NotificationService:
         trade: Trade,
         company_name: str,
         insider_name: str,
-    ) -> tuple[bool, Optional[str]]:
+    ) -> Dict[str, Any]:
         """
-        Send webhook notification to Slack/Discord/custom endpoint.
-
-        Args:
-            webhook_url: HTTPS webhook URL
-            alert: Alert that was triggered
-            trade: Trade that matched the alert
-            company_name: Company name (for display)
-            insider_name: Insider name (for display)
-
-        Returns:
-            Tuple of (success: bool, error_message: Optional[str])
+        Enqueue task to send webhook notification.
         """
-        try:
-            # Determine if Slack or Discord based on URL
-            is_slack = "slack.com" in webhook_url
-            is_discord = "discord.com" in webhook_url
+        trade_data = trade.to_dict() # Assuming a .to_dict() method or manual serialization
+        alert_name = alert.name # Assuming alert.name exists
+        
+        task = send_webhook_notification_task.delay(
+            webhook_url=webhook_url,
+            alert_name=alert_name,
+            trade_data=trade_data,
+            company_name=company_name,
+            insider_name=insider_name,
+        )
+        logger.info(f"Webhook notification task enqueued with ID: {task.id}")
+        return {"status": "enqueued", "task_id": task.id}
 
-            # Build appropriate payload
-            if is_slack:
-                payload = self._build_slack_payload(
-                    alert, trade, company_name, insider_name
-                )
-            elif is_discord:
-                payload = self._build_discord_payload(
-                    alert, trade, company_name, insider_name
-                )
-            else:
-                payload = self._build_generic_payload(
-                    alert, trade, company_name, insider_name
-                )
-
-            # Send webhook with retries
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(
-                    webhook_url,
-                    json=payload,
-                    headers={"Content-Type": "application/json"},
-                )
-
-                if response.status_code in [200, 204]:
-                    logger.info(
-                        f"Webhook sent successfully for alert '{alert.name}' "
-                        f"(trade_id={trade.id})"
-                    )
-                    return True, None
-                else:
-                    error_msg = f"Webhook returned status {response.status_code}: {response.text[:200]}"
-                    logger.warning(error_msg)
-                    return False, error_msg
-
-        except httpx.TimeoutException:
-            error_msg = f"Webhook timeout after {self.timeout}s"
-            logger.error(f"{error_msg} for alert '{alert.name}'")
-            return False, error_msg
-
-        except httpx.RequestError as e:
-            error_msg = f"Webhook request failed: {str(e)[:200]}"
-            logger.error(f"{error_msg} for alert '{alert.name}'")
-            return False, error_msg
-
-        except Exception as e:
-            error_msg = f"Unexpected error sending webhook: {str(e)[:200]}"
-            logger.error(f"{error_msg} for alert '{alert.name}'", exc_info=True)
-            return False, error_msg
-
-    def _build_slack_payload(
+    async def _build_email_html_body(
         self, alert: Alert, trade: Trade, company_name: str, insider_name: str
-    ) -> dict:
-        """Build Slack-formatted webhook payload."""
-        # Format trade value
+    ) -> str:
+        """Helper to build the HTML body for trade alert emails."""
         trade_value = float(trade.total_value) if trade.total_value else 0
         value_str = f"${trade_value:,.2f}"
-
-        # Determine emoji based on transaction type
         emoji = "🟢" if trade.transaction_type == "BUY" else "🔴"
 
-        # Build Slack blocks
-        return {
-            "text": f"{emoji} Trade Alert: {alert.name}",
-            "blocks": [
-                {
-                    "type": "header",
-                    "text": {
-                        "type": "plain_text",
-                        "text": f"{emoji} {alert.name}",
-                        "emoji": True,
-                    },
-                },
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": (
-                            f"*{insider_name}* {trade.transaction_type.lower()}s "
-                            f"*{value_str}* of *{trade.ticker}* ({company_name})"
-                        ),
-                    },
-                },
-                {
-                    "type": "section",
-                    "fields": [
-                        {"type": "mrkdwn", "text": f"*Shares:*\n{trade.shares:,}"},
-                        {
-                            "type": "mrkdwn",
-                            "text": f"*Price:*\n${float(trade.price_per_share):.2f}"
-                            if trade.price_per_share
-                            else "*Price:*\nN/A",
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": f"*Date:*\n{trade.transaction_date}",
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": f"*Type:*\n{trade.transaction_type}",
-                        },
-                    ],
-                },
-                {
-                    "type": "actions",
-                    "elements": [
-                        {
-                            "type": "button",
-                            "text": {
-                                "type": "plain_text",
-                                "text": "View SEC Filing",
-                                "emoji": True,
-                            },
-                            "url": trade.sec_filing_url,
-                        }
-                    ],
-                },
-            ],
-        }
-
-    def _build_discord_payload(
-        self, alert: Alert, trade: Trade, company_name: str, insider_name: str
-    ) -> dict:
-        """Build Discord-formatted webhook payload."""
-        # Format trade value
-        trade_value = float(trade.total_value) if trade.total_value else 0
-        value_str = f"${trade_value:,.2f}"
-
-        # Color based on transaction type (green for buy, red for sell)
-        color = 0x10B981 if trade.transaction_type == "BUY" else 0xEF4444
-
-        # Build Discord embed
-        return {
-            "embeds": [
-                {
-                    "title": f"🔔 {alert.name}",
-                    "description": (
-                        f"**{insider_name}** {trade.transaction_type.lower()}s "
-                        f"**{value_str}** of **{trade.ticker}** ({company_name})"
-                    ),
-                    "color": color,
-                    "fields": [
-                        {
-                            "name": "Shares",
-                            "value": f"{trade.shares:,}",
-                            "inline": True,
-                        },
-                        {
-                            "name": "Price",
-                            "value": f"${float(trade.price_per_share):.2f}"
-                            if trade.price_per_share
-                            else "N/A",
-                            "inline": True,
-                        },
-                        {
-                            "name": "Date",
-                            "value": trade.transaction_date,
-                            "inline": True,
-                        },
-                        {
-                            "name": "Type",
-                            "value": trade.transaction_type,
-                            "inline": True,
-                        },
-                    ],
-                    "timestamp": datetime.utcnow().isoformat(),
-                    "footer": {"text": "TradeSignal Alerts"},
-                    "url": trade.sec_filing_url,
-                }
-            ]
-        }
-
-    def _build_generic_payload(
-        self, alert: Alert, trade: Trade, company_name: str, insider_name: str
-    ) -> dict:
-        """Build generic JSON payload for custom webhooks."""
-        trade_value = float(trade.total_value) if trade.total_value else 0
-
-        return {
-            "alert_name": alert.name,
-            "alert_type": alert.alert_type,
-            "timestamp": datetime.utcnow().isoformat(),
-            "trade": {
-                "id": trade.id,
-                "ticker": trade.ticker,
-                "company_name": company_name,
-                "insider_name": insider_name,
-                "transaction_type": trade.transaction_type,
-                "transaction_date": trade.transaction_date,
-                "shares": str(trade.shares),
-                "price_per_share": str(trade.price_per_share)
-                if trade.price_per_share
-                else None,
-                "total_value": trade_value,
-                "sec_filing_url": trade.sec_filing_url,
-                "ownership_type": trade.ownership_type,
-                "is_significant": trade.is_significant,
-            },
-        }
-
-    async def send_test_notification(
-        self, webhook_url: str, alert_name: str
-    ) -> tuple[bool, Optional[str]]:
-        """
-        Send a test notification to verify webhook configuration.
-
-        Args:
-            webhook_url: HTTPS webhook URL
-            alert_name: Name of the alert being tested
-
-        Returns:
-            Tuple of (success: bool, error_message: Optional[str])
-        """
-        try:
-            # Determine webhook type
-            is_slack = "slack.com" in webhook_url
-            is_discord = "discord.com" in webhook_url
-
-            # Build test payload
-            if is_slack:
-                payload = {
-                    "text": f"✅ Test notification for alert: {alert_name}",
-                    "blocks": [
-                        {
-                            "type": "section",
-                            "text": {
-                                "type": "mrkdwn",
-                                "text": f"✅ *Test Notification*\n\nYour alert `{alert_name}` is configured correctly!",
-                            },
-                        }
-                    ],
-                }
-            elif is_discord:
-                payload = {
-                    "embeds": [
-                        {
-                            "title": "✅ Test Notification",
-                            "description": f"Your alert **{alert_name}** is configured correctly!",
-                            "color": 0x10B981,
-                            "timestamp": datetime.utcnow().isoformat(),
-                        }
-                    ]
-                }
-            else:
-                payload = {
-                    "test": True,
-                    "alert_name": alert_name,
-                    "message": "Test notification - webhook configured successfully",
-                    "timestamp": datetime.utcnow().isoformat(),
-                }
-
-            # Send test webhook
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(
-                    webhook_url,
-                    json=payload,
-                    headers={"Content-Type": "application/json"},
-                )
-
-                if response.status_code in [200, 204]:
-                    logger.info(
-                        f"Test webhook sent successfully for alert '{alert_name}'"
-                    )
-                    return True, None
-                else:
-                    error_msg = f"Test webhook returned status {response.status_code}"
-                    logger.warning(error_msg)
-                    return False, error_msg
-
-        except Exception as e:
-            error_msg = f"Test webhook failed: {str(e)[:200]}"
-            logger.error(error_msg)
-            return False, error_msg
-
-    async def send_email_notification(
-        self,
-        alert: Alert,
-        trade: Trade,
-        company_name: str,
-        insider_name: str,
-    ) -> tuple[bool, Optional[str]]:
-        """
-        Send email notification using SendGrid.
-
-        Args:
-            alert: Alert that was triggered
-            trade: Trade that matched the alert
-            company_name: Company name (for display)
-            insider_name: Insider name (for display)
-
-        Returns:
-            Tuple of (success: bool, error_message: Optional[str])
-        """
-        if not settings.email_api_key or not settings.email_from or not alert.email:
-            return False, "Email configuration is missing"
-
-        subject = f"🔔 Trade Alert: {alert.name}"
-
-        trade_value = float(trade.total_value) if trade.total_value else 0
-        value_str = f"${trade_value:,.2f}"
-
-        # Emoji based on transaction type
-        emoji = "🟢" if trade.transaction_type == "BUY" else "🔴"
-
-        html_body = f"""
+        # Simplified for brevity, will use the full template from original _send_email_notification
+        return f"""
 <!DOCTYPE html>
 <html>
 <head>
@@ -441,68 +147,46 @@ class NotificationService:
 </html>
         """
 
-        try:
-            # SendGrid API v3 payload
-            payload = {
-                "personalizations": [{"to": [{"email": alert.email}]}],
-                "from": {
-                    "email": settings.email_from,
-                    "name": settings.email_from_name,
-                },
-                "subject": subject,
-                "content": [{"type": "text/html", "value": html_body}],
-            }
+    async def send_email_notification(
+        self,
+        alert: Alert,
+        trade: Trade,
+        company_name: str,
+        insider_name: str,
+    ) -> Dict[str, Any]:
+        """
+        Enqueue task to send email notification using SendGrid.
+        """
+        if not settings.email_api_key or not settings.email_from or not alert.email:
+            logger.warning(f"Email configuration missing or alert email not set for alert {alert.id}. Skipping email notification.")
+            return {"status": "skipped", "channel": "email", "error": "Email configuration missing"}
 
-            # Send via SendGrid API
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(
-                    "https://api.sendgrid.com/v3/mail/send",
-                    json=payload,
-                    headers={
-                        "Authorization": f"Bearer {settings.email_api_key}",
-                        "Content-Type": "application/json",
-                    },
-                )
-
-                if response.status_code == 202:  # SendGrid returns 202 for success
-                    logger.info(
-                        f"Email sent successfully for alert '{alert.name}' (trade_id={trade.id})"
-                    )
-                    return True, None
-                else:
-                    error_msg = (
-                        f"SendGrid returned status {response.status_code}: "
-                        f"{response.text[:200]}"
-                    )
-                    logger.error(error_msg)
-                    return False, error_msg
-
-        except Exception as e:
-            error_msg = f"Failed to send email: {str(e)[:200]}"
-            logger.error(error_msg)
-            return False, error_msg
+        subject = f"🔔 Trade Alert: {alert.name}"
+        html_body = await self._build_email_html_body(alert, trade, company_name, insider_name)
+        
+        trade_id = trade.id # Assuming trade.id exists
+        task = send_email_notification_task.delay(
+            email_to=alert.email,
+            subject=subject,
+            html_body=html_body,
+            alert_name=alert.name,
+            trade_id=trade_id,
+        )
+        logger.info(f"Email notification task enqueued with ID: {task.id}")
+        return {"status": "enqueued", "task_id": task.id}
 
     async def send_subscription_confirmation_email(
         self, email_to: str, tier: str, period_start: datetime, period_end: datetime
-    ) -> tuple[bool, Optional[str]]:
+    ) -> Dict[str, Any]:
         """
-        Send subscription confirmation email.
-
-        Args:
-            email_to: Email address to send to
-            tier: Subscription tier (basic/pro/enterprise)
-            period_start: Billing period start date
-            period_end: Billing period end date
-
-        Returns:
-            Tuple of (success: bool, error_message: Optional[str])
+        Enqueue task to send subscription confirmation email.
         """
         if not settings.email_api_key or not settings.email_from:
-            return False, "Email configuration is missing"
+            logger.warning("Email configuration is missing. Skipping subscription confirmation email.")
+            return {"status": "skipped", "channel": "email", "error": "Email configuration missing"}
 
         tier_names = {"basic": "Basic", "pro": "Pro", "enterprise": "Enterprise"}
         tier_name = tier_names.get(tier.lower(), tier.capitalize())
-
         subject = f"🎉 Welcome to TradeSignal {tier_name}!"
 
         html_body = f"""
@@ -573,62 +257,25 @@ class NotificationService:
 </body>
 </html>
         """
-
-        try:
-            # SendGrid API v3 payload
-            payload = {
-                "personalizations": [{"to": [{"email": email_to}]}],
-                "from": {
-                    "email": settings.email_from,
-                    "name": settings.email_from_name,
-                },
-                "subject": subject,
-                "content": [{"type": "text/html", "value": html_body}],
-            }
-
-            # Send via SendGrid API
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(
-                    "https://api.sendgrid.com/v3/mail/send",
-                    json=payload,
-                    headers={
-                        "Authorization": f"Bearer {settings.email_api_key}",
-                        "Content-Type": "application/json",
-                    },
-                )
-
-                if response.status_code == 202:  # SendGrid returns 202 for success
-                    logger.info(
-                        f"Subscription confirmation email sent successfully to {email_to} (tier: {tier})"
-                    )
-                    return True, None
-                else:
-                    error_msg = f"SendGrid returned status {response.status_code}: {response.text[:200]}"
-                    logger.error(error_msg)
-                    return False, error_msg
-
-        except Exception as e:
-            error_msg = (
-                f"Failed to send subscription confirmation email: {str(e)[:200]}"
-            )
-            logger.error(error_msg)
-            return False, error_msg
+        
+        task = send_subscription_confirmation_email_task.delay(
+            email_to=email_to,
+            tier=tier,
+            period_start_iso=period_start.isoformat(),
+            period_end_iso=period_end.isoformat(),
+        )
+        logger.info(f"Subscription confirmation email task enqueued with ID: {task.id}")
+        return {"status": "enqueued", "task_id": task.id}
 
     async def send_test_email_notification(
         self, email_to: str, alert_name: str
-    ) -> tuple[bool, Optional[str]]:
+    ) -> Dict[str, Any]:
         """
-        Send a test email notification to verify email configuration.
-
-        Args:
-            email_to: Email address to send the test email to
-            alert_name: Name of the alert being tested
-
-        Returns:
-            Tuple of (success: bool, error_message: Optional[str])
+        Enqueue task to send a test email notification.
         """
         if not settings.email_api_key or not settings.email_from:
-            return False, "Email configuration is missing"
+            logger.warning("Email configuration is missing. Skipping test email notification.")
+            return {"status": "skipped", "channel": "email", "error": "Email configuration missing"}
 
         subject = f"✅ Test Notification: {alert_name}"
 
@@ -680,194 +327,66 @@ class NotificationService:
 </body>
 </html>
         """
-
-        try:
-            # SendGrid API v3 payload
-            payload = {
-                "personalizations": [{"to": [{"email": email_to}]}],
-                "from": {
-                    "email": settings.email_from,
-                    "name": settings.email_from_name,
-                },
-                "subject": subject,
-                "content": [{"type": "text/html", "value": html_body}],
-            }
-
-            # Send via SendGrid API
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(
-                    "https://api.sendgrid.com/v3/mail/send",
-                    json=payload,
-                    headers={
-                        "Authorization": f"Bearer {settings.email_api_key}",
-                        "Content-Type": "application/json",
-                    },
-                )
-
-                if response.status_code == 202:
-                    logger.info(
-                        f"Test email sent successfully for alert '{alert_name}'"
-                    )
-                    return True, None
-                else:
-                    error_msg = f"SendGrid returned status {response.status_code}: {response.text[:200]}"
-                    logger.error(error_msg)
-                    return False, error_msg
-
-        except Exception as e:
-            error_msg = f"Failed to send test email: {str(e)[:200]}"
-            logger.error(error_msg)
-            return False, error_msg
+        
+        task = send_test_email_notification_task.delay(
+            email_to=email_to,
+            alert_name=alert_name,
+        )
+        logger.info(f"Test email notification task enqueued with ID: {task.id}")
+        return {"status": "enqueued", "task_id": task.id}
 
     async def send_push_notification(
         self,
-        subscription,
+        subscription: PushSubscription, # PushSubscription object
         alert: Alert,
         trade: Trade,
         company_name: str,
         insider_name: str,
-    ) -> tuple[bool, Optional[str]]:
+    ) -> Dict[str, Any]:
         """
-        Send browser push notification.
-
-        Args:
-            subscription: PushSubscription instance
-            alert: Alert that was triggered
-            trade: Trade that matched the alert
-            company_name: Company name (for display)
-            insider_name: Insider name (for display)
-
-        Returns:
-            Tuple of (success: bool, error_message: Optional[str])
+        Enqueue task to send browser push notification.
         """
-        try:
-            from pywebpush import webpush, WebPushException
-            import json
-        except ImportError:
-            return False, "pywebpush library not installed"
-
-        if not settings.vapid_private_key or not settings.vapid_public_key:
-            return False, "VAPID keys not configured"
-
-        # Build notification payload
-        trade_value = float(trade.total_value) if trade.total_value else 0
-        value_str = f"${trade_value:,.2f}"
-
-        title = f"🔔 {alert.name}"
-        body = (
-            f"{insider_name} {trade.transaction_type.lower()}s {value_str} "
-            f"of {trade.ticker}"
-        )
-
-        payload = {
-            "notification": {
-                "title": title,
-                "body": body,
-                "icon": "/logo192.png",
-                "badge": "/badge.png",
-                "data": {
-                    "url": f"/trades?ticker={trade.ticker}",
-                    "trade_id": trade.id,
-                    "alert_id": alert.id,
-                },
-            }
+        # PushSubscription object needs to be serialized
+        subscription_info = {
+            "endpoint": subscription.endpoint,
+            "keys": {
+                "p256dh": subscription.p256dh_key,
+                "auth": subscription.auth_key,
+            },
         }
-
-        try:
-            webpush(
-                subscription_info={
-                    "endpoint": subscription.endpoint,
-                    "keys": {
-                        "p256dh": subscription.p256dh_key,
-                        "auth": subscription.auth_key,
-                    },
-                },
-                data=json.dumps(payload),
-                vapid_private_key=settings.vapid_private_key,
-                vapid_claims={"sub": settings.vapid_subject},
-            )
-
-            logger.info(
-                f"Push notification sent for alert '{alert.name}' "
-                f"(subscription {subscription.id})"
-            )
-            return True, None
-
-        except WebPushException as e:
-            if hasattr(e, "response") and e.response.status_code == 410:
-                # Subscription expired (410 Gone)
-                logger.warning(f"Push subscription expired: {subscription.id}")
-                return False, "Subscription expired (410 Gone)"
-
-            error_msg = f"Push failed: {str(e)[:200]}"
-            logger.error(error_msg)
-            return False, error_msg
-
-        except Exception as e:
-            error_msg = f"Failed to send push: {str(e)[:200]}"
-            logger.error(error_msg)
-            return False, error_msg
+        trade_data = trade.to_dict() # Serialize trade object
+        alert_name = alert.name # Serialize alert name
+        alert_id = alert.id # Pass alert id
+        
+        task = send_push_notification_task.delay(
+            subscription_info=subscription_info,
+            alert_name=alert_name,
+            trade_data=trade_data,
+            company_name=company_name,
+            insider_name=insider_name,
+            alert_id=alert_id
+        )
+        logger.info(f"Push notification task enqueued with ID: {task.id}")
+        return {"status": "enqueued", "task_id": task.id}
 
     async def send_test_push_notification(
-        self, subscription, alert_name: str
-    ) -> tuple[bool, Optional[str]]:
+        self, subscription: PushSubscription, alert_name: str
+    ) -> Dict[str, Any]:
         """
-        Send a test push notification to verify push configuration.
-
-        Args:
-            subscription: PushSubscription instance
-            alert_name: Name of the alert being tested
-
-        Returns:
-            Tuple of (success: bool, error_message: Optional[str])
+        Enqueue task to send a test push notification.
         """
-        try:
-            from pywebpush import webpush, WebPushException
-            import json
-        except ImportError:
-            return False, "pywebpush library not installed"
-
-        if not settings.vapid_private_key or not settings.vapid_public_key:
-            return False, "VAPID keys not configured"
-
-        # Build test notification payload
-        payload = {
-            "notification": {
-                "title": "✅ Test Notification",
-                "body": f"Push notifications are working for {alert_name}!",
-                "icon": "/logo192.png",
-                "badge": "/badge.png",
-                "data": {"url": "/alerts", "test": True},
-            }
+        subscription_info = {
+            "endpoint": subscription.endpoint,
+            "keys": {
+                "p256dh": subscription.p256dh_key,
+                "auth": subscription.auth_key,
+            },
         }
+        
+        task = send_test_push_notification_task.delay(
+            subscription_info=subscription_info,
+            alert_name=alert_name,
+        )
+        logger.info(f"Test push notification task enqueued with ID: {task.id}")
+        return {"status": "enqueued", "task_id": task.id}
 
-        try:
-            webpush(
-                subscription_info={
-                    "endpoint": subscription.endpoint,
-                    "keys": {
-                        "p256dh": subscription.p256dh_key,
-                        "auth": subscription.auth_key,
-                    },
-                },
-                data=json.dumps(payload),
-                vapid_private_key=settings.vapid_private_key,
-                vapid_claims={"sub": settings.vapid_subject},
-            )
-
-            logger.info(f"Test push notification sent for alert '{alert_name}'")
-            return True, None
-
-        except WebPushException as e:
-            if hasattr(e, "response") and e.response.status_code == 410:
-                logger.warning(f"Push subscription expired: {subscription.id}")
-                return False, "Subscription expired (410 Gone)"
-
-            error_msg = f"Push test failed: {str(e)[:200]}"
-            logger.error(error_msg)
-            return False, error_msg
-
-        except Exception as e:
-            error_msg = f"Failed to send test push: {str(e)[:200]}"
-            logger.error(error_msg)
-            return False, error_msg

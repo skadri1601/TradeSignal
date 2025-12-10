@@ -263,24 +263,25 @@ class SchedulerService:
                 result_history = await db.get(ScrapeHistory, history_id)
                 if result_history:
                     result_history.completed_at = end_time
-                    result_history.status = "success"
-                    result_history.filings_found = result.get("filings_processed", 0)
-                    result_history.trades_created = result.get("trades_created", 0)
+                    result_history.status = "queued" # Changed from success to queued
+                    # We don't have counts yet because it's async
+                    result_history.filings_found = 0 
+                    result_history.trades_created = 0
                     result_history.duration_seconds = duration
                     await db.commit()
 
             logger.info(
-                f"Scraped {ticker}: {result.get('filings_processed', 0)} filings, "
-                f"{result.get('trades_created', 0)} trades in {duration:.2f}s"
+                f"Scrape enqueued for {ticker}: Task ID {result.get('task_id')}"
             )
 
             return {
-                "status": "success",
+                "status": "queued",
                 "ticker": ticker,
-                "filings_found": result.get("filings_processed", 0),
-                "trades_created": result.get("trades_created", 0),
+                "filings_found": 0,
+                "trades_created": 0,
                 "duration_seconds": duration,
                 "error_message": None,
+                "task_id": result.get("task_id")
             }
 
         except Exception as e:

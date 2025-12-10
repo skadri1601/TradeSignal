@@ -1,17 +1,18 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { aiApi, CompanyAnalysis as CompanyAnalysisType } from '../../api/ai';
-import LoadingSpinner from '../common/LoadingSpinner';
+import { patternsApi, PatternAnalysis } from '../../api/patterns';
+import AISkeleton from '../common/AISkeleton';
 import CompanyAutocomplete from '../common/CompanyAutocomplete';
+import { BarChart2, TrendingUp, AlertCircle, TrendingDown, MinusCircle } from 'lucide-react';
 
 export default function CompanyAnalysis() {
   const [ticker, setTicker] = useState('');
   const [daysBack, setDaysBack] = useState(30);
-  const [analysis, setAnalysis] = useState<CompanyAnalysisType | null>(null);
+  const [analysis, setAnalysis] = useState<PatternAnalysis | null>(null);
 
   const analyzeMutation = useMutation({
     mutationFn: ({ ticker, daysBack }: { ticker: string; daysBack: number }) =>
-      aiApi.analyzeCompany(ticker, daysBack),
+      patternsApi.analyzeCompany(ticker, daysBack),
     onSuccess: (data) => {
       setAnalysis(data);
     },
@@ -23,31 +24,32 @@ export default function CompanyAnalysis() {
     analyzeMutation.mutate({ ticker: ticker.toUpperCase(), daysBack });
   };
 
-  const getSentimentColor = (sentiment: string) => {
-    const s = sentiment.toLowerCase();
-    if (s.includes('bullish')) return 'text-green-600';
-    if (s.includes('bearish')) return 'text-red-600';
-    return 'text-gray-600';
+  const getTrendColor = (trend: string) => {
+    if (trend === 'BULLISH') return 'text-green-400';
+    if (trend === 'BEARISH') return 'text-red-400';
+    return 'text-gray-400';
   };
 
-  const getSentimentBg = (sentiment: string) => {
-    const s = sentiment.toLowerCase();
-    if (s.includes('bullish')) return 'bg-green-100';
-    if (s.includes('bearish')) return 'bg-red-100';
-    return 'bg-gray-100';
+  const getTrendIcon = (trend: string) => {
+    if (trend === 'BULLISH') return <TrendingUp className="w-5 h-5 text-green-400" />;
+    if (trend === 'BEARISH') return <TrendingDown className="w-5 h-5 text-red-400" />;
+    return <MinusCircle className="w-5 h-5 text-gray-400" />;
   };
 
   return (
     <div className="space-y-6">
       {/* Search Form */}
-      <div className="card">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Analyze Company Insider Trading
-        </h3>
+      <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10 p-6">
+        <div className="flex items-center space-x-2 mb-4">
+          <BarChart2 className="w-5 h-5 text-purple-400" />
+          <h3 className="text-lg font-bold text-white">
+            Analyze Company Insider Trading
+          </h3>
+        </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-2">
-              <label htmlFor="ticker" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="ticker" className="block text-sm font-medium text-gray-300 mb-2">
                 Ticker Symbol
               </label>
               <CompanyAutocomplete
@@ -58,14 +60,14 @@ export default function CompanyAnalysis() {
               />
             </div>
             <div>
-              <label htmlFor="daysBack" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="daysBack" className="block text-sm font-medium text-gray-300 mb-2">
                 Days to Analyze
               </label>
               <select
                 id="daysBack"
                 value={daysBack}
                 onChange={(e) => setDaysBack(Number(e.target.value))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
                 disabled={analyzeMutation.isPending}
               >
                 <option value={7}>Last 7 days</option>
@@ -81,7 +83,7 @@ export default function CompanyAnalysis() {
           <button
             type="submit"
             disabled={!ticker.trim() || analyzeMutation.isPending}
-            className="btn btn-primary w-full md:w-auto"
+            className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-500 transition-colors disabled:opacity-50 font-semibold shadow-lg shadow-purple-500/20 w-full md:w-auto"
           >
             {analyzeMutation.isPending ? 'Analyzing...' : 'Analyze'}
           </button>
@@ -90,37 +92,32 @@ export default function CompanyAnalysis() {
 
       {/* Loading State */}
       {analyzeMutation.isPending && (
-        <div className="card flex items-center justify-center py-12">
-          <div className="text-center">
-            <LoadingSpinner />
-            <p className="text-gray-600 mt-4">
-              Analyzing {ticker} insider trading patterns...
-            </p>
+        <div className="space-y-6">
+          <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
+            <AISkeleton message={`AI is analyzing ${ticker} insider trading patterns...`} />
+          </div>
+          <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-white/10 p-6 space-y-4">
+             <div className="h-8 bg-white/10 rounded w-1/3 animate-pulse"></div>
+             <div className="h-4 bg-white/10 rounded w-1/2 animate-pulse"></div>
+             <div className="grid grid-cols-2 gap-4 pt-4">
+                <div className="h-24 bg-white/5 rounded-xl animate-pulse"></div>
+                <div className="h-24 bg-white/5 rounded-xl animate-pulse"></div>
+             </div>
           </div>
         </div>
       )}
 
       {/* Error State */}
       {analyzeMutation.isError && (
-        <div className="card bg-red-50 border border-red-200">
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">Analysis Failed</h3>
-              <p className="text-sm text-red-700 mt-1">
-                {analyzeMutation.error instanceof Error
-                  ? analyzeMutation.error.message
-                  : 'Failed to analyze company. Please try again.'}
-              </p>
-            </div>
+        <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-6 flex items-start">
+          <AlertCircle className="h-5 w-5 text-red-400 mt-0.5 mr-3 flex-shrink-0" />
+          <div>
+            <h3 className="text-sm font-medium text-red-300">Analysis Failed</h3>
+            <p className="text-sm text-red-400/80 mt-1">
+              {analyzeMutation.error instanceof Error
+                ? analyzeMutation.error.message
+                : 'Failed to analyze company. Please try again.'}
+            </p>
           </div>
         </div>
       )}
@@ -129,65 +126,97 @@ export default function CompanyAnalysis() {
       {analysis && !analyzeMutation.isPending && (
         <div className="space-y-6">
           {/* Header Card */}
-          <div className="card">
-            <div className="flex items-start justify-between">
+          <div className="bg-gradient-to-r from-purple-900/40 to-blue-900/40 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">
+                <h2 className="text-2xl font-bold text-white">
                   {analysis.ticker} - {analysis.company_name}
                 </h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  Analysis of {analysis.total_trades} trades over {analysis.days_analyzed} days
+                <p className="text-sm text-gray-300 mt-1">
+                  Analysis over {analysis.days_analyzed} days • {analysis.total_trades} trades analyzed
                 </p>
               </div>
-              <div className="text-right">
-                <span
-                  className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getSentimentBg(
-                    analysis.sentiment
-                  )} ${getSentimentColor(analysis.sentiment)}`}
-                >
-                  {analysis.sentiment}
-                </span>
+              <div className="flex items-center gap-3 bg-black/20 p-3 rounded-xl border border-white/5">
+                <div className="text-right">
+                  <p className="text-xs text-gray-400 uppercase font-bold">Trend</p>
+                  <p className={`text-lg font-bold ${getTrendColor(analysis.trend)}`}>{analysis.trend}</p>
+                </div>
+                {getTrendIcon(analysis.trend)}
               </div>
             </div>
           </div>
 
-          {/* AI Analysis */}
-          <div className="card">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">AI Analysis</h3>
-            <div className="prose max-w-none">
-              <p className="text-gray-700 whitespace-pre-wrap">{analysis.analysis}</p>
+          {/* Metrics Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+             <div className="bg-gray-900/50 backdrop-blur-sm p-4 rounded-xl border border-white/10">
+               <p className="text-xs text-gray-500 uppercase font-bold mb-1">Confidence</p>
+               <p className="text-xl font-mono text-white">{(analysis.confidence * 100).toFixed(0)}%</p>
+               <div className="w-full bg-gray-700 h-1.5 rounded-full mt-2 overflow-hidden">
+                 <div className="h-full bg-purple-500" style={{ width: `${analysis.confidence * 100}%` }} />
+               </div>
+             </div>
+             <div className="bg-gray-900/50 backdrop-blur-sm p-4 rounded-xl border border-white/10">
+               <p className="text-xs text-gray-500 uppercase font-bold mb-1">Buy Ratio</p>
+               <p className="text-xl font-mono text-green-400">{(analysis.buy_ratio * 100).toFixed(1)}%</p>
+             </div>
+             <div className="bg-gray-900/50 backdrop-blur-sm p-4 rounded-xl border border-white/10">
+               <p className="text-xs text-gray-500 uppercase font-bold mb-1">Sell Ratio</p>
+               <p className="text-xl font-mono text-red-400">{(analysis.sell_ratio * 100).toFixed(1)}%</p>
+             </div>
+             <div className="bg-gray-900/50 backdrop-blur-sm p-4 rounded-xl border border-white/10">
+               <p className="text-xs text-gray-500 uppercase font-bold mb-1">Insiders</p>
+               <p className="text-xl font-mono text-white">{analysis.active_insiders}</p>
+             </div>
+          </div>
+
+          {/* Main Pattern & Prediction */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Pattern Card */}
+            <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-white/10 p-6 md:col-span-1">
+              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Detected Pattern</h3>
+              <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+                <div className="flex items-center gap-2 mb-2">
+                   <BarChart2 className="w-5 h-5 text-purple-400" />
+                   <h4 className="font-bold text-white text-lg">{analysis.pattern.replace('_', ' ')}</h4>
+                </div>
+                <div className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border ${
+                  analysis.risk_level === 'HIGH' ? 'bg-red-500/20 text-red-300 border-red-500/30' :
+                  analysis.risk_level === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' :
+                  'bg-green-500/20 text-green-300 border-green-500/30'
+                }`}>
+                  {analysis.risk_level} RISK
+                </div>
+              </div>
+              <div className="mt-4 bg-white/5 rounded-xl p-4 border border-white/5">
+                 <p className="text-xs text-gray-500 uppercase font-bold mb-1">Recommendation</p>
+                 <p className={`text-xl font-bold ${
+                   analysis.recommendation.includes('BUY') ? 'text-green-400' : 
+                   analysis.recommendation.includes('SELL') ? 'text-red-400' : 'text-gray-300'
+                 }`}>
+                   {analysis.recommendation.replace('_', ' ')}
+                 </p>
+              </div>
+            </div>
+
+            {/* AI Prediction */}
+            <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-white/10 p-6 md:col-span-2 relative overflow-hidden">
+               <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600/10 blur-[60px] rounded-full pointer-events-none -z-10" />
+               <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-4 flex items-center gap-2">
+                 <span className="w-2 h-2 bg-purple-400 rounded-full animate-pulse" />
+                 AI Market Prediction
+               </h3>
+               <div className="bg-black/20 rounded-xl p-6 border border-white/5">
+                 <p className="text-lg text-gray-200 leading-relaxed font-light">
+                   {analysis.prediction || "No prediction generated."}
+                 </p>
+               </div>
             </div>
           </div>
 
-          {/* Key Insights */}
-          {analysis.insights && analysis.insights.length > 0 && (
-            <div className="card">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Key Insights</h3>
-              <ul className="space-y-3">
-                {analysis.insights.map((insight, index) => (
-                  <li key={index} className="flex items-start">
-                    <svg
-                      className="h-5 w-5 text-blue-500 mt-0.5 mr-3 flex-shrink-0"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span className="text-gray-700">{insight}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
           {/* Info Footer */}
-          <div className="text-center">
-            <p className="text-xs text-gray-500">
-              Analysis based on {analysis.total_trades} insider trades over the last {analysis.days_analyzed} days
+          <div className="text-center pb-6">
+            <p className="text-xs text-gray-600">
+              Pattern analysis based on SEC Form 4 data from the last {analysis.days_analyzed} days
             </p>
           </div>
         </div>
@@ -195,26 +224,12 @@ export default function CompanyAnalysis() {
 
       {/* Empty State */}
       {!analysis && !analyzeMutation.isPending && !analyzeMutation.isError && (
-        <div className="card bg-gray-50">
-          <div className="text-center py-12">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-              />
-            </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No Analysis Yet</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Enter a ticker symbol above to get AI-powered analysis of insider trading patterns.
-            </p>
-          </div>
+        <div className="bg-gray-900/30 border border-white/10 rounded-2xl p-12 text-center">
+          <BarChart2 className="mx-auto h-12 w-12 text-gray-600 mb-4" />
+          <h3 className="text-lg font-medium text-white">No Analysis Yet</h3>
+          <p className="mt-2 text-sm text-gray-400">
+            Enter a ticker symbol above to generate a real-time AI analysis.
+          </p>
         </div>
       )}
     </div>

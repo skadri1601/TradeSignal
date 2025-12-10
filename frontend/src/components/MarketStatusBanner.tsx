@@ -45,8 +45,8 @@ const MarketStatusBanner = () => {
     <div
       className={`rounded-lg p-4 mb-6 border ${
         isOpen
-          ? 'bg-green-50 border-green-200'
-          : 'bg-gray-50 border-gray-200'
+          ? 'bg-green-900/20 border-green-500/30'
+          : 'bg-gray-900/50 border-white/10'
       }`}
     >
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -62,39 +62,39 @@ const MarketStatusBanner = () => {
           />
 
           <div>
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+            <h3 className="font-semibold text-white flex items-center gap-2">
               {isOpen ? (
                 <>
-                  <span className="text-green-600">🟢</span> Market is OPEN
+                  <span className="text-green-400">🟢</span> Market is OPEN
                 </>
               ) : (
                 <>
-                  <span className="text-gray-600">⚪</span> Market is CLOSED
+                  <span className="text-gray-400">⚪</span> Market is CLOSED
                 </>
               )}
               {marketStatus.fallback_mode && (
-                <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">
+                <span className="text-xs bg-yellow-900/20 text-yellow-300 px-2 py-0.5 rounded">
                   Fallback Mode
                 </span>
               )}
             </h3>
-            <p className="text-sm text-gray-600">{marketStatus.reason}</p>
+            <p className="text-sm text-gray-400">{marketStatus.reason}</p>
           </div>
         </div>
 
         {/* Timing Information */}
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-gray-400">
           {isOpen ? (
             <div className="text-right">
-              <div className="font-medium">Closes at {marketStatus.closes_at}</div>
+              <div className="font-medium text-white">Closes at {marketStatus.closes_at}</div>
               <div className="text-xs text-gray-500">
                 ({marketStatus.time_until_close} remaining)
               </div>
             </div>
           ) : (
             <div className="text-right">
-              <div className="font-medium">Next open:</div>
-              <div className="text-xs">{marketStatus.next_open}</div>
+              <div className="font-medium text-white">Next open:</div>
+              <div className="text-xs text-gray-500">{marketStatus.next_open}</div>
             </div>
           )}
         </div>
@@ -102,10 +102,10 @@ const MarketStatusBanner = () => {
 
       {/* Warning when market is closed */}
       {!isOpen && (
-        <div className="mt-3 text-xs text-gray-700 bg-yellow-50 border border-yellow-200 rounded p-2 flex items-start gap-2">
+        <div className="mt-3 text-xs text-yellow-300 bg-yellow-900/20 border border-yellow-500/30 rounded p-2 flex items-start gap-2">
           <span className="flex-shrink-0">⚠️</span>
           <div>
-            <strong>Market is closed.</strong> Prices shown are from last market close.
+            <strong className="text-white">Market is closed.</strong> Prices shown are from last market close.
             Data is not updating in real-time.
           </div>
         </div>

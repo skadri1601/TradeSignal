@@ -1,5 +1,5 @@
 /**
- * Modern Trading Dashboard - Redesigned
+ * Modern Trading Dashboard - Redesigned - Dark Mode
  * Inspired by modern trading apps
  */
 
@@ -23,6 +23,8 @@ export default function DashboardNew() {
   const { data: tradeStats, isLoading: loadingTradeStats } = useQuery({
     queryKey: ['tradeStats'],
     queryFn: () => tradesApi.getTradeStats(),
+    staleTime: 5 * 60 * 1000, // 5 minutes - stats won't refetch on hard refresh for 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes - keep in cache for 10 minutes (React Query v5+)
   });
 
   // Get top 5 most active tickers from recent trades for watchlist
@@ -70,7 +72,7 @@ export default function DashboardNew() {
       label: 'Total Trades',
       value: tradeStats?.total_trades,
       icon: ArrowRight,
-      accent: 'text-blue-500',
+      accent: 'text-blue-400',
       formatter: formatNumber,
       subtext: tradeStats
         ? `${formatNumber(tradeStats.total_buys)} buys / ${formatNumber(tradeStats.total_sells)} sells`
@@ -81,7 +83,7 @@ export default function DashboardNew() {
       label: 'Buy Volume',
       value: tradeStats?.total_buy_value,
       icon: TrendingUp,
-      accent: 'text-emerald-500',
+      accent: 'text-emerald-400',
       formatter: formatCurrency,
       subtext: tradeStats ? `${formatNumber(tradeStats.total_buys)} buy orders` : undefined,
     },
@@ -90,7 +92,7 @@ export default function DashboardNew() {
       label: 'Sell Volume',
       value: tradeStats?.total_sell_value,
       icon: TrendingDown,
-      accent: 'text-rose-500',
+      accent: 'text-rose-400',
       formatter: formatCurrency,
       subtext: tradeStats ? `${formatNumber(tradeStats.total_sells)} sell orders` : undefined,
     },
@@ -99,7 +101,7 @@ export default function DashboardNew() {
       label: 'Avg Trade Size',
       value: tradeStats?.average_trade_size,
       icon: Clock,
-      accent: 'text-amber-500',
+      accent: 'text-amber-400',
       formatter: formatCurrency,
       subtext: tradeStats?.most_active_company ? `Top: ${tradeStats.most_active_company}` : undefined,
     },
@@ -129,7 +131,7 @@ export default function DashboardNew() {
     <div className="space-y-6">
       {/* Overview Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Overview</h1>
+        <h1 className="text-3xl font-bold text-white">Overview</h1>
       </div>
 
       {/* Trade Stats */}
@@ -137,12 +139,12 @@ export default function DashboardNew() {
         {metricCards.map((card) => {
           const Icon = card.icon;
           return (
-            <div key={card.key} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+            <div key={card.key} className="bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-white/10 p-5 shadow-lg">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-500">{card.label}</p>
+                <p className="text-sm text-gray-400">{card.label}</p>
                 <Icon className={`w-4 h-4 ${card.accent}`} />
               </div>
-              <p className="text-2xl font-semibold text-gray-900 mt-2">
+              <p className="text-2xl font-semibold text-white mt-2">
                 {loadingTradeStats ? '...' : card.formatter(card.value)}
               </p>
               {card.subtext && (
@@ -154,16 +156,16 @@ export default function DashboardNew() {
       </div>
 
       {/* Main Grid */}
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - My Trades & Watchlist */}
-        <div className="col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-6">
           {/* Recent Insider Trades */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10 p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Recent Insider Trades</h2>
+              <h2 className="text-xl font-bold text-white">Recent Insider Trades</h2>
               <button
                 onClick={() => navigate('/trades')}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center"
+                className="text-sm text-blue-400 hover:text-blue-300 font-medium flex items-center transition-colors"
               >
                 View all <ArrowRight className="w-4 h-4 ml-1" />
               </button>
@@ -177,7 +179,7 @@ export default function DashboardNew() {
                   <div
                     key={trade.id}
                     onClick={() => navigate(`/companies/${trade.company?.ticker}`)}
-                    className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-xl transition-colors cursor-pointer"
+                    className="flex items-center justify-between p-4 hover:bg-white/5 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-white/5"
                   >
                     <div className="flex items-center space-x-4">
                       <CompanyLogo
@@ -186,25 +188,25 @@ export default function DashboardNew() {
                         size="md"
                       />
                       <div>
-                        <p className="font-semibold text-gray-900">{trade.company?.ticker || 'Unknown'}</p>
-                        <p className="text-sm text-gray-500">{trade.insider?.name?.split(' ')[0] || 'Insider'}</p>
+                        <p className="font-semibold text-white">{trade.company?.ticker || 'Unknown'}</p>
+                        <p className="text-sm text-gray-400">{trade.insider?.name?.split(' ')[0] || 'Insider'}</p>
                       </div>
                     </div>
-                    <div className="text-center">
+                    <div className="text-center hidden sm:block">
                       <MiniChart
-                        color={trade.transaction_type === 'BUY' ? 'text-green-500' : 'text-red-500'}
+                        color={trade.transaction_type === 'BUY' ? 'text-green-400' : 'text-red-400'}
                         trending={trade.transaction_type === 'BUY' ? 'up' : 'down'}
                       />
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-gray-900">${trade.total_value?.toLocaleString() || '0'}</p>
-                      <p className={`text-sm font-medium ${trade.transaction_type === 'BUY' ? 'text-green-600' : 'text-red-600'}`}>
+                      <p className="font-semibold text-white">${trade.total_value?.toLocaleString() || '0'}</p>
+                      <p className={`text-sm font-medium ${trade.transaction_type === 'BUY' ? 'text-green-400' : 'text-red-400'}`}>
                         {trade.transaction_type === 'BUY' ? '↑' : '↓'}{parseFloat(trade.shares || '0').toLocaleString()} shares
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right hidden sm:block">
                       <p className="text-xs text-gray-500">{new Date(trade.filing_date).toLocaleDateString()}</p>
-                      <p className={`text-xs font-medium ${trade.transaction_type === 'BUY' ? 'text-green-600' : 'text-red-600'}`}>
+                      <p className={`text-xs font-medium ${trade.transaction_type === 'BUY' ? 'text-green-400' : 'text-red-400'}`}>
                         {trade.transaction_type}
                       </p>
                     </div>
@@ -217,24 +219,24 @@ export default function DashboardNew() {
           </div>
 
           {/* Most Active Stocks (Top Insider Trading Activity) */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10 p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Most Active Stocks</h2>
+              <h2 className="text-xl font-bold text-white">Most Active Stocks</h2>
               <button
                 onClick={() => navigate('/market-overview')}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center"
+                className="text-sm text-blue-400 hover:text-blue-300 font-medium flex items-center transition-colors"
               >
                 View all <ArrowRight className="w-4 h-4 ml-1" />
               </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {topMoversQuotes && topMoversQuotes.length > 0 ? (
                 topMoversQuotes.map((stock, idx) => (
                   <div
                     key={idx}
                     onClick={() => navigate(`/companies/${stock.ticker}`)}
-                    className="bg-gradient-to-br from-gray-50 to-white rounded-xl p-4 border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
+                    className="bg-white/5 hover:bg-white/10 rounded-xl p-4 border border-white/10 cursor-pointer transition-colors"
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center space-x-2">
@@ -243,20 +245,20 @@ export default function DashboardNew() {
                           companyName={stock.company_name}
                           size="sm"
                         />
-                        <div>
-                          <p className="font-bold text-gray-900">{stock.ticker}</p>
-                          <p className="text-xs text-gray-500">{stock.company_name || 'Company'}</p>
+                        <div className="min-w-0">
+                          <p className="font-bold text-white truncate">{stock.ticker}</p>
+                          <p className="text-xs text-gray-400 truncate">{stock.company_name || 'Company'}</p>
                         </div>
                       </div>
                       <MiniChart
-                        color={stock.price_change_percent > 0 ? 'text-green-500' : 'text-red-500'}
+                        color={stock.price_change_percent > 0 ? 'text-green-400' : 'text-red-400'}
                         trending={stock.price_change_percent > 0 ? 'up' : 'down'}
                       />
                     </div>
                     <div className="flex items-end justify-between">
                       <div>
-                        <p className="text-lg font-semibold text-gray-900">${stock.current_price.toFixed(2)}</p>
-                        <p className={`text-xs font-medium ${stock.price_change_percent > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <p className="text-lg font-semibold text-white">${stock.current_price.toFixed(2)}</p>
+                        <p className={`text-xs font-medium ${stock.price_change_percent > 0 ? 'text-green-400' : 'text-red-400'}`}>
                           {stock.price_change_percent > 0 ? '↑' : '↓'}{Math.abs(stock.price_change_percent).toFixed(2)}%
                         </p>
                       </div>
@@ -273,12 +275,12 @@ export default function DashboardNew() {
           </div>
 
           {/* Latest Insider Activity */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10 p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Latest Insider Activity</h2>
+              <h2 className="text-xl font-bold text-white">Latest Insider Activity</h2>
               <button
                 onClick={() => navigate('/trades')}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center"
+                className="text-sm text-blue-400 hover:text-blue-300 font-medium flex items-center transition-colors"
               >
                 View all <ArrowRight className="w-4 h-4 ml-1" />
               </button>
@@ -290,7 +292,7 @@ export default function DashboardNew() {
                   <div
                     key={idx}
                     onClick={() => navigate(`/companies/${trade.company?.ticker}`)}
-                    className="flex items-start space-x-4 p-4 hover:bg-gray-50 rounded-xl transition-colors cursor-pointer"
+                    className="flex items-start space-x-4 p-4 hover:bg-white/5 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-white/5"
                   >
                     <CompanyLogo
                       ticker={trade.company?.ticker || ''}
@@ -298,16 +300,16 @@ export default function DashboardNew() {
                       size="xl"
                     />
                     <div className="flex-1">
-                      <h3 className="font-medium text-gray-900 mb-1">
+                      <h3 className="font-medium text-white mb-1">
                         {trade.insider?.name || 'Insider'} {trade.transaction_type === 'BUY' ? 'bought' : 'sold'} {trade.company?.ticker || 'stock'}
                       </h3>
-                      <div className="flex items-center space-x-4 text-xs text-gray-500">
-                        <span className="font-semibold text-gray-700">{trade.company?.ticker || 'N/A'}</span>
-                        <span className={trade.transaction_type === 'BUY' ? 'text-green-600' : 'text-red-600'}>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
+                        <span className="font-semibold text-gray-300">{trade.company?.ticker || 'N/A'}</span>
+                        <span className={trade.transaction_type === 'BUY' ? 'text-green-400' : 'text-red-400'}>
                           {trade.transaction_type === 'BUY' ? '↑' : '↓'} {parseFloat(trade.shares || '0').toLocaleString()} shares
                         </span>
                         <span>${trade.total_value?.toLocaleString() || '0'}</span>
-                        <span className="flex items-center">
+                        <span className="flex items-center text-gray-500">
                           <Clock className="w-3 h-3 mr-1" />
                           {new Date(trade.filing_date).toLocaleDateString()}
                         </span>
@@ -324,12 +326,12 @@ export default function DashboardNew() {
 
         {/* Right Column - Active Stocks Watchlist */}
         <div>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sticky top-8">
+          <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10 p-6 sticky top-8">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Active Stocks</h2>
+              <h2 className="text-xl font-bold text-white">Active Stocks</h2>
               <button
                 onClick={() => navigate('/market-overview')}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center"
+                className="text-sm text-blue-400 hover:text-blue-300 font-medium flex items-center transition-colors"
               >
                 View all <ArrowRight className="w-4 h-4 ml-1" />
               </button>
@@ -343,7 +345,7 @@ export default function DashboardNew() {
                   <div
                     key={idx}
                     onClick={() => navigate(`/companies/${stock.ticker}`)}
-                    className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors cursor-pointer"
+                    className="flex items-center justify-between p-3 hover:bg-white/5 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-white/5"
                   >
                     <div className="flex items-center space-x-3">
                       <CompanyLogo
@@ -351,20 +353,20 @@ export default function DashboardNew() {
                         companyName={stock.company_name}
                         size="md"
                       />
-                      <div>
-                        <p className="font-semibold text-gray-900 text-sm">{stock.ticker}</p>
-                        <p className="text-xs text-gray-500">{stock.company_name || 'Company'}</p>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-white text-sm truncate">{stock.ticker}</p>
+                        <p className="text-xs text-gray-400 truncate">{stock.company_name || 'Company'}</p>
                       </div>
                     </div>
-                    <div className="text-center">
+                    <div className="text-center hidden xl:block">
                       <MiniChart
-                        color={stock.price_change_percent > 0 ? 'text-green-500' : 'text-red-500'}
+                        color={stock.price_change_percent > 0 ? 'text-green-400' : 'text-red-400'}
                         trending={stock.price_change_percent > 0 ? 'up' : 'down'}
                       />
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-gray-900 text-sm">${stock.current_price.toFixed(2)}</p>
-                      <p className={`text-xs font-medium ${stock.price_change_percent > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <p className="font-semibold text-white text-sm">${stock.current_price.toFixed(2)}</p>
+                      <p className={`text-xs font-medium ${stock.price_change_percent > 0 ? 'text-green-400' : 'text-red-400'}`}>
                         {stock.price_change_percent > 0 ? '↑' : '↓'}{Math.abs(stock.price_change_percent).toFixed(2)}%
                       </p>
                     </div>

@@ -391,6 +391,12 @@ async def login(
             f"Unexpected error during login for username/email: {form_data.username}",
             exc_info=True,
         )
+        # Log headers for debugging (safely)
+        try:
+            logger.debug(f"Request headers: {dict(request.headers)}")
+        except Exception:
+            pass
+            
         # Always return a proper HTTP response, never an empty response
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

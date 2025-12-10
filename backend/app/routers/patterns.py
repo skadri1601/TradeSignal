@@ -1,19 +1,19 @@
 """
 Pattern Analysis API endpoints.
 
-Provides AI-powered pattern detection and stock predictions.
+Provides AI-powered pattern detection and stock predictions via cached results.
 """
 
 import logging
+import json
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from app.database import get_db
-from app.services.pattern_analysis_service import PatternAnalysisService
 from app.models.user import User
 from app.core.security import get_current_active_user
+from app.core.redis_cache import get_cache
+# from app.tasks.analysis_tasks import analyze_company_patterns_task, precompute_top_patterns_task # Moved inside functions
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,7 @@ router = APIRouter(prefix="/patterns", tags=["Pattern Analysis"])
 
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address)
+redis = get_cache()
 
 
 @router.get("/analyze/{ticker}")
@@ -30,49 +31,36 @@ async def analyze_company_patterns(
     ticker: str,
     days_back: int = Query(90, ge=7, le=365, description="Days to analyze"),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
 ):
     """
     Analyze trading patterns for a specific company.
-
-    Detects:
-    - Buying momentum
-    - Selling pressure
-    - Insider clusters
-    - Pattern reversals
-
-    Returns predictions and recommendations.
+    
+    Checks cache first. If not found, triggers a background analysis task.
     """
+    from app.tasks.analysis_tasks import analyze_company_patterns_task # Import here
+
     try:
-        service = PatternAnalysisService(db)
-        result = await service.analyze_company_patterns(ticker, days_back)
+        cache_key = f"patterns:{ticker}:{days_back}"
+        
+        if redis.enabled():
+            cached_result = redis.get(cache_key)
+            if cached_result:
+                # Redis returns parsed JSON if it was stored as such by our wrapper, 
+                # or we might need to handle it. get_cache().get() typically handles JSON loads.
+                return cached_result
 
-        if "error" in result:
-            # Check if it's a database connection error
-            if (
-                "connection" in result["error"].lower()
-                or "database" in result["error"].lower()
-            ):
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail="Database connection error. Please try again later.",
-                )
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail=result["error"]
-            )
+        # If not in cache, trigger background task
+        analyze_company_patterns_task.delay(ticker, days_back)
+        
+        # Return 202 Accepted to indicate processing
+        return {
+            "status": "processing",
+            "message": f"Analysis for {ticker} has been queued. Please check back shortly.",
+            "ticker": ticker
+        }
 
-        return result
-    except HTTPException:
-        raise
     except Exception as e:
-        logger.error(f"Error analyzing patterns for {ticker}: {e}", exc_info=True)
-        # Check if it's a database-related error
-        error_str = str(e).lower()
-        if "connection" in error_str or "database" in error_str or "pool" in error_str:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Database connection error. Please try again later.",
-            )
+        logger.error(f"Error serving pattern analysis for {ticker}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An internal error occurred. Please try again later.",
@@ -89,16 +77,9 @@ async def get_top_patterns(
     ),
     limit: int = Query(10, ge=1, le=50, description="Number of companies to return"),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
 ):
     """
-    Get top companies with specific trading patterns.
-
-    Pattern types:
-    - BUYING_MOMENTUM: Strong insider buying activity
-    - SELLING_PRESSURE: Significant insider selling
-    - CLUSTER: Multiple insiders trading together
-    - REVERSAL: Pattern changes/reversals
+    Get top companies with specific trading patterns from cache.
     """
     valid_patterns = ["BUYING_MOMENTUM", "SELLING_PRESSURE", "CLUSTER", "REVERSAL"]
 
@@ -109,27 +90,33 @@ async def get_top_patterns(
         )
 
     try:
-        service = PatternAnalysisService(db)
-        results = await service.get_top_patterns(pattern_type.upper(), limit)
-
+        cache_key = f"patterns:top:{pattern_type.upper()}"
+        
+        if redis.enabled():
+            cached_results = redis.get(cache_key)
+            if cached_results:
+                # Limit the results if needed
+                return {
+                    "pattern_type": pattern_type.upper(),
+                    "companies": cached_results[:limit],
+                    "count": len(cached_results[:limit]),
+                }
+        
+        # If cache miss, trigger pre-computation (this might take a while, so return empty for now)
+        from app.tasks.analysis_tasks import precompute_top_patterns_task # Import here
+        precompute_top_patterns_task.delay()
+        
         return {
             "pattern_type": pattern_type.upper(),
-            "companies": results,
-            "count": len(results),
+            "companies": [],
+            "count": 0,
+            "message": "Pattern analysis is being updated. Please check back later."
         }
-    except HTTPException:
-        raise
+
     except Exception as e:
         logger.error(
             f"Error getting top patterns for {pattern_type}: {e}", exc_info=True
         )
-        # Check if it's a database-related error
-        error_str = str(e).lower()
-        if "connection" in error_str or "database" in error_str or "pool" in error_str:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Database connection error. Please try again later.",
-            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An internal error occurred. Please try again later.",

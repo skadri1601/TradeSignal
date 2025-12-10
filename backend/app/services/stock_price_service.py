@@ -46,7 +46,7 @@ CACHE_HIT_COUNTER = Counter("cache_hits_total", "Total cache hits", ["cache_type
 _last_yahoo_request_time = 0
 _last_alpha_vantage_request_time = 0
 _last_finnhub_request_time = 0
-_min_yahoo_interval = 0.2  # 0.2 seconds between Yahoo requests to avoid rate limits
+_min_yahoo_interval = 1.0  # 1 second between Yahoo requests (increased from 0.2s to reduce rate limiting)
 _min_alpha_vantage_interval = (
     12.0  # 12 seconds between Alpha Vantage requests (5 per minute limit)
 )
@@ -55,8 +55,12 @@ _min_finnhub_interval = 1.0  # 1 second between Finnhub requests (60 per minute 
 # Cache for stock quotes (ticker -> (quote_data, timestamp))
 _quote_cache: Dict[str, tuple[Dict[str, Any], float]] = {}
 _cache_ttl = (
-    10  # Cache quotes for 10 seconds (allows 15s auto-refresh to get fresh data)
+    60  # Cache quotes for 60 seconds (reduced from 10s to minimize API calls)
 )
+
+# Cache for price history (ticker_days -> (history_data, timestamp))
+_price_history_cache: Dict[str, tuple[List[Dict[str, Any]], float]] = {}
+_price_history_cache_ttl = 300  # Cache price history for 5 minutes (300 seconds)
 
 # Track consecutive failures to switch data sources
 _yahoo_consecutive_failures = 0
@@ -746,6 +750,16 @@ class StockPriceService:
         Returns:
             List of price data points or None if failed
         """
+        # Check cache first
+        cache_key = f"{ticker}_{days}"
+        cached_data = StockPriceService._price_history_cache.get(cache_key)
+        if cached_data:
+            cached_history, cache_time = cached_data
+            current_time = time.time()
+            if (current_time - cache_time) < StockPriceService._price_history_cache_ttl:
+                logger.debug(f"Using cached price history for {ticker} ({days} days)")
+                return cached_history
+        
         try:
             StockPriceService._rate_limit_yahoo()
 
@@ -772,6 +786,10 @@ class StockPriceService:
                 )
 
             logger.info(f"Fetched {len(history)} days of history for {ticker}")
+            
+            # Cache the results
+            StockPriceService._price_history_cache[cache_key] = (history, time.time())
+            
             return history
 
         except Exception as e:

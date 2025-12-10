@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, HelpCircle, Mail } from 'lucide-react';
 
 interface FAQItem {
   question: string;
@@ -82,75 +82,104 @@ export default function FAQPage() {
     : faqs.filter(faq => faq.category === selectedCategory);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Frequently Asked Questions</h1>
-        <p className="mt-2 text-gray-600">
-          Find answers to common questions about billing, payments, refunds, and features
-        </p>
-      </div>
+    <div className="min-h-screen bg-black text-white selection:bg-purple-500 selection:text-white font-sans overflow-x-hidden pb-20">
+      
+      {/* Hero Section */}
+      <section className="relative pt-32 pb-20 overflow-hidden">
+        {/* Abstract Background Elements */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-purple-600/20 rounded-full blur-[100px] -z-10" />
+        
+        <div className="max-w-7xl mx-auto px-6 text-center relative z-10">
+          <h1 className="text-4xl lg:text-6xl font-bold mb-6">
+            Frequently Asked <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
+              Questions
+            </span>
+          </h1>
+          <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+            Find answers to common questions about billing, payments, refunds, and features.
+          </p>
+        </div>
+      </section>
 
-      {/* Category Filter */}
-      <div className="flex flex-wrap gap-2">
-        {categories.map((category) => (
-          <button
-            key={category}
-            onClick={() => setSelectedCategory(category)}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              selectedCategory === category
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            {category}
-          </button>
-        ))}
-      </div>
-
-      {/* FAQ List */}
-      <div className="space-y-4">
-        {filteredFaqs.map((faq, index) => (
-          <div key={index} className="card">
+      <div className="max-w-4xl mx-auto px-6 space-y-12">
+        {/* Category Filter */}
+        <div className="flex flex-wrap justify-center gap-3">
+          {categories.map((category) => (
             <button
-              onClick={() => setOpenIndex(openIndex === index ? null : index)}
-              className="w-full flex items-start justify-between text-left"
+              key={category}
+              onClick={() => setSelectedCategory(category)}
+              className={`px-5 py-2.5 rounded-full font-medium transition-all duration-300 ${
+                selectedCategory === category
+                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/30'
+                  : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white'
+              }`}
             >
-              <div className="flex-1">
-                <div className="flex items-center space-x-2 mb-1">
-                  <HelpCircle className="h-5 w-5 text-blue-600" />
-                  <span className="text-xs font-semibold text-blue-600">{faq.category}</span>
-                </div>
-                <h3 className="font-semibold text-gray-900">{faq.question}</h3>
-              </div>
-              {openIndex === index ? (
-                <ChevronUp className="h-5 w-5 text-gray-500 ml-4 flex-shrink-0" />
-              ) : (
-                <ChevronDown className="h-5 w-5 text-gray-500 ml-4 flex-shrink-0" />
-              )}
+              {category}
             </button>
-            {openIndex === index && (
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <p className="text-gray-700 leading-relaxed">{faq.answer}</p>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      {/* Contact Support */}
-      <div className="card bg-blue-50 border-blue-200">
-        <h3 className="font-semibold text-gray-900 mb-2">Still have questions?</h3>
-        <p className="text-gray-700 mb-4">
-          Can't find what you're looking for? Our support team is here to help.
-        </p>
-        <a
-          href="/contact"
-          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          Contact Support
-        </a>
+        {/* FAQ List */}
+        <div className="space-y-4">
+          {filteredFaqs.map((faq, index) => (
+            <div 
+              key={index} 
+              className="bg-gray-900/50 border border-white/10 rounded-2xl overflow-hidden hover:border-purple-500/30 transition-colors"
+            >
+              <button
+                onClick={() => setOpenIndex(openIndex === index ? null : index)}
+                className="w-full flex items-start justify-between text-left p-6"
+              >
+                <div className="flex-1 pr-4">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <HelpCircle className="h-4 w-4 text-purple-400" />
+                    <span className="text-xs font-semibold text-purple-400 tracking-wider uppercase">{faq.category}</span>
+                  </div>
+                  <h3 className="text-lg font-semibold text-white">{faq.question}</h3>
+                </div>
+                {openIndex === index ? (
+                  <ChevronUp className="h-5 w-5 text-gray-400 mt-1 flex-shrink-0" />
+                ) : (
+                  <ChevronDown className="h-5 w-5 text-gray-400 mt-1 flex-shrink-0" />
+                )}
+              </button>
+              
+              <div 
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                  openIndex === index ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                }`}
+              >
+                <div className="px-6 pb-6 pt-0 text-gray-400 leading-relaxed border-t border-white/5">
+                  <div className="pt-4">{faq.answer}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Contact Support */}
+        <div className="bg-gradient-to-br from-blue-900/40 to-purple-900/40 border border-white/10 rounded-3xl p-8 text-center relative overflow-hidden">
+          <div className="relative z-10">
+            <h3 className="text-2xl font-bold text-white mb-3">Still have questions?</h3>
+            <p className="text-gray-400 mb-8 max-w-xl mx-auto">
+              Can't find what you're looking for? Our support team is here to help you with any issue.
+            </p>
+            <a
+              href="/contact"
+              className="inline-flex items-center gap-2 px-8 py-3 bg-white text-black font-semibold rounded-full hover:bg-gray-100 transition-all hover:scale-105"
+            >
+              <Mail className="w-4 h-4" />
+              Contact Support
+            </a>
+          </div>
+          {/* Background decoration */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-[80px] -z-0" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px] -z-0" />
+        </div>
       </div>
     </div>
   );
 }
+
 
