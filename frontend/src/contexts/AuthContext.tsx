@@ -52,14 +52,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('auth_tokens');
   }, []);
 
-  // Fetch current user info
+  // Fetch current user info with retry logic for transient errors
   const fetchCurrentUser = useCallback(
     async (
       accessToken: string,
       options?: {
         onUnauthorized?: () => Promise<void>;
-      }
-    ) => {
+      },
+      retries = 2
+    ): Promise<void> => {
       try {
         const response = await fetch(`${API_URL}/api/v1/auth/me`, {
           headers: {
@@ -71,13 +72,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userData = await response.json();
           setUser(userData);
         } else if (response.status === 401 && options?.onUnauthorized) {
+          // Token expired - try refresh
           await options.onUnauthorized();
-        } else {
-          console.error('Failed to fetch user, status:', response.status);
+        } else if (response.status >= 500 && retries > 0) {
+          // Server error - retry after delay (DON'T logout!)
+          console.warn(`Server error ${response.status}, retrying... (${retries} left)`);
+          await new Promise(r => setTimeout(r, 1500));
+          return fetchCurrentUser(accessToken, options, retries - 1);
+        } else if (response.status >= 500) {
+          // Server still failing after retries - keep user logged in but log error
+          console.error('Server unavailable after retries, keeping session active');
+          // Don't logout! User's tokens are still valid, server is just temporarily down
+        } else if (response.status === 403) {
+          // Forbidden - actual auth failure, logout
+          console.error('Access forbidden, logging out');
           logout();
+        } else {
+          // Other client errors - log but don't necessarily logout
+          console.error('Failed to fetch user, status:', response.status);
+          // Only logout on definitive auth failures
+          if (response.status === 401) {
+            logout();
+          }
         }
       } catch (error) {
-        console.error('Failed to fetch user:', error);
+        // Network error - retry if we have retries left
+        if (retries > 0) {
+          console.warn('Network error fetching user, retrying...', error);
+          await new Promise(r => setTimeout(r, 1500));
+          return fetchCurrentUser(accessToken, options, retries - 1);
+        }
+        console.error('Failed to fetch user after retries:', error);
+        // Don't logout on network errors - tokens may still be valid
       } finally {
         setIsLoading(false);
       }
@@ -88,6 +114,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Login function
   const login = async (email: string, password: string) => {
     try {
+      // Clear any existing tokens before attempting login
+      localStorage.removeItem('auth_tokens');
+      
       const formData = new FormData();
       formData.append('username', email); // OAuth2PasswordRequestForm uses 'username' field
       formData.append('password', password);
@@ -96,7 +125,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         response = await fetch(`${API_URL}/api/v1/auth/login`, {
           method: 'POST',
-          body: formData
+          body: formData,
+          cache: 'no-store', // Prevent browser caching
+          credentials: 'omit' // Ensure no cookies are sent
         });
       } catch (networkError: any) {
         // Handle network errors (CORS, connection refused, etc.)

@@ -1,216 +1,100 @@
 """
 Multi-Channel Alert Service
 
-Sends alerts through multiple channels:
-- Email (existing)
-- Push Notifications (existing)
-- Discord (new)
-- Slack (new)
-- SMS (new)
+Sends alerts through multiple channels by enqueuing Celery tasks:
+- Email (existing - handled by another service, not this one)
+- Push Notifications (existing - handled by another service, not this one)
+- Discord (new - via Celery task)
+- Slack (new - via Celery task)
+- SMS (new - via Celery task)
 
-Implements smart routing and rate limiting.
+Also enqueues in-app notification creation.
 """
 
 import logging
 from typing import List, Dict, Any
-from datetime import datetime
-from sqlalchemy.ext.asyncio import AsyncSession
-import httpx
-from app.config import settings
+from app.tasks.alert_tasks import send_discord_alert_task, send_slack_alert_task, send_sms_alert_task, create_in_app_notification_task
+from app.schemas.notification import NotificationCreate # For serializing to pass to task
 
 logger = logging.getLogger(__name__)
 
 
 class MultiChannelAlertService:
     """
-    Service for sending alerts through multiple channels.
-
-    Channels:
-    - Email (via existing notification service)
-    - Push (via existing push service)
-    - Discord webhook
-    - Slack webhook
-    - SMS (Twilio)
+    Service for sending alerts through multiple channels by enqueuing Celery tasks.
     """
 
-    def __init__(self, db: AsyncSession):
-        self.db = db
-        self.discord_webhook_url = getattr(settings, "DISCORD_WEBHOOK_URL", None)
-        self.slack_webhook_url = getattr(settings, "SLACK_WEBHOOK_URL", None)
-        self.twilio_account_sid = getattr(settings, "TWILIO_ACCOUNT_SID", None)
-        self.twilio_auth_token = getattr(settings, "TWILIO_AUTH_TOKEN", None)
-        self.twilio_phone_number = getattr(settings, "TWILIO_PHONE_NUMBER", None)
+    def __init__(self):
+        # No longer needs db or notification_storage_service directly for external sends
+        pass
 
     async def send_alert(
-        self, alert_data: Dict[str, Any], channels: List[str] = None
+        self, alert_data: Dict[str, Any], user_id: int, channels: List[str] = None
     ) -> Dict[str, Any]:
         """
-        Send alert through specified channels.
+        Enqueue tasks to send alerts through specified channels and create an in-app notification.
 
         Args:
             alert_data: Alert information (trade, company, insider, etc.)
-            channels: List of channels to use (default: all enabled)
+            user_id: The ID of the user who owns the alert.
+            channels: List of channels to use (default: all possible)
 
         Returns:
-            Dict with send status for each channel
+            Dict with status for each enqueued channel
         """
         if channels is None:
-            channels = ["email", "push", "discord", "slack", "sms"]
+            channels = ["discord", "slack", "sms"] # Email and push are handled by other services
 
         results = {}
 
-        # Send to each channel
-        if "discord" in channels and self.discord_webhook_url:
-            results["discord"] = await self._send_discord(alert_data)
+        # Enqueue tasks for external channels
+        if "discord" in channels:
+            task = send_discord_alert_task.delay(alert_data)
+            results["discord"] = {"status": "enqueued", "task_id": task.id}
+            logger.info(f"Discord alert task enqueued with ID: {task.id}")
 
-        if "slack" in channels and self.slack_webhook_url:
-            results["slack"] = await self._send_slack(alert_data)
+        if "slack" in channels:
+            task = send_slack_alert_task.delay(alert_data)
+            results["slack"] = {"status": "enqueued", "task_id": task.id}
+            logger.info(f"Slack alert task enqueued with ID: {task.id}")
 
-        if "sms" in channels and self.twilio_account_sid:
-            results["sms"] = await self._send_sms(alert_data)
+        if "sms" in channels:
+            phone_number = alert_data.get("phone_number") # Phone number must be in alert_data
+            if phone_number:
+                task = send_sms_alert_task.delay(alert_data, phone_number)
+                results["sms"] = {"status": "enqueued", "task_id": task.id}
+                logger.info(f"SMS alert task enqueued with ID: {task.id} to {phone_number}")
+            else:
+                results["sms"] = {"status": "skipped", "error": "No phone number provided for SMS"}
+                logger.warning("SMS alert skipped: No phone number in alert_data.")
 
-        # Email and push are handled by existing services
-        if "email" in channels:
-            results["email"] = {"status": "handled_by_notification_service"}
+        # Enqueue task for in-app notification
+        try:
+            notification_title = f"Alert: {alert_data.get('company_ticker', 'N/A')} {alert_data.get('transaction_type', 'Trade')} by {alert_data.get('insider', 'N/A')}"
+            notification_message = (
+                f"An insider trade matching your criteria occurred: {alert_data.get('insider', 'Unknown')} "
+                f"{'bought' if alert_data.get('transaction_type') == 'BUY' else 'sold'} "
+                f"${alert_data.get('total_value', 0):,.0f} worth of {alert_data.get('company_name', 'Unknown')} ({alert_data.get('ticker', 'N/A')})."
+            )
+            notification_payload = NotificationCreate(
+                user_id=user_id,
+                alert_id=alert_data.get("alert_id"),
+                type="alert",
+                title=notification_title,
+                message=notification_message,
+                data={
+                    "ticker": alert_data.get("ticker"),
+                    "trade_id": alert_data.get("trade_id"),
+                    "link": f"/trades/{alert_data.get('trade_id')}" if alert_data.get("trade_id") else "/alerts",
+                },
+            ).model_dump() # Convert to dict for Celery task
+            
+            task = create_in_app_notification_task.delay(notification_payload)
+            results["in_app"] = {"status": "enqueued", "task_id": task.id}
+            logger.info(f"In-app notification task enqueued with ID: {task.id}")
 
-        if "push" in channels:
-            results["push"] = {"status": "handled_by_push_service"}
+        except Exception as e:
+            logger.error(f"Error enqueuing in-app notification task for user {user_id}: {e}", exc_info=True)
+            results["in_app"] = {"status": "error", "error": str(e)}
 
         return results
-
-    async def _send_discord(self, alert_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Send alert to Discord webhook."""
-        try:
-            # Format Discord message
-            ticker = alert_data.get("ticker", "N/A")
-            company_name = alert_data.get("company_name", "Unknown")
-            insider = alert_data.get("insider", "Unknown")
-            trade_type = alert_data.get("transaction_type", "TRADE")
-            value = alert_data.get("total_value", 0)
-
-            embed = {
-                "title": f"🚨 Insider Trade Alert: {ticker}",
-                "description": f"**{insider}** {trade_type} in **{company_name}** ({ticker})",
-                "color": 0x00FF00 if trade_type == "BUY" else 0xFF0000,
-                "fields": [
-                    {
-                        "name": "Trade Value",
-                        "value": f"${value:,.2f}" if value else "Not Disclosed",
-                        "inline": True,
-                    },
-                    {
-                        "name": "Date",
-                        "value": alert_data.get("transaction_date", "N/A"),
-                        "inline": True,
-                    },
-                ],
-                "timestamp": datetime.utcnow().isoformat(),
-                "footer": {"text": "TradeSignal Insider Trading Alerts"},
-            }
-
-            payload = {"embeds": [embed]}
-
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    self.discord_webhook_url, json=payload, timeout=10.0
-                )
-                response.raise_for_status()
-
-            return {"status": "success", "channel": "discord"}
-
-        except Exception as e:
-            logger.error(f"Error sending Discord alert: {e}")
-            return {"status": "error", "channel": "discord", "error": str(e)}
-
-    async def _send_slack(self, alert_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Send alert to Slack webhook."""
-        try:
-            ticker = alert_data.get("ticker", "N/A")
-            company_name = alert_data.get("company_name", "Unknown")
-            insider = alert_data.get("insider", "Unknown")
-            trade_type = alert_data.get("transaction_type", "TRADE")
-            value = alert_data.get("total_value", 0)
-
-            # Format Slack message
-            color = "good" if trade_type == "BUY" else "danger"
-
-            payload = {
-                "attachments": [
-                    {
-                        "color": color,
-                        "title": f"Insider Trade Alert: {ticker}",
-                        "text": f"*{insider}* {trade_type} in *{company_name}* ({ticker})",
-                        "fields": [
-                            {
-                                "title": "Trade Value",
-                                "value": f"${value:,.2f}" if value else "Not Disclosed",
-                                "short": True,
-                            },
-                            {
-                                "title": "Date",
-                                "value": alert_data.get("transaction_date", "N/A"),
-                                "short": True,
-                            },
-                        ],
-                        "footer": "TradeSignal",
-                        "ts": int(datetime.utcnow().timestamp()),
-                    }
-                ]
-            }
-
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    self.slack_webhook_url, json=payload, timeout=10.0
-                )
-                response.raise_for_status()
-
-            return {"status": "success", "channel": "slack"}
-
-        except Exception as e:
-            logger.error(f"Error sending Slack alert: {e}")
-            return {"status": "error", "channel": "slack", "error": str(e)}
-
-    async def _send_sms(
-        self, alert_data: Dict[str, Any], phone_number: str = None
-    ) -> Dict[str, Any]:
-        """Send alert via SMS using Twilio."""
-        if not phone_number:
-            return {
-                "status": "error",
-                "channel": "sms",
-                "error": "No phone number provided",
-            }
-
-        try:
-            from twilio.rest import Client as TwilioClient
-
-            client = TwilioClient(self.twilio_account_sid, self.twilio_auth_token)
-
-            ticker = alert_data.get("ticker", "N/A")
-            insider = alert_data.get("insider", "Unknown")
-            trade_type = alert_data.get("transaction_type", "TRADE")
-
-            message = (
-                f"TradeSignal Alert: {insider} {trade_type} {ticker}. "
-                f"Value: ${alert_data.get('total_value', 0):,.0f}"
-                if alert_data.get("total_value")
-                else "Value: Not Disclosed"
-            )
-
-            # Send SMS
-            message = client.messages.create(
-                body=message, from_=self.twilio_phone_number, to=phone_number
-            )
-
-            return {"status": "success", "channel": "sms", "message_sid": message.sid}
-
-        except ImportError:
-            logger.error("Twilio not installed. Install with: pip install twilio")
-            return {
-                "status": "error",
-                "channel": "sms",
-                "error": "Twilio not installed",
-            }
-        except Exception as e:
-            logger.error(f"Error sending SMS: {e}")
-            return {"status": "error", "channel": "sms", "error": str(e)}

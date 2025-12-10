@@ -44,11 +44,30 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor
+// Response interceptor with retry logic for transient server errors
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
-    // Handle errors globally
+  async (error) => {
+    const config = error.config;
+
+    // Retry on 5xx server errors (transient failures)
+    if (error.response?.status >= 500 && config) {
+      // Initialize retry count
+      config._retryCount = config._retryCount || 0;
+
+      // Retry up to 2 times with exponential backoff
+      if (config._retryCount < 2) {
+        config._retryCount++;
+        const delay = 1000 * config._retryCount; // 1s, then 2s
+        console.warn(
+          `Server error ${error.response.status}, retry ${config._retryCount}/2 in ${delay}ms...`
+        );
+        await new Promise((r) => setTimeout(r, delay));
+        return apiClient(config);
+      }
+    }
+
+    // Log errors after exhausting retries
     if (error.response) {
       // Server responded with error
       console.error('API Error:', error.response.data);

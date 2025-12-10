@@ -9,7 +9,7 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
       <Sidebar />
       <div className="ml-64 flex flex-col min-h-screen">
         <TopBar />

@@ -9,10 +9,12 @@ from fastapi import APIRouter, status as http_status
 from datetime import datetime
 import os
 import logging
+import asyncio
 from typing import Dict, Any
 
 from app.database import db_manager
 from app.core.redis_cache import get_cache
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -199,3 +201,116 @@ async def liveness_check() -> Dict[str, Any]:
         dict: Liveness status (always returns 200 if app is running)
     """
     return {"alive": True, "timestamp": datetime.now().isoformat()}
+
+
+@router.get("/database-diagnostics")
+async def database_diagnostics() -> Dict[str, Any]:
+    """
+    Database diagnostic endpoint for troubleshooting connection issues.
+    
+    Provides detailed information about database configuration and connection status.
+    Useful for debugging connection problems.
+    
+    Returns:
+        dict: Diagnostic information (passwords are masked)
+    """
+    diagnostics = {
+        "timestamp": datetime.now().isoformat(),
+        "database_configured": False,
+        "connection_status": "unknown",
+        "connection_test": None,
+        "configuration": {},
+        "recommendations": [],
+    }
+    
+    # Check if DATABASE_URL is set
+    db_url = settings.database_url if hasattr(settings, 'database_url') else None
+    
+    if not db_url or db_url.strip() == "":
+        diagnostics["database_configured"] = False
+        diagnostics["connection_status"] = "not_configured"
+        diagnostics["recommendations"].append("DATABASE_URL is not set. Please set it in .env file")
+        diagnostics["recommendations"].append("Example: DATABASE_URL=postgresql://user:password@host:port/database")
+        return diagnostics
+    
+    diagnostics["database_configured"] = True
+    
+    # Mask password in URL for security
+    masked_url = db_url
+    try:
+        if "@" in db_url and "://" in db_url:
+            parts = db_url.split("://")
+            if len(parts) == 2:
+                protocol = parts[0]
+                rest = parts[1]
+                if "@" in rest:
+                    auth_part, host_part = rest.split("@", 1)
+                    if ":" in auth_part:
+                        user, _ = auth_part.split(":", 1)
+                        masked_url = f"{protocol}://{user}:***@{host_part}"
+    except Exception:
+        pass
+    
+    diagnostics["configuration"]["url_masked"] = masked_url
+    diagnostics["configuration"]["protocol"] = db_url.split("://")[0] if "://" in db_url else "unknown"
+    
+    # Extract connection details (masked)
+    try:
+        if "@" in db_url and "://" in db_url:
+            parts = db_url.split("://")
+            if len(parts) == 2:
+                rest = parts[1]
+                if "@" in rest:
+                    auth_part, host_part = rest.split("@", 1)
+                    if ":" in auth_part:
+                        user, _ = auth_part.split(":", 1)
+                        diagnostics["configuration"]["user"] = user
+                    
+                    if ":" in host_part:
+                        host, port_db = host_part.split(":", 1)
+                        if "/" in port_db:
+                            port, db_name = port_db.split("/", 1)
+                            diagnostics["configuration"]["host"] = host
+                            diagnostics["configuration"]["port"] = port
+                            diagnostics["configuration"]["database"] = db_name.split("?")[0] if "?" in db_name else db_name
+    except Exception as e:
+        diagnostics["configuration"]["parse_error"] = str(e)
+    
+    # Test connection
+    try:
+        import asyncio
+        connection_result = await asyncio.wait_for(
+            db_manager.check_connection(),
+            timeout=10.0
+        )
+        diagnostics["connection_test"] = {
+            "success": connection_result,
+            "message": "Connection successful" if connection_result else "Connection failed"
+        }
+        diagnostics["connection_status"] = "connected" if connection_result else "failed"
+        
+        if not connection_result:
+            diagnostics["recommendations"].append("Database connection test failed")
+            diagnostics["recommendations"].append("Check if database server is running")
+            diagnostics["recommendations"].append("Verify host, port, and database name are correct")
+            diagnostics["recommendations"].append("Check network connectivity and firewall rules")
+            diagnostics["recommendations"].append("Verify username and password are correct")
+    except asyncio.TimeoutError:
+        diagnostics["connection_test"] = {
+            "success": False,
+            "message": "Connection test timed out after 10 seconds"
+        }
+        diagnostics["connection_status"] = "timeout"
+        diagnostics["recommendations"].append("Connection timed out - database server may be unreachable")
+        diagnostics["recommendations"].append("Check network connectivity and firewall rules")
+        diagnostics["recommendations"].append("Verify database server is running and accessible")
+    except Exception as e:
+        diagnostics["connection_test"] = {
+            "success": False,
+            "message": f"Connection test error: {str(e)}",
+            "error_type": type(e).__name__
+        }
+        diagnostics["connection_status"] = "error"
+        diagnostics["recommendations"].append(f"Connection error: {str(e)}")
+    
+    return diagnostics

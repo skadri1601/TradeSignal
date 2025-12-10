@@ -23,7 +23,6 @@ const StrategiesPage = lazy(() => import('./pages/StrategiesPage'));
 const FedCalendarPage = lazy(() => import('./pages/FedCalendarPage'));
 const OrderHistoryPage = lazy(() => import('./pages/OrderHistoryPage'));
 const FAQPage = lazy(() => import('./pages/FAQPage'));
-const ContactPage = lazy(() => import('./pages/ContactPage'));
 const PublicContactPage = lazy(() => import('./pages/PublicContactPage'));
 const CareersPage = lazy(() => import('./pages/CareersPage'));
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
@@ -38,10 +37,13 @@ const SupportPage = lazy(() => import('./pages/SupportPage'));
 const BillingSuccessPage = lazy(() => import('./pages/BillingSuccessPage'));
 const BillingCancelPage = lazy(() => import('./pages/BillingCancelPage'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
+const BlogPage = lazy(() => import('./pages/BlogPage')); // Added BlogPage
 const AdminDashboard = lazy(() => import('./pages/AdminDashboardPage'));
 const ContactManagementPage = lazy(() => import('./pages/admin/ContactManagementPage'));
+const SupportTicketsPage = lazy(() => import('./pages/admin/SupportTicketsPage')); // New Import
 const AIInsightsPage = lazy(() => import('./pages/AIInsightsPage'));
-const NotFound = lazy(() => import('./pages/NotFound'));
+const PatternsPage = lazy(() => import('./pages/PatternsPage'));
+const AlertsPage = lazy(() => import('./pages/AlertsPage'));
 
 // Loading skeleton component
 const PageLoader = () => (
@@ -72,11 +74,13 @@ function AppContent() {
         <Route element={<PublicLayout />}>
           <Route path="/" element={<LandingPage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/blog" element={<BlogPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />
           <Route path="/contact" element={<PublicContactPage />} />
-          {/* Add other public pages here later */}
+          <Route path="/faq" element={<FAQPage />} />
+          <Route path="/careers" element={<CareersPage />} />
         </Route>
 
         {/* All other routes - WITH LAYOUT (Dashboard etc.) */}
@@ -87,6 +91,7 @@ function AppContent() {
               <Route path="/dashboard" element={<ProtectedRoute redirectAdmin><Dashboard /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute requireSuperuser><AdminDashboard /></ProtectedRoute>} />
               <Route path="/admin/contacts" element={<ProtectedRoute requireSuperuser><ContactManagementPage /></ProtectedRoute>} />
+              <Route path="/admin/tickets" element={<ProtectedRoute requireSuperuser><SupportTicketsPage /></ProtectedRoute>} /> {/* New Route */}
               <Route path="/trades" element={<ProtectedRoute redirectAdmin><TradesPage /></ProtectedRoute>} />
               <Route path="/congressional-trades" element={<ProtectedRoute redirectAdmin><CongressionalTradesPage /></ProtectedRoute>} />
               <Route path="/market-overview" element={<ProtectedRoute redirectAdmin><MarketOverviewPage /></ProtectedRoute>} />
@@ -94,7 +99,9 @@ function AppContent() {
               <Route path="/fed-calendar" element={<ProtectedRoute redirectAdmin><FedCalendarPage /></ProtectedRoute>} />
               <Route path="/lessons" element={<ProtectedRoute redirectAdmin><LessonsPage /></ProtectedRoute>} />
               <Route path="/strategies" element={<ProtectedRoute redirectAdmin><StrategiesPage /></ProtectedRoute>} />
+              <Route path="/patterns" element={<ProtectedRoute redirectAdmin requireTier="pro"><PatternsPage /></ProtectedRoute>} />
               <Route path="/ai-insights" element={<ProtectedRoute redirectAdmin requireTier="pro"><AIInsightsPage /></ProtectedRoute>} />
+              <Route path="/alerts" element={<ProtectedRoute redirectAdmin><AlertsPage /></ProtectedRoute>} />
               <Route path="/companies/:ticker" element={<ProtectedRoute redirectAdmin><CompanyPage /></ProtectedRoute>} />
               <Route path="/insiders/:id" element={<ProtectedRoute redirectAdmin><InsiderPage /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
@@ -102,6 +109,8 @@ function AppContent() {
               <Route path="/orders" element={<ProtectedRoute redirectAdmin><OrderHistoryPage /></ProtectedRoute>} />
               <Route path="/billing/success" element={<ProtectedRoute><BillingSuccessPage /></ProtectedRoute>} />
               <Route path="/billing/cancel" element={<ProtectedRoute><BillingCancelPage /></ProtectedRoute>} />
+              <Route path="/faq" element={<FAQPage />} />
+              <Route path="/careers" element={<CareersPage />} />
 
               {/* Redirect 404s to global 404 page */}
               <Route path="*" element={<Navigate to="/404" replace />} />

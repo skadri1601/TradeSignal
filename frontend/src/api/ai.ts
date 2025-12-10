@@ -63,6 +63,7 @@ export interface DailySummary {
   total_trades: number;
   generated_at: string;
   period: string;
+  ai_overview?: string;
 }
 
 export interface ChatResponse {

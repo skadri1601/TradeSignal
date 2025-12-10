@@ -18,9 +18,12 @@ const TermsOfServicePage = () => {
 
         <Section title="2. Use of Services">
            <ul className="list-disc ml-6 space-y-2">
-            <li><strong>Informational Purposes Only:</strong> TradeSignal provides financial data and AI insights for educational and informational purposes only. We are <strong>NOT</strong> financial advisors, and nothing on this site constitutes investment advice.</li>
-            <li><strong>No Automated Scraping:</strong> You agree not to use automated bots, scrapers, or spiders to access or extract data from our Service without express written permission.</li>
-            <li><strong>Lawful Use:</strong> You agree to use the Service only for lawful purposes and not to violate any applicable laws or regulations.</li>
+            <li><strong>Service Status:</strong> TradeSignal is currently in Alpha release (v1.0.0-alpha). Some features are in Beta or Experimental stages. See our <a href="/docs/RELEASE_NOTES_ALPHA_v1.0.0.md" className="text-blue-600 hover:underline">Release Notes</a> for details on feature availability and limitations.</li>
+            <li><strong>Informational Purposes Only:</strong> TradeSignal provides financial data and AI insights (Beta) for educational and informational purposes only. We are <strong>NOT</strong> financial advisors, and nothing on this site constitutes investment advice, financial advice, or trading recommendations.</li>
+            <li><strong>Data Accuracy:</strong> While we strive for accuracy, data may be delayed, incomplete, or contain errors. SEC Form 4 filings are updated every 6 hours. Congressional trades and AI insights may have additional delays or require API keys. See Release Notes for data source status.</li>
+            <li><strong>No Automated Scraping:</strong> You agree not to use automated bots, scrapers, or spiders to access or extract data from our Service without express written permission. Violation may result in account termination and legal action.</li>
+            <li><strong>Rate Limiting:</strong> We implement rate limiting to ensure fair usage. Excessive API requests may result in temporary or permanent access restrictions.</li>
+            <li><strong>Lawful Use:</strong> You agree to use the Service only for lawful purposes and not to violate any applicable laws or regulations, including securities laws and insider trading regulations.</li>
            </ul>
         </Section>
 
@@ -35,10 +38,19 @@ const TermsOfServicePage = () => {
 
         <Section title="4. Purchases & Payments">
           <ul className="list-disc ml-6 space-y-2">
-            <li><strong>Subscriptions:</strong> Some parts of the Service are billed on a subscription basis (Free, Plus, Pro, Enterprise).</li>
-            <li><strong>Billing:</strong> You will be billed in advance on a recurring and periodic basis (monthly or annually).</li>
-            <li><strong>Cancellation:</strong> You may cancel your subscription at any time. Your access will continue until the end of the current billing period.</li>
-            <li><strong>Refunds:</strong> Refunds are handled on a case-by-case basis and are generally not provided for partial months.</li>
+            <li><strong>Subscriptions:</strong> TradeSignal offers four subscription tiers:
+              <ul className="list-disc ml-6 mt-2 space-y-1">
+                <li><strong>Free:</strong> Basic features, limited to 5 alerts</li>
+                <li><strong>Plus:</strong> Unlimited alerts, email notifications</li>
+                <li><strong>Pro:</strong> All Plus features + SMS, Discord/Slack webhooks, priority support</li>
+                <li><strong>Enterprise:</strong> All Pro features + custom integrations, dedicated support</li>
+              </ul>
+            </li>
+            <li><strong>Payment Processing:</strong> All payments are processed securely through Stripe. We do not store your full payment card details.</li>
+            <li><strong>Billing:</strong> You will be billed in advance on a recurring and periodic basis (monthly or annually, depending on your selected plan).</li>
+            <li><strong>Cancellation:</strong> You may cancel your subscription at any time through your account settings. Your access will continue until the end of the current billing period. No partial refunds are provided for the current billing period.</li>
+            <li><strong>Refunds:</strong> Refunds are handled on a case-by-case basis. Generally, refunds are not provided for partial months or if you have used premium features during the billing period. Contact support@tradesignal.com for refund requests.</li>
+            <li><strong>Price Changes:</strong> We reserve the right to modify subscription prices. Existing subscribers will be notified at least 30 days in advance of any price increases.</li>
           </ul>
         </Section>
 

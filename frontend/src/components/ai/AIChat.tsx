@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { aiApi } from '../../api/ai';
-import LoadingSpinner from '../common/LoadingSpinner';
+import { ThinkingDots } from '../common/AISkeleton';
+import { Send, Sparkles } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -71,41 +72,52 @@ export default function AIChat() {
   ];
 
   return (
-    <div className="card max-w-4xl mx-auto">
+    <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10 max-w-4xl mx-auto overflow-hidden">
       <div className="flex flex-col h-[600px]">
         {/* Header */}
-        <div className="border-b border-gray-200 pb-4 mb-4">
-          <h2 className="text-xl font-bold text-gray-900">AI Chat Assistant</h2>
-          <p className="text-sm text-gray-600 mt-1">
+        <div className="p-6 border-b border-white/10 bg-black/20">
+          <div className="flex items-center space-x-2 mb-1">
+            <Sparkles className="w-5 h-5 text-purple-400" />
+            <h2 className="text-xl font-bold text-white">AI Chat Assistant</h2>
+          </div>
+          <p className="text-sm text-gray-400">
             Ask questions about insider trading data and get AI-powered answers
           </p>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+        <div className="flex-1 overflow-y-auto space-y-6 p-6">
           {messages.map((message, index) => (
             <div
               key={index}
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[80%] rounded-lg px-4 py-3 ${
+                className={`max-w-[85%] rounded-2xl px-5 py-4 shadow-md ${
                   message.role === 'user'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-900'
+                    ? 'bg-purple-600 text-white rounded-br-none'
+                    : 'bg-white/10 text-gray-200 rounded-bl-none border border-white/5'
                 }`}
               >
-                <p className="whitespace-pre-wrap">{message.content}</p>
-                <p className={`text-xs mt-2 ${message.role === 'user' ? 'text-blue-100' : 'text-gray-500'}`}>
-                  {message.timestamp.toLocaleTimeString()}
+                <p className="whitespace-pre-wrap leading-relaxed text-sm md:text-base">{message.content}</p>
+                <p className={`text-[10px] mt-2 opacity-70 ${message.role === 'user' ? 'text-purple-200' : 'text-gray-400'}`}>
+                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
             </div>
           ))}
           {askMutation.isPending && (
             <div className="flex justify-start">
-              <div className="bg-gray-100 text-gray-900 rounded-lg px-4 py-3">
-                <LoadingSpinner />
+              <div className="bg-white/10 text-gray-200 rounded-2xl rounded-bl-none px-5 py-4 max-w-[85%] border border-white/5">
+                <div className="space-y-2 mb-2 w-64">
+                  <div className="h-2 bg-white/20 rounded animate-pulse w-full"></div>
+                  <div className="h-2 bg-white/20 rounded animate-pulse w-[80%]"></div>
+                  <div className="h-2 bg-white/20 rounded animate-pulse w-[60%]"></div>
+                </div>
+                <div className="flex items-center space-x-2 mt-3">
+                  <span className="text-xs text-purple-300 font-medium">LUNA is thinking</span>
+                  <ThinkingDots />
+                </div>
               </div>
             </div>
           )}
@@ -113,14 +125,14 @@ export default function AIChat() {
 
         {/* Suggested Questions */}
         {messages.length === 1 && (
-          <div className="mb-4">
-            <p className="text-sm text-gray-600 mb-2">Suggested questions:</p>
+          <div className="px-6 pb-2">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Suggested questions:</p>
             <div className="flex flex-wrap gap-2">
               {suggestedQuestions.map((question, index) => (
                 <button
                   key={index}
                   onClick={() => setInput(question)}
-                  className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg transition-colors"
+                  className="text-sm bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white px-4 py-2 rounded-xl transition-all border border-white/5 hover:border-purple-500/30"
                 >
                   {question}
                 </button>
@@ -130,23 +142,25 @@ export default function AIChat() {
         )}
 
         {/* Input */}
-        <form onSubmit={handleSubmit} className="flex space-x-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask a question about insider trades..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            disabled={askMutation.isPending}
-          />
-          <button
-            type="submit"
-            disabled={!input.trim() || askMutation.isPending}
-            className="btn btn-primary px-6"
-          >
-            {askMutation.isPending ? 'Sending...' : 'Send'}
-          </button>
-        </form>
+        <div className="p-4 bg-black/20 border-t border-white/10">
+          <form onSubmit={handleSubmit} className="flex space-x-3 relative">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask a question about insider trades..."
+              className="flex-1 px-5 py-3 bg-black/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all pr-12"
+              disabled={askMutation.isPending}
+            />
+            <button
+              type="submit"
+              disabled={!input.trim() || askMutation.isPending}
+              className="absolute right-2 top-1.5 p-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/20"
+            >
+              <Send className="w-5 h-5" />
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );

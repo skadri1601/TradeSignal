@@ -36,6 +36,7 @@ from app.schemas.alert import (
     AlertHistoryResponse,
     AlertStatsResponse,
 )
+from app.schemas.alert_debug import AlertDebugResponse # Import the new schema
 from app.schemas.common import PaginatedResponse
 
 logger = logging.getLogger(__name__)
@@ -131,6 +132,8 @@ class AlertConnectionManager:
 
 alert_manager = AlertConnectionManager()
 
+def get_alert_manager() -> AlertConnectionManager:
+    return alert_manager
 
 @router.post("/", response_model=AlertResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("20/minute")
@@ -311,6 +314,32 @@ async def test_alert(
 
     return {"message": "Test notification sent successfully"}
 
+
+@router.get("/{alert_id}/debug", response_model=AlertDebugResponse)
+@limiter.limit("20/minute")
+async def debug_alert(
+    request: Request, alert_id: int, db: AsyncSession = Depends(get_db)
+):
+    """
+    Get detailed debug information for a specific alert.
+    Includes alert configuration and recent trigger history.
+    """
+    service = AlertService(db)
+    alert = await service.get_alert(alert_id)
+
+    if not alert:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Alert with id {alert_id} not found",
+        )
+    
+    # Fetch recent alert history for this alert
+    history, _ = await service.get_alert_history(alert_id=alert_id, limit=10) # Last 10 entries
+
+    return AlertDebugResponse(
+        alert=AlertResponse.model_validate(alert),
+        recent_history=[AlertHistoryResponse.model_validate(h) for h in history]
+    )
 
 @router.get("/history/", response_model=PaginatedResponse[AlertHistoryResponse])
 @limiter.limit("60/minute")

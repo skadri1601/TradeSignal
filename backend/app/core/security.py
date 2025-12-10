@@ -270,6 +270,10 @@ async def get_current_superuser(
 ) -> User:
     """
     Get current user and verify they are a superuser.
+    
+    Accepts users with either:
+    - is_superuser=True (legacy/backward compatibility)
+    - role='super_admin' (new role-based system)
 
     Args:
         current_user: Current active user
@@ -280,7 +284,7 @@ async def get_current_superuser(
     Raises:
         HTTPException: If user is not a superuser
     """
-    if not current_user.is_superuser:
+    if not current_user.is_superuser and current_user.role != "super_admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
         )

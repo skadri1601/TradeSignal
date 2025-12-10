@@ -6,9 +6,11 @@ Public users can view active jobs and submit applications.
 Support and super admins can review applications.
 """
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 from app.database import get_db
 from app.models.user import User
@@ -28,6 +30,8 @@ from app.core.security import (
     get_current_superuser,
     get_current_support_or_superuser,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -52,18 +56,76 @@ async def create_job(
     Returns:
         Created job
     """
-    # Create job
-    job = Job(**job_data.model_dump(), created_by=current_user.id)
+    try:
+        logger.info(
+            f"Creating job posting: title='{job_data.title}', "
+            f"department='{job_data.department}', "
+            f"created_by_user_id={current_user.id}, "
+            f"user_role={current_user.role}, "
+            f"is_superuser={current_user.is_superuser}"
+        )
 
-    db.add(job)
-    await db.commit()
-    await db.refresh(job)
+        # Create job
+        job = Job(**job_data.model_dump(), created_by=current_user.id)
 
-    # Return with application count
-    response = JobResponse.model_validate(job)
-    response.application_count = 0
+        db.add(job)
+        await db.commit()
+        await db.refresh(job)
 
-    return response
+        logger.info(
+            f"Successfully created job posting: id={job.id}, title='{job.title}'"
+        )
+
+        # Return with application count
+        response = JobResponse.model_validate(job)
+        response.application_count = 0
+
+        return response
+
+    except IntegrityError as e:
+        await db.rollback()
+        logger.error(
+            f"Database integrity error creating job: {str(e)}, "
+            f"user_id={current_user.id}, job_title='{job_data.title}'",
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to create job. Please check that all required fields are valid and try again.",
+        )
+    except SQLAlchemyError as e:
+        await db.rollback()
+        logger.error(
+            f"Database error creating job: {str(e)}, "
+            f"user_id={current_user.id}, job_title='{job_data.title}'",
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while creating the job. Please try again later.",
+        )
+    except ValueError as e:
+        await db.rollback()
+        logger.error(
+            f"Validation error creating job: {str(e)}, "
+            f"user_id={current_user.id}, job_title='{job_data.title}'",
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid job data: {str(e)}",
+        )
+    except Exception as e:
+        await db.rollback()
+        logger.error(
+            f"Unexpected error creating job: {str(e)}, "
+            f"user_id={current_user.id}, job_title='{job_data.title}'",
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred. Please try again later.",
+        )
 
 
 @router.get("/", response_model=JobListResponse)

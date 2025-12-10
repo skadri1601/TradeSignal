@@ -6,6 +6,7 @@ import TradeList from '../components/trades/TradeList';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { User, Briefcase, Building2, TrendingUp, TrendingDown, DollarSign, Activity } from 'lucide-react';
 import { formatNumber, formatCurrencyCompact } from '../utils/formatters';
+import TradePieChart from '../components/trades/TradePieChart';
 
 export default function InsiderPage() {
   const { id } = useParams<{ id: string }>();
@@ -24,7 +25,6 @@ export default function InsiderPage() {
   });
 
   // Fetch company data if insider has a company
-  // Note: We need to get ticker from trades since company_id alone doesn't give us the ticker
   const companyTicker = trades && trades.length > 0 ? trades[0].company?.ticker : null;
   const { data: company } = useQuery({
     queryKey: ['company', companyTicker],
@@ -32,14 +32,20 @@ export default function InsiderPage() {
     enabled: !!companyTicker,
   });
 
-  // Calculate statistics from trades
+  // Calculate statistics from trades for the TradePieChart
   const stats = trades ? {
-    totalTrades: trades.length,
-    totalBuys: trades.filter(t => t.transaction_type === 'BUY').length,
-    totalSells: trades.filter(t => t.transaction_type === 'SELL').length,
-    totalValue: trades.reduce((sum, t) => sum + (Number(t.total_value) || 0), 0),
-    buyValue: trades.filter(t => t.transaction_type === 'BUY').reduce((sum, t) => sum + (Number(t.total_value) || 0), 0),
-    sellValue: trades.filter(t => t.transaction_type === 'SELL').reduce((sum, t) => sum + (Number(t.total_value) || 0), 0),
+    total_trades: trades.length,
+    total_buys: trades.filter(t => t.transaction_type === 'BUY').length,
+    total_sells: trades.filter(t => t.transaction_type === 'SELL').length,
+    total_value: trades.reduce((sum, t) => sum + (Number(t.total_value) || 0), 0),
+    total_buy_value: trades.filter(t => t.transaction_type === 'BUY').reduce((sum, t) => sum + (Number(t.total_value) || 0), 0),
+    total_sell_value: trades.filter(t => t.transaction_type === 'SELL').reduce((sum, t) => sum + (Number(t.total_value) || 0), 0),
+    // Dummy values for fields not directly available here, but required by TradeStats schema
+    total_shares_traded: 0,
+    average_trade_size: 0,
+    largest_trade: 0,
+    most_active_company: null,
+    most_active_insider: null,
   } : null;
 
   if (insiderLoading) {
@@ -53,7 +59,7 @@ export default function InsiderPage() {
   if (!insider) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-600">Insider not found</p>
+        <p className="text-gray-400">Insider not found</p>
       </div>
     );
   }
@@ -63,13 +69,13 @@ export default function InsiderPage() {
       {/* Insider Header */}
       <div className="card">
         <div className="flex items-start space-x-4">
-          <div className="p-3 bg-purple-100 rounded-lg">
-            <User className="h-8 w-8 text-purple-600" />
+          <div className="p-3 bg-purple-500/20 rounded-lg">
+            <User className="h-8 w-8 text-purple-400" />
           </div>
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-gray-900">{insider.name}</h1>
+            <h1 className="text-3xl font-bold text-white">{insider.name}</h1>
             {insider.title && (
-              <p className="text-lg text-gray-600 mt-1 flex items-center">
+              <p className="text-lg text-gray-400 mt-1 flex items-center">
                 <Briefcase className="h-5 w-5 mr-2" />
                 {insider.title}
               </p>
@@ -77,7 +83,7 @@ export default function InsiderPage() {
             {company && (
               <Link
                 to={`/companies/${company.ticker}`}
-                className="text-md text-blue-600 hover:text-blue-700 mt-2 flex items-center"
+                className="text-md text-blue-400 hover:text-blue-300 mt-2 flex items-center transition-colors"
               >
                 <Building2 className="h-4 w-4 mr-2" />
                 {company.name} ({company.ticker})
@@ -93,22 +99,22 @@ export default function InsiderPage() {
             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Roles</h3>
             <div className="flex flex-wrap gap-2">
               {insider.is_officer && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30">
                   Officer
                 </span>
               )}
               {insider.is_director && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-500/20 text-purple-300 border border-purple-500/30">
                   Director
                 </span>
               )}
               {insider.is_ten_percent_owner && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-500/20 text-green-300 border border-green-500/30">
                   10% Owner
                 </span>
               )}
               {insider.is_other && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-700/50 text-gray-300 border border-gray-600">
                   Other
                 </span>
               )}
@@ -118,11 +124,11 @@ export default function InsiderPage() {
             </div>
           </div>
 
-          {/* Position/Title - Only show if not "Unknown" */}
+          {/* Position/Title */}
           {insider.primary_role && insider.primary_role !== 'Unknown' && (
             <div>
               <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Position</h3>
-              <p className="text-lg font-medium text-gray-900">{insider.primary_role}</p>
+              <p className="text-lg font-medium text-white">{insider.primary_role}</p>
             </div>
           )}
         </div>
@@ -131,67 +137,112 @@ export default function InsiderPage() {
       {/* Trading Statistics */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          <div className="card">
+          <div className="bg-gray-900/50 backdrop-blur-sm rounded-xl border border-white/10 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Trades</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{formatNumber(stats.totalTrades)}</p>
+                <p className="text-sm font-medium text-gray-400">Total Trades</p>
+                <p className="text-2xl font-bold text-white mt-1">{formatNumber(stats.totalTrades)}</p>
               </div>
-              <Activity className="h-8 w-8 text-gray-400" />
+              <Activity className="h-8 w-8 text-gray-600" />
             </div>
           </div>
 
-          <div className="card">
+          <div className="bg-gray-900/50 backdrop-blur-sm rounded-xl border border-white/10 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Buy Transactions</p>
-                <p className="text-2xl font-bold text-green-600 mt-1">{formatNumber(stats.totalBuys)}</p>
+                <p className="text-sm font-medium text-gray-400">Buy Transactions</p>
+                <p className="text-2xl font-bold text-green-400 mt-1">{formatNumber(stats.totalBuys)}</p>
               </div>
-              <TrendingUp className="h-8 w-8 text-green-400" />
+              <TrendingUp className="h-8 w-8 text-green-500/50" />
             </div>
           </div>
 
-          <div className="card">
+          <div className="bg-gray-900/50 backdrop-blur-sm rounded-xl border border-white/10 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Sell Transactions</p>
-                <p className="text-2xl font-bold text-red-600 mt-1">{formatNumber(stats.totalSells)}</p>
+                <p className="text-sm font-medium text-gray-400">Sell Transactions</p>
+                <p className="text-2xl font-bold text-red-400 mt-1">{formatNumber(stats.totalSells)}</p>
               </div>
-              <TrendingDown className="h-8 w-8 text-red-400" />
+              <TrendingDown className="h-8 w-8 text-red-500/50" />
             </div>
           </div>
 
-          <div className="card">
+          <div className="bg-gray-900/50 backdrop-blur-sm rounded-xl border border-white/10 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Buy Value</p>
-                <p className="text-2xl font-bold text-green-600 mt-1">{formatCurrencyCompact(stats.buyValue)}</p>
+                <p className="text-sm font-medium text-gray-400">Total Buy Value</p>
+                <p className="text-2xl font-bold text-green-400 mt-1">{formatCurrencyCompact(stats.buyValue)}</p>
                 {stats.buyValue > 0 && (
                   <p className="text-xs text-gray-500 mt-1">{stats.totalBuys} purchases</p>
                 )}
               </div>
-              <DollarSign className="h-8 w-8 text-green-400" />
+              <DollarSign className="h-8 w-8 text-green-500/50" />
             </div>
           </div>
 
           {stats.sellValue > 0 && (
-            <div className="card">
+            <div className="bg-gray-900/50 backdrop-blur-sm rounded-xl border border-white/10 p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Sell Value</p>
-                  <p className="text-2xl font-bold text-red-600 mt-1">{formatCurrencyCompact(stats.sellValue)}</p>
+                  <p className="text-sm font-medium text-gray-400">Total Sell Value</p>
+                  <p className="text-2xl font-bold text-red-400 mt-1">{formatCurrencyCompact(stats.sellValue)}</p>
                   <p className="text-xs text-gray-500 mt-1">{stats.totalSells} sales</p>
                 </div>
-                <DollarSign className="h-8 w-8 text-red-400" />
+                <DollarSign className="h-8 w-8 text-red-500/50" />
               </div>
             </div>
           )}
         </div>
       )}
 
+      {/* Trade Distribution Charts */}
+      {stats && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Buy vs Sell Count */}
+          <div className="card">
+            <h2 className="text-lg font-semibold text-white mb-4">
+              Buy vs Sell (Trade Count)
+            </h2>
+            <TradePieChart stats={{
+              total_trades: stats.totalTrades,
+              total_buys: stats.totalBuys,
+              total_sells: stats.totalSells,
+              total_shares_traded: 0, // Not available in current stats
+              total_value: stats.totalValue,
+              total_buy_value: stats.buyValue,
+              total_sell_value: stats.sellValue,
+              average_trade_size: 0, // Not available in current stats
+              largest_trade: 0, // Not available in current stats
+              most_active_company: "", // Not available in current stats
+              most_active_insider: "", // Not available in current stats
+            }} mode="count" />
+          </div>
+
+          {/* Buy vs Sell Volume */}
+          <div className="card">
+            <h2 className="text-lg font-semibold text-white mb-4">
+              Buy vs Sell (Dollar Volume)
+            </h2>
+            <TradePieChart stats={{
+              total_trades: stats.totalTrades,
+              total_buys: stats.totalBuys,
+              total_sells: stats.totalSells,
+              total_shares_traded: 0, // Not available in current stats
+              total_value: stats.totalValue,
+              total_buy_value: stats.buyValue,
+              total_sell_value: stats.sellValue,
+              average_trade_size: 0, // Not available in current stats
+              largest_trade: 0, // Not available in current stats
+              most_active_company: "", // Not available in current stats
+              most_active_insider: "", // Not available in current stats
+            }} mode="value" />
+          </div>
+        </div>
+      )}
+
       {/* Recent Trades */}
       <div className="card">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Trading Activity</h2>
+        <h2 className="text-xl font-bold text-white mb-4">Trading Activity</h2>
         {tradesLoading ? (
           <div className="flex items-center justify-center h-32">
             <LoadingSpinner />
@@ -200,7 +251,7 @@ export default function InsiderPage() {
           <TradeList trades={trades} />
         ) : (
           <div className="text-center py-12">
-            <Activity className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+            <Activity className="h-12 w-12 text-gray-600 mx-auto mb-3" />
             <p className="text-gray-500">No trading activity found</p>
           </div>
         )}

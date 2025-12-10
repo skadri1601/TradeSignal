@@ -12,6 +12,7 @@ from app.database import Base
 if TYPE_CHECKING:
     from app.models.payment import Payment
     from app.models.subscription import Subscription
+    from app.models.notification import Notification
 
 
 
@@ -85,6 +86,7 @@ class User(Base):
     subscription: Mapped[Optional["Subscription"]] = relationship(
         "Subscription", back_populates="user", uselist=False, lazy="selectin"
     )
+    notifications: Mapped[list["Notification"]] = relationship("Notification", back_populates="user")
 
     @property
     def stripe_subscription_tier(self) -> Optional[str]:

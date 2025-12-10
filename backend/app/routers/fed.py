@@ -31,7 +31,6 @@ async def get_fed_calendar(
     request: Request,
     months_ahead: int = Query(6, ge=1, le=12, description="Months to look ahead"),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
 ):
     """
     Get FED calendar with upcoming meetings and economic data releases.
@@ -40,7 +39,7 @@ async def get_fed_calendar(
         List of FED-related events (FOMC meetings, CPI releases, employment reports)
     """
     try:
-        service = FedDataService(db)
+        service = FedDataService()
         calendar = await service.get_fed_calendar(months_ahead=months_ahead)
         return {
             "events": calendar,
@@ -49,21 +48,10 @@ async def get_fed_calendar(
         }
     except Exception as e:
         logger.error(f"Error in get_fed_calendar endpoint: {e}", exc_info=True)
-        # Service already handles cache fallback
-        try:
-            service = FedDataService(db)
-            calendar = await service.get_fed_calendar(months_ahead=months_ahead)
-            return {
-                "events": calendar,
-                "count": len(calendar),
-                "months_ahead": months_ahead,
-                "note": "Data may be from cache due to API error",
-            }
-        except Exception:
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to fetch FED calendar. Please try again later.",
-            )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to fetch FED calendar. Please try again later.",
+        )
 
 
 @router.get("/interest-rate")
@@ -71,7 +59,6 @@ async def get_fed_calendar(
 async def get_current_interest_rate(
     request: Request,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
 ):
     """
     Get current Federal Reserve interest rate.
@@ -80,27 +67,20 @@ async def get_current_interest_rate(
         Current interest rate and date
     """
     try:
-        service = FedDataService(db)
+        service = FedDataService()
         rate_data = await service.get_current_interest_rate()
 
         if not rate_data:
-            return {
-                "error": "Interest rate data unavailable. Configure FRED_API_KEY in .env or check API status.",
-                "cached": False,
-            }
+            raise HTTPException(
+                status_code=503,
+                detail="Interest rate data unavailable. Cache empty or FRED_API_KEY not configured for background tasks.",
+            )
 
         return rate_data
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in get_current_interest_rate endpoint: {e}", exc_info=True)
-        # Try to return cached data if available
-        try:
-            service = FedDataService(db)
-            # Service already handles cache fallback, but we can add a message
-            rate_data = await service.get_current_interest_rate()
-            if rate_data:
-                return rate_data
-        except Exception:
-            pass
         raise HTTPException(
             status_code=500,
             detail="Failed to fetch interest rate data. Please try again later.",
@@ -113,7 +93,6 @@ async def get_rate_history(
     request: Request,
     days_back: int = Query(365, ge=30, le=3650, description="Days of history"),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
 ):
     """
     Get Federal Reserve interest rate history.
@@ -122,26 +101,22 @@ async def get_rate_history(
         Historical interest rate data
     """
     try:
-        service = FedDataService(db)
+        service = FedDataService()
         history = await service.get_rate_history(days_back=days_back)
+        if not history:
+            raise HTTPException(
+                status_code=503,
+                detail="Interest rate history data unavailable. Cache empty or FRED_API_KEY not configured for background tasks.",
+            )
         return {"history": history, "count": len(history), "days_back": days_back}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in get_rate_history endpoint: {e}", exc_info=True)
-        # Service already handles cache fallback
-        try:
-            service = FedDataService(db)
-            history = await service.get_rate_history(days_back=days_back)
-            return {
-                "history": history,
-                "count": len(history),
-                "days_back": days_back,
-                "note": "Data may be from cache due to API error",
-            }
-        except Exception:
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to fetch rate history. Please try again later.",
-            )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to fetch rate history. Please try again later.",
+        )
 
 
 @router.get("/economic-indicators")
@@ -149,7 +124,6 @@ async def get_rate_history(
 async def get_economic_indicators(
     request: Request,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
 ):
     """
     Get key economic indicators (inflation, unemployment, GDP, retail sales).
@@ -158,22 +132,19 @@ async def get_economic_indicators(
         Current economic indicator values
     """
     try:
-        service = FedDataService(db)
+        service = FedDataService()
         indicators = await service.get_economic_indicators()
+        if not indicators:
+            raise HTTPException(
+                status_code=503,
+                detail="Economic indicators data unavailable. Cache empty or FRED_API_KEY not configured for background tasks.",
+            )
         return {"indicators": indicators, "last_updated": datetime.utcnow().isoformat()}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in get_economic_indicators endpoint: {e}", exc_info=True)
-        # Service already handles cache fallback
-        try:
-            service = FedDataService(db)
-            indicators = await service.get_economic_indicators()
-            return {
-                "indicators": indicators,
-                "last_updated": datetime.utcnow().isoformat(),
-                "note": "Data may be from cache due to API error",
-            }
-        except Exception:
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to fetch economic indicators. Please try again later.",
-            )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to fetch economic indicators. Please try again later.",
+        )

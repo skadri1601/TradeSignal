@@ -17,6 +17,7 @@ from sqlalchemy import (
     JSON,
 )
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from app.database import Base
 
 
@@ -102,6 +103,9 @@ class Alert(Base):
         onupdate=func.now(),
         comment="When alert was last updated",
     )
+
+    # Relationships
+    notifications = relationship("Notification", back_populates="alert")
 
     def __repr__(self) -> str:
         return f"<Alert(id={self.id}, name='{self.name}', type='{self.alert_type}', active={self.is_active})>"

@@ -5,6 +5,14 @@ FastAPI application with async database support, CORS, health checks,
 comprehensive logging, and error handling.
 """
 
+import sys
+import asyncio
+import os
+
+# Fix for Windows asyncio loop with asyncpg/uvicorn
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -12,9 +20,6 @@ load_dotenv()
 
 import logging
 import time
-import os
-import signal
-import sys
 from datetime import datetime
 from contextlib import asynccontextmanager
 from typing import Any
@@ -72,25 +77,81 @@ async def lifespan(app: FastAPI):
     logger.info("=" * 80)
 
     try:
-        # Test database connection with timeout and error handling
-        db_connected = False
-        try:
-            import asyncio
-            # Add shorter timeout to prevent hanging on connection (5 seconds)
-            # Use asyncio.wait_for with a task to ensure it can be cancelled
-            db_connected = await asyncio.wait_for(
-                db_manager.check_connection(),
-                timeout=5.0  # 5 second timeout - reduced from 10 to fail faster
-            )
-        except asyncio.TimeoutError:
-            logger.warning(" Database connection check timed out after 5s (app will start anyway)")
+        # Check if DATABASE_URL is configured
+        db_url = settings.database_url
+        if not db_url or db_url.strip() == "":
+            logger.error("=" * 80)
+            logger.error(" CRITICAL: DATABASE_URL is not set or is empty!")
+            logger.error(" Please set DATABASE_URL in your .env file or environment variables")
+            logger.error(" Example: DATABASE_URL=postgresql://user:password@host:port/database")
+            logger.error("=" * 80)
             db_connected = False
-        except asyncio.CancelledError:
-            logger.warning(" Database connection check was cancelled (app will start anyway)")
+        else:
+            # Mask password in logs for security
+            masked_url = db_url
+            try:
+                # Try to mask password in connection string
+                if "@" in db_url and "://" in db_url:
+                    parts = db_url.split("://")
+                    if len(parts) == 2:
+                        protocol = parts[0]
+                        rest = parts[1]
+                        if "@" in rest:
+                            auth_part, host_part = rest.split("@", 1)
+                            if ":" in auth_part:
+                                user, _ = auth_part.split(":", 1)
+                                masked_url = f"{protocol}://{user}:***@{host_part}"
+            except Exception:
+                pass  # If masking fails, just use original
+            
+            logger.info(f" Database URL configured: {masked_url}")
+            
+            # Test database connection with timeout and error handling
             db_connected = False
-        except Exception as db_error:
-            logger.warning(f" Database connection check failed: {db_error} (app will start anyway)")
-            db_connected = False
+            try:
+                import asyncio
+                logger.info(" Testing database connection...")
+                # Add shorter timeout to prevent hanging on connection (5 seconds)
+                # Use asyncio.wait_for with a task to ensure it can be cancelled
+                db_connected = await asyncio.wait_for(
+                    db_manager.check_connection(),
+                    timeout=15.0  # 15 second timeout - increased from 5 to allow cold starts
+                )
+            except asyncio.TimeoutError:
+                logger.error("=" * 80)
+                logger.error(" Database connection check TIMED OUT after 15s")
+                logger.error(" Possible causes:")
+                logger.error("  1. Database server is not running or unreachable")
+                logger.error("  2. Network/firewall blocking connection")
+                logger.error("  3. Incorrect DATABASE_URL (wrong host/port)")
+                logger.error("  4. Database server is overloaded")
+                logger.error(f" Database URL: {masked_url}")
+                logger.error(" App will start but database operations will fail!")
+                logger.error("=" * 80)
+                db_connected = False
+            except asyncio.CancelledError:
+                logger.warning(" Database connection check was cancelled (app will start anyway)")
+                db_connected = False
+            except Exception as db_error:
+                error_str = str(db_error)
+                logger.error("=" * 80)
+                logger.error(f" Database connection check FAILED: {error_str}")
+                logger.error(" Possible causes:")
+                if "authentication" in error_str.lower() or "password" in error_str.lower():
+                    logger.error("  - Incorrect username or password in DATABASE_URL")
+                elif "does not exist" in error_str.lower() or "database" in error_str.lower():
+                    logger.error("  - Database name does not exist")
+                elif "could not connect" in error_str.lower() or "connection refused" in error_str.lower():
+                    logger.error("  - Database server is not running or unreachable")
+                    logger.error("  - Check if host and port are correct")
+                elif "timeout" in error_str.lower():
+                    logger.error("  - Connection timeout (network/firewall issue)")
+                else:
+                    logger.error("  - Check DATABASE_URL format and credentials")
+                logger.error(f" Database URL: {masked_url}")
+                logger.error(" App will start but database operations will fail!")
+                logger.error("=" * 80)
+                db_connected = False
 
         if db_connected:
             logger.info(" Database connection established")
@@ -104,14 +165,14 @@ async def lifespan(app: FastAPI):
                 from app.models import ScrapeJob, ScrapeHistory, ContactSubmission  # noqa: F401
 
                 async def _create_tables():
-                engine = db_manager.get_engine()
-                async with engine.begin() as conn:
-                    await conn.run_sync(Base.metadata.create_all)
+                    engine = db_manager.get_engine()
+                    async with engine.begin() as conn:
+                        await conn.run_sync(Base.metadata.create_all)
                 
                 # Add timeout to table creation to prevent hanging
                 try:
-                    await asyncio.wait_for(_create_tables(), timeout=10.0)
-                logger.info(" Database tables created/verified")
+                    await asyncio.wait_for(_create_tables(), timeout=30.0)
+                    logger.info(" Database tables created/verified")
                 except asyncio.TimeoutError:
                     logger.warning(" Database table creation timed out (tables may already exist)")
             except Exception as e:
@@ -134,26 +195,37 @@ async def lifespan(app: FastAPI):
         )
 
         # Start scheduler if enabled
-        if settings.scheduler_enabled:
-            from app.services.scheduler_service import scheduler_service
+        # if settings.scheduler_enabled:
+        #     from app.services.scheduler_service import scheduler_service
 
-            await scheduler_service.start()
-            logger.info(" Scheduler started - automated scraping enabled")
-            logger.info(f" Scheduled scraping hours: {settings.scraper_schedule_hours}")
-            logger.info(f" Scraper timezone: {settings.scraper_timezone}")
-            logger.info(
-                f" Days back: {settings.scraper_days_back}, Max filings: {settings.scraper_max_filings}"
-            )
-            jobs = scheduler_service.get_jobs()
-            logger.info(f" Active scheduled jobs: {len(jobs)}")
-            for job in jobs:
-                logger.info(
-                    f"  - {job.name} (ID: {job.id}, Next run: {job.next_run_time})"
-                )
-        else:
-            logger.info(" Scheduler disabled (SCHEDULER_ENABLED=false)")
+        #     await scheduler_service.start()
+        #     logger.info(" Scheduler started - automated scraping enabled")
+        #     logger.info(f" Scheduled scraping hours: {settings.scraper_schedule_hours}")
+        #     logger.info(f" Scraper timezone: {settings.scraper_timezone}")
+        #     logger.info(
+        #         f" Days back: {settings.scraper_days_back}, Max filings: {settings.scraper_max_filings}"
+        #     )
+        #     jobs = scheduler_service.get_jobs()
+        #     logger.info(f" Active scheduled jobs: {len(jobs)}")
+        #     for job in jobs:
+        #         logger.info(
+        #             f"  - {job.name} (ID: {job.id}, Next run: {job.next_run_time})"
+        #         )
+        # else:
+        #     logger.info(" Scheduler disabled (SCHEDULER_ENABLED=false)")
 
         logger.info("Application startup complete")
+        logger.info("=" * 80)
+        
+        # Log all registered routes for debugging
+        logger.info("Registered Routes:")
+        for route in app.routes:
+            if hasattr(route, "path") and hasattr(route, "methods"):
+                logger.info(f" - {route.path} [{','.join(route.methods)}]")
+            elif hasattr(route, "path"):
+                # WebSocket routes don't have methods
+                logger.info(f" - {route.path} [WebSocket]")
+        
         logger.info("=" * 80)
         logger.info("Server is ready to accept connections")
         logger.info(f"API available at: http://0.0.0.0:8000{settings.api_v1_prefix}/docs")
@@ -170,31 +242,40 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     logger.info("Shutting down application...")
-    try:
-        # Stop scheduler first (with timeout to prevent hanging)
-        if settings.scheduler_enabled:
-            try:
-                from app.services.scheduler_service import scheduler_service
-                import asyncio
-                # Stop scheduler with timeout
-                await asyncio.wait_for(scheduler_service.stop(), timeout=5.0)
-                logger.info(" Scheduler stopped")
-            except asyncio.TimeoutError:
-                logger.warning(" Scheduler stop timed out, forcing shutdown")
-            except Exception as e:
-                logger.error(f" Error stopping scheduler: {e}")
-    except Exception as e:
-        logger.error(f"Error during scheduler shutdown: {e}")
     
+    # Stop scheduler first (with timeout to prevent hanging)
+    # if settings.scheduler_enabled:
+    #     try:
+    #         from app.services.scheduler_service import scheduler_service
+    #         import asyncio
+    #         # Stop scheduler with timeout
+    #         await asyncio.wait_for(scheduler_service.stop(), timeout=3.0)
+    #         logger.info(" Scheduler stopped")
+    #     except asyncio.TimeoutError:
+    #         logger.warning(" Scheduler stop timed out, forcing shutdown")
+    #     except Exception as e:
+    #         logger.error(f" Error stopping scheduler: {e}")
+    
+    # Close database connections (with shorter timeout and force close)
     try:
-        # Close database connections (with timeout)
         import asyncio
-        await asyncio.wait_for(db_manager.close(), timeout=5.0)
-        logger.info(" Database connections closed")
-    except asyncio.TimeoutError:
-        logger.warning(" Database close timed out")
+        # Use a shorter timeout and force close if needed
+        try:
+            await asyncio.wait_for(db_manager.close(), timeout=2.0)
+            logger.info(" Database connections closed")
+        except asyncio.TimeoutError:
+            logger.warning(" Database close timed out, forcing close")
+            # Force close by setting engine to None
+            if db_manager._engine is not None:
+                db_manager._engine = None
+                db_manager._session_factory = None
+                logger.info(" Database engine force-closed")
     except Exception as e:
         logger.error(f"Error during database shutdown: {e}")
+        # Force close on any error
+        if db_manager._engine is not None:
+            db_manager._engine = None
+            db_manager._session_factory = None
     
     logger.info("Application shutdown complete")
 
@@ -224,9 +305,8 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 # HTTPS Redirect and Security Headers Middleware (must be added first)
-# Commented out - middleware not yet implemented
-# from app.middleware import HTTPSRedirectMiddleware
-# app.add_middleware(HTTPSRedirectMiddleware)
+from app.middleware.https_redirect import HTTPSRedirectMiddleware
+app.add_middleware(HTTPSRedirectMiddleware)
 
 # CORS Middleware Configuration
 app.add_middleware(
@@ -521,6 +601,11 @@ from app.routers import (  # noqa: E402
     jobs,
     news,
     public_contact,
+    data_health,
+    notifications,
+    ai,
+    patterns,
+    alerts,
 )
 
 # Include all routers with API v1 prefix
@@ -552,6 +637,18 @@ app.include_router(
     health.router, prefix=f"{settings.api_v1_prefix}", tags=["Health Checks"]
 )
 app.include_router(
+    data_health.router, prefix=f"{settings.api_v1_prefix}/data-health", tags=["Data Health Checks"]
+)
+app.include_router(
+    notifications.router, prefix=f"{settings.api_v1_prefix}/notifications", tags=["Notifications"]
+)
+app.include_router(
+    ai.router, prefix=f"{settings.api_v1_prefix}", tags=["AI Insights"]
+)
+app.include_router(
+    patterns.router, prefix=f"{settings.api_v1_prefix}", tags=["Pattern Analysis"]
+)
+app.include_router(
     congressional_trades.router,
     prefix=f"{settings.api_v1_prefix}/congressional-trades",
     tags=["Congressional Trades"],
@@ -578,6 +675,7 @@ app.include_router(news.router, prefix=f"{settings.api_v1_prefix}", tags=["News"
 from app.routers import tickets  # noqa: E402
 
 app.include_router(tickets.router, prefix=f"{settings.api_v1_prefix}", tags=["Tickets"])
+app.include_router(alerts.router, prefix=f"{settings.api_v1_prefix}", tags=["Alerts"])
 
 
 if __name__ == "__main__":
@@ -588,15 +686,6 @@ if __name__ == "__main__":
     uvicorn_logger = logging.getLogger("uvicorn")
     uvicorn_logger.setLevel(getattr(logging, settings.log_level))
     
-    # Setup signal handlers for graceful shutdown
-    def signal_handler(sig, frame):
-        """Handle SIGINT (Ctrl+C) and SIGTERM for graceful shutdown."""
-        logger.info("\nReceived shutdown signal, shutting down gracefully...")
-        sys.exit(0)
-    
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
-
     # Run with uvicorn when executed directly
     # For production, use: uvicorn app.main:app --host 0.0.0.0 --port 8000
     logger.info("=" * 80)
@@ -605,13 +694,8 @@ if __name__ == "__main__":
     logger.info(f"Reload: {settings.debug}")
     logger.info(f"Log Level: {settings.log_level.lower()}")
     logger.info("=" * 80)
-    logger.info("Calling uvicorn.run() - server should start now...")
     
     try:
-        # Use log_config to ensure proper logging
-        logger.info("Initializing uvicorn server...")
-        logger.info("About to call uvicorn.run() - this will start the server")
-        
         # Use app object directly to avoid any import delays or issues
         # This ensures the app is fully loaded before uvicorn starts
         uvicorn.run(
@@ -621,20 +705,15 @@ if __name__ == "__main__":
             reload=False,  # Disable reload when passing app object (reload requires string)
             log_level=settings.log_level.lower(),
             timeout_keep_alive=5,
-            timeout_graceful_shutdown=10,
+            timeout_graceful_shutdown=5,  # Reduced from 10 to 5 seconds
             access_log=True,
         )
     except KeyboardInterrupt:
-        logger.info("Shutdown requested by user")
+        logger.info("\nShutdown requested by user (Ctrl+C)")
+        # FastAPI's lifespan will handle cleanup
         sys.exit(0)
     except Exception as e:
         logger.error(f"Error starting server: {e}", exc_info=True)
         import traceback
         traceback.print_exc()
-        sys.exit(1)
-    except KeyboardInterrupt:
-        logger.info("Shutdown requested by user")
-        sys.exit(0)
-    except Exception as e:
-        logger.error(f"Error starting server: {e}", exc_info=True)
         sys.exit(1)

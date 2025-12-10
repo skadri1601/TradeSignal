@@ -1,14 +1,13 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { ArrowRight, Users, Linkedin, Instagram, Twitter } from 'lucide-react';
+import { motion, Variants } from 'framer-motion';
+import { ArrowRight, Linkedin, Instagram, Twitter } from 'lucide-react';
 
 // Animation Variants
-const fadeInUp = {
+const fadeInUp: Variants = {
   hidden: { opacity: 0, y: 30 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
 };
 
-const staggerContainer = {
+const staggerContainer: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,

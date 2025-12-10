@@ -147,17 +147,13 @@ experiments/
 # Documentation / Markdown
 # *.md  <-- Unignored to allow README and docs
 
-# Tests
-tests/
-e2e/
-playwright.config.ts
-vitest.config.ts
-backend/tests/
-backend/test_*.py
-backend/check_tests.py
-backend/run_tests_debug.py
-backend/run_tests_verbose.py
-backend/run_tests.py
+# Tests - KEEP THESE UNIGNORED FOR CI/CD
+# tests/
+# e2e/
+# playwright.config.ts
+# vitest.config.ts
+# backend/tests/
+# backend/test_*.py
 
 # Database migrations
 backend/migrations/
@@ -167,10 +163,6 @@ backend/migrations/
 
 # Temporary database/test files
 .tmp_*.py
-# backend/test_*.py <-- Unignored
-# backend/seed_db.py <-- Unignored if needed, but keeping ignored if purely local seed
-# backend/test_*.py
-# backend/*_test.py
 
 # One-time scripts (already executed)
 backend/scripts/create_*.py
@@ -193,10 +185,10 @@ backend/scripts/scrape_*.py
 backend/scripts/verify_*.py
 
 # Frontend Test Components
-frontend/src/components/__tests__/
+# frontend/src/components/__tests__/
 
 # Package lock files
-package-lock.json
+# package-lock.json
 
 # Migration script
 run_migration.bat
@@ -222,3 +214,27 @@ backend/fix_*.py
 backend/check_*.py
 backend/test_*.py
 backend/run_tests*.py
+
+# Frontend Images
+frontend/public/images/
+
+# Additional Test/Config files
+*.bat
+.flake8
+backend/.flake8
+celerybeat.pid
+celerydb
+worker.pid
+docker-compose.override.yml
+
+# Markdown files
+backend.md
+Debug_log.md
+claudeplan.md
+geminiplan.md
+Tradesignal_deploy.md
+tradesignal.md
+troubleshooting.md
+production_security_hardening_8aaf6e21.plan.md
+
+

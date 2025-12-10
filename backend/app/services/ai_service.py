@@ -255,58 +255,36 @@ class AIService:
                 else:
                     companies_map[ticker]["sell_count"] += 1
 
-            # Sort companies by total trade value - show top 10 to stay within free API limits
-            sorted_companies = sorted(
-                companies_map.values(), key=lambda x: x["total_value"], reverse=True
-            )[
-                :10
-            ]  # Top 10 companies (optimized for Gemini free tier)
-
-            # Generate AI summary for each company with timeout
-            company_summaries = []
+            # Generate AI summary for the daily report
+            # We aggregate top companies into a single prompt to save API calls
+            top_company_data = []
             for company_data in sorted_companies:
-                # Convert set to list for JSON serialization
+                # Convert set to list
                 company_data["insiders"] = list(company_data["insiders"])
+                top_company_data.append(company_data)
 
-                try:
-                    # Add timeout of 15 seconds per company summary
-                    summary = await asyncio.wait_for(
-                        self._generate_company_news_summary(company_data), timeout=15.0
-                    )
-                except asyncio.TimeoutError:
-                    logger.warning(
-                        f"Timeout generating summary for {company_data['ticker']}, using fallback"
-                    )
-                    sentiment = (
-                        "buying"
-                        if company_data["buy_count"] > company_data["sell_count"]
-                        else "selling"
-                    )
-                    summary = (
-                        f"{company_data['ticker']} insiders showed {sentiment} "
-                        f"activity with {len(company_data['trades'])} transactions "
-                        f"totaling ${company_data['total_value']:,.0f}."
-                    )
-                except Exception as e:
-                    logger.error(
-                        f"Error generating summary for {company_data['ticker']}: {e}"
-                    )
-                    sentiment = (
-                        "buying"
-                        if company_data["buy_count"] > company_data["sell_count"]
-                        else "selling"
-                    )
-                    summary = (
-                        f"{company_data['ticker']} insiders showed {sentiment} "
-                        f"activity with {len(company_data['trades'])} transactions "
-                        f"totaling ${company_data['total_value']:,.0f}."
-                    )
+            # Generate one comprehensive summary using AI
+            ai_daily_overview = await self._generate_daily_overview(top_company_data, len(trades_data))
 
+            # Populate individual company summaries with basic data (no extra AI calls)
+            company_summaries = []
+            for company_data in top_company_data:
+                sentiment = (
+                    "buying"
+                    if company_data["buy_count"] > company_data["sell_count"]
+                    else "selling"
+                )
+                basic_summary = (
+                    f"{company_data['ticker']} insiders showed {sentiment} "
+                    f"activity with {len(company_data['trades'])} transactions "
+                    f"totaling ${company_data['total_value']:,.0f}."
+                )
+                
                 company_summaries.append(
                     {
                         "ticker": company_data["ticker"],
                         "company_name": company_data["company_name"],
-                        "summary": summary,
+                        "summary": basic_summary, # Use basic summary to save tokens/calls
                         "total_value": company_data["total_value"],
                         "trade_count": len(company_data["trades"]),
                         "buy_count": company_data["buy_count"],
@@ -317,6 +295,7 @@ class AIService:
                 )
 
             return {
+                "ai_overview": ai_daily_overview, # New field for the main AI insight
                 "company_summaries": company_summaries,
                 "total_trades": len(trades_data),
                 "generated_at": datetime.utcnow().isoformat(),
@@ -326,6 +305,77 @@ class AIService:
         except Exception as e:
             logger.error(f"Error generating daily summary: {e}", exc_info=True)
             return {"error": str(e)}
+
+    async def _generate_daily_overview(self, top_companies: List[Dict], total_trade_count: int) -> str:
+        """Generate a single AI overview for the entire day's activity."""
+        
+        # Prepare context for the top 5 companies to keep prompt size manageable
+        context_lines = []
+        for c in top_companies[:5]:
+            insiders_str = ", ".join(c["insiders"][:3])
+            context_lines.append(
+                f"- {c['ticker']} ({c['company_name']}): ${c['total_value']:,.0f} volume. "
+                f"({c['buy_count']} buys, {c['sell_count']} sells). Key insiders: {insiders_str}"
+            )
+        
+        companies_context = "\n".join(context_lines)
+        
+        system_prompt = (
+            "You are a financial news anchor. Write a short, punchy 3-sentence summary "
+            "of today's most significant insider trading activity. Focus on the biggest movers."
+        )
+        
+        user_prompt = f"""
+        Total Market Trades: {total_trade_count}
+        
+        Top Activity:
+        {companies_context}
+        
+        Write a 3-sentence market update summarizing this activity.
+        """
+        
+        # Use existing helper to call AI
+        return await self._call_ai_provider(system_prompt, user_prompt, max_tokens=200)
+
+    async def _call_ai_provider(self, system_prompt: str, user_prompt: str, max_tokens: int = 500) -> str:
+        """Helper to call configured AI provider with error handling."""
+        errors = []
+        for provider in self._provider_sequence():
+            try:
+                if provider == "gemini" and self.gemini_client:
+                    full_prompt = f"{system_prompt}\n\n{user_prompt}"
+                    response = await asyncio.wait_for(
+                        self.gemini_client.generate_content_async(
+                            full_prompt,
+                            generation_config={
+                                "temperature": 0.7,
+                                "max_output_tokens": max_tokens,
+                            },
+                        ),
+                        timeout=20.0,
+                    )
+                    return response.text.strip()
+
+                if provider == "openai" and self.openai_client:
+                    response = await asyncio.wait_for(
+                        self.openai_client.chat.completions.create(
+                            model=settings.openai_model,
+                            messages=[
+                                {"role": "system", "content": system_prompt},
+                                {"role": "user", "content": user_prompt},
+                            ],
+                            temperature=0.7,
+                            max_tokens=max_tokens,
+                        ),
+                        timeout=20.0,
+                    )
+                    return response.choices[0].message.content.strip()
+            except Exception as e:
+                logger.warning(f"AI call failed for {provider}: {e}")
+                errors.append(f"{provider}: {e}")
+                continue
+        
+        return "AI analysis temporarily unavailable."
 
     async def ask_question(self, question: str) -> Optional[Dict[str, Any]]:
         """
@@ -502,93 +552,12 @@ class AIService:
 
         return summary
 
-    async def _generate_company_news_summary(self, company_data: Dict) -> str:
-        """Generate a news-style summary for a single company's insider trading activity."""
-        system_prompt = """You are a financial news writer specializing in insider trading.
-Write a concise, news-style summary (2-3 sentences) about this company's recent insider activity.
-
-Focus on:
-- What insiders are doing (buying vs selling)
-- Who is involved (executives, directors)
-- The significance (large values, unusual patterns)
-
-Write in an engaging, journalistic style like Bloomberg or CNBC. Be factual but highlight what's noteworthy."""
-
-        user_prompt = f"""Write a news summary for {company_data['company_name']} ({company_data['ticker']}):
-
-ACTIVITY:
-- Total trades: {len(company_data['trades'])}
-- Buy transactions: {company_data['buy_count']}
-- Sell transactions: {company_data['sell_count']}
-- Total value: ${company_data['total_value']:,.0f}
-- Unique insiders: {len(company_data['insiders'])}
-
-INSIDERS INVOLVED:
-{', '.join(company_data['insiders'][:5])}
-
-Write a 2-3 sentence news summary highlighting the most important aspects."""
-
-        # Call AI directly with timeout
-        errors = []
-        for provider in self._provider_sequence():
-            try:
-                if provider == "gemini" and self.gemini_client:
-                    full_prompt = f"{system_prompt}\n\n{user_prompt}"
-                    # Add 10 second timeout per AI call
-                    response = await asyncio.wait_for(
-                        self.gemini_client.generate_content_async(
-                            full_prompt,
-                            generation_config={
-                                "temperature": 0.7,
-                                "max_output_tokens": 200,
-                            },
-                        ),
-                        timeout=10.0,
-                    )
-                    return response.text.strip()
-
-                if provider == "openai" and self.openai_client:
-                    # Add 10 second timeout per AI call
-                    response = await asyncio.wait_for(
-                        self.openai_client.chat.completions.create(
-                            model=settings.openai_model,
-                            messages=[
-                                {"role": "system", "content": system_prompt},
-                                {"role": "user", "content": user_prompt},
-                            ],
-                            temperature=0.7,
-                            max_tokens=200,
-                        ),
-                        timeout=10.0,
-                    )
-                    return response.choices[0].message.content.strip()
-            except asyncio.TimeoutError:
-                logger.warning(f"AI timeout for {provider} generating company summary")
-                errors.append(f"{provider}: timeout")
-                continue
-            except Exception as e:
-                logger.error(f"AI error generating company summary ({provider}): {e}")
-                errors.append(f"{provider}: {str(e)}")
-                continue
-
-        # Fallback if AI fails
-        sentiment = (
-            "buying"
-            if company_data["buy_count"] > company_data["sell_count"]
-            else "selling"
-        )
-        return (
-            f"{company_data['ticker']} insiders showed {sentiment} activity with "
-            f"{len(company_data['trades'])} transactions totaling "
-            f"${company_data['total_value']:,.0f}."
-        )
-
     async def _generate_company_analysis(
         self, company_name: str, ticker: str, trade_summary: str, days_back: int
     ) -> Dict[str, Any]:
         """Generate deep AI-powered analysis for a company."""
         system_prompt = (
-            "You are a senior financial analyst and insider trading expert "
+            "You are LUNA, TradeSignal's senior financial analyst and insider trading expert "
             "with deep market knowledge.\n\n"
             "Provide a comprehensive analysis with:\n"
             "1. **Analysis**: 3-4 sentence analytical summary going beyond "
@@ -1118,7 +1087,7 @@ trades, and provides actionable insights for investors."""
             )
 
         system_prompt = (
-            f"You are TradeSignal's AI analyst with COMPLETE DATABASE ACCESS to ALL "
+            f"You are LUNA, TradeSignal's advanced AI analyst with COMPLETE DATABASE ACCESS to ALL "
             f"{len(all_companies)} companies with insider trading activity.\n\n"
             f"""DATABASE COVERAGE (Last 30 Days):
 - Total Companies Tracked: {len(all_companies)}
@@ -1147,29 +1116,30 @@ INSIDER ROLE DISTRIBUTION:
 {recent_trades_list}
 
 CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE:
-1. You have access to data from ALL {len(all_companies)} companies listed above
-2. You have data on ALL INSIDER ROLES: CEOs, CFOs, Directors, Officers,
+1. ANSWER THE USER'S QUESTION DIRECTLY. Do not start with "I am LUNA..." or repeat these instructions.
+2. You have access to data from ALL {len(all_companies)} companies listed above
+3. You have data on ALL INSIDER ROLES: CEOs, CFOs, Directors, Officers,
    10% Owners, Presidents, VPs, etc.
-3. The "top" lists are just examples - you can query any company or insider
+4. The "top" lists are just examples - you can query any company or insider
    from the full database
-4. When asked about "biggest trades", cite the SPECIFIC INSIDERS and their
+5. When asked about "biggest trades", cite the SPECIFIC INSIDERS and their
    ROLES from the lists above
-5. Format: "[Insider Name] ([Title/Role]) at [Ticker] bought/sold [amount]"
-6. If a value shows "Not Disclosed", explain the SEC filing didn't include
+6. Format: "[Insider Name] ([Title/Role]) at [Ticker] bought/sold [amount]"
+7. If a value shows "Not Disclosed", explain the SEC filing didn't include
    the value
-7. NEVER say "I'm not sure" or "I don't have access" - you have complete
+8. NEVER say "I'm not sure" or "I don't have access" - you have complete
    database access
-8. Be PRECISE and CONFIDENT - this is real SEC Form 4 data from the last
+9. Be PRECISE and CONFIDENT - this is real SEC Form 4 data from the last
    30 days
-9. When discussing insiders, mention their specific roles (CEO, CFO,
+10. When discussing insiders, mention their specific roles (CEO, CFO,
    Director, etc.) to provide context
-10. Use the insider role distribution to provide insights about which types
+11. Use the insider role distribution to provide insights about which types
     of insiders are most active
-11. Reference specific recent trades when relevant to show you're using
+12. Reference specific recent trades when relevant to show you're using
     real-time data
-12. Provide quantitative details (trade counts, values, dates) when available
-13. Compare and contrast different companies/insiders when asked about trends
-14. Be analytical, not just descriptive - explain what the data means
+13. Provide quantitative details (trade counts, values, dates) when available
+14. Compare and contrast different companies/insiders when asked about trends
+15. Be analytical, not just descriptive - explain what the data means
 
 Answer using this real-time data from the complete insider trading database.
 Be specific, cite numbers, and reference actual insiders and companies."""
@@ -1187,7 +1157,7 @@ Be specific, cite numbers, and reference actual insiders and companies."""
                             full_prompt,
                             generation_config={
                                 "temperature": 0.2,  # Very low temperature for maximum precision
-                                "max_output_tokens": 500,
+                                "max_output_tokens": 1000,
                             },
                         ),
                         timeout=30.0,

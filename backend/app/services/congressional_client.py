@@ -99,30 +99,25 @@ class CongressionalAPIClient:
             logger.info(f"Retrieved {len(cached)} congressional trades from cache")
             return cached
 
-        # Try Finnhub API first (if key is configured)
-        if self.finnhub_api_key:
-            try:
-                trades = await self._fetch_from_finnhub(symbol, from_date, to_date)
-
-                # Cache the results
-                await self._save_to_cache(cache_key, trades)
-
-                logger.info(
-                    f"Fetched {len(trades)} congressional trades from Finnhub API"
-                )
-                return trades
-            except Exception as e:
-                logger.warning(f"Finnhub API failed: {e}, trying free alternatives...")
-        else:
-            logger.info("Finnhub API key not configured, using free alternatives...")
-
-        # Try fallback sources (free alternatives)
+        # Always use fallback sources for congressional trades
+        logger.info("Always using fallback sources for congressional trades (Finnhub bypassed).")
         trades = await self._fetch_fallback(symbol, from_date, to_date)
 
-        # Cache the results even from fallback
         if trades:
-            await self._save_to_cache(cache_key, trades)
-
+            # Add data freshness check - don't serve fallback data older than configured days
+            latest_trade_date = max([self._parse_date(t.get('transaction_date')) for t in trades if t.get('transaction_date')]) if trades else None
+            if latest_trade_date and (date.today() - latest_trade_date).days > settings.congressional_fallback_max_age_days:
+                logger.warning(f"Fallback data is older than {settings.congressional_fallback_max_age_days} days ({latest_trade_date}). Not serving stale data.")
+                # If fallback data is too old, treat it as if no data was found
+                trades = []
+            else:
+                logger.info(f"Successfully fetched {len(trades)} congressional trades from fallback sources.")
+                await self._save_to_cache(cache_key, trades) # Cache even fallback results
+        
+        if not trades:
+            logger.error("No congressional trade data could be fetched from fallback sources.")
+            raise ValueError("No congressional trade data available from fallback sources.")
+        
         return trades
 
     async def _fetch_from_finnhub(

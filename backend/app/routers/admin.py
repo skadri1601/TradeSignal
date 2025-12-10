@@ -915,11 +915,11 @@ async def get_contact_detail(
     user_username = None
     if contact.user_id:
         try:
-        user_result = await db.execute(select(User).where(User.id == contact.user_id))
-        user = user_result.scalar_one_or_none()
-        if user:
-            user_email = user.email
-            user_username = user.username
+            user_result = await db.execute(select(User).where(User.id == contact.user_id))
+            user = user_result.scalar_one_or_none()
+            if user:
+                user_email = user.email
+                user_username = user.username
         except Exception as e:
             logger.error(f"Error fetching user info for contact {contact_id}: {e}", exc_info=True)
             # Continue without user info if there's an error
@@ -942,7 +942,7 @@ async def get_contact_detail(
             created_at=contact.created_at,
             updated_at=contact.updated_at,
         )
-    return detail
+        return detail
     except Exception as e:
         logger.error(f"Error creating ContactSubmissionDetail for contact {contact_id}: {e}", exc_info=True)
         logger.error(f"  Contact data: id={contact.id}, user_id={contact.user_id}, is_public={contact.is_public}")

@@ -76,29 +76,29 @@ async def create_ticket(
         if priority not in valid_priorities:
             priority = "medium"
         
-    # Create ticket
-    ticket = Ticket(
-        user_id=current_user.id,
-        subject=ticket_data.subject,
-        status=TicketStatus.OPEN.value,
+        # Create ticket
+        ticket = Ticket(
+            user_id=current_user.id,
+            subject=ticket_data.subject,
+            status=TicketStatus.OPEN.value,
             priority=priority,
-    )
-    db.add(ticket)
-    await db.flush()  # Get ID
+        )
+        db.add(ticket)
+        await db.flush()  # Get ID
 
-    # Create initial message
-    message = TicketMessage(
-        ticket_id=ticket.id,
-        user_id=current_user.id,
-        message=ticket_data.message,
-        is_staff_reply=False,
-    )
-    db.add(message)
+        # Create initial message
+        message = TicketMessage(
+            ticket_id=ticket.id,
+            user_id=current_user.id,
+            message=ticket_data.message,
+            is_staff_reply=False,
+        )
+        db.add(message)
 
-    await db.commit()
+        await db.commit()
         
         # Refresh ticket to get updated timestamps
-    await db.refresh(ticket)
+        await db.refresh(ticket)
 
         # Explicitly load messages for the response
         msg_result = await db.execute(
@@ -143,11 +143,11 @@ async def list_my_tickets(
 ):
     """List current user's tickets."""
     try:
-    result = await db.execute(
-        select(Ticket)
-        .where(Ticket.user_id == current_user.id)
-        .order_by(desc(Ticket.updated_at))
-    )
+        result = await db.execute(
+            select(Ticket)
+            .where(Ticket.user_id == current_user.id)
+            .order_by(desc(Ticket.updated_at))
+        )
         tickets = result.scalars().all()
         
         # Load messages for each ticket
@@ -189,26 +189,26 @@ async def get_ticket(
 ):
     """Get a specific ticket."""
     try:
-    result = await db.execute(select(Ticket).where(Ticket.id == ticket_id))
-    ticket = result.scalar_one_or_none()
+        result = await db.execute(select(Ticket).where(Ticket.id == ticket_id))
+        ticket = result.scalar_one_or_none()
 
-    if not ticket:
-        raise HTTPException(status_code=404, detail="Ticket not found")
+        if not ticket:
+            raise HTTPException(status_code=404, detail="Ticket not found")
 
-    if ticket.user_id != current_user.id and current_user.role not in [
-        "support",
-        "super_admin",
-    ]:
-        raise HTTPException(
-            status_code=403, detail="Not authorized to view this ticket"
+        if ticket.user_id != current_user.id and current_user.role not in [
+            "support",
+            "super_admin",
+        ]:
+            raise HTTPException(
+                status_code=403, detail="Not authorized to view this ticket"
+            )
+
+        # Load messages
+        msg_result = await db.execute(
+            select(TicketMessage)
+            .where(TicketMessage.ticket_id == ticket_id)
+            .order_by(TicketMessage.created_at)
         )
-
-    # Load messages
-    msg_result = await db.execute(
-        select(TicketMessage)
-        .where(TicketMessage.ticket_id == ticket_id)
-        .order_by(TicketMessage.created_at)
-    )
         messages = msg_result.scalars().all()
 
         # Create proper response
@@ -243,41 +243,41 @@ async def reply_ticket(
 ):
     """Reply to a ticket."""
     try:
-    result = await db.execute(select(Ticket).where(Ticket.id == ticket_id))
-    ticket = result.scalar_one_or_none()
+        result = await db.execute(select(Ticket).where(Ticket.id == ticket_id))
+        ticket = result.scalar_one_or_none()
 
-    if not ticket:
-        raise HTTPException(status_code=404, detail="Ticket not found")
+        if not ticket:
+            raise HTTPException(status_code=404, detail="Ticket not found")
 
-    is_staff = current_user.role in ["support", "super_admin"]
+        is_staff = current_user.role in ["support", "super_admin"]
 
-    if not is_staff and ticket.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized")
+        if not is_staff and ticket.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized")
 
-    # Create message
-    message = TicketMessage(
-        ticket_id=ticket_id,
-        user_id=current_user.id,
-        message=reply_data.message,
-        is_staff_reply=is_staff,
-    )
-    db.add(message)
+        # Create message
+        message = TicketMessage(
+            ticket_id=ticket_id,
+            user_id=current_user.id,
+            message=reply_data.message,
+            is_staff_reply=is_staff,
+        )
+        db.add(message)
 
-    # Update ticket status and timestamp
-    ticket.updated_at = datetime.utcnow()
-    if is_staff:
-        ticket.status = TicketStatus.ANSWERED.value
-    else:
-        ticket.status = TicketStatus.OPEN.value  # Re-open if user replies
+        # Update ticket status and timestamp
+        ticket.updated_at = datetime.utcnow()
+        if is_staff:
+            ticket.status = TicketStatus.ANSWERED.value
+        else:
+            ticket.status = TicketStatus.OPEN.value  # Re-open if user replies
 
-    await db.commit()
-    await db.refresh(message)
+        await db.commit()
+        await db.refresh(message)
 
         logger.info(
             f"Reply added to ticket {ticket_id} by user {current_user.id} (staff: {is_staff})"
         )
 
-    return message
+        return message
     except HTTPException:
         raise
     except Exception as e:
@@ -300,12 +300,12 @@ async def list_all_tickets(
 ):
     """List all tickets (for support staff)."""
     try:
-    query = select(Ticket).order_by(desc(Ticket.updated_at))
+        query = select(Ticket).order_by(desc(Ticket.updated_at))
 
-    if ticket_status:
-        query = query.where(Ticket.status == ticket_status)
+        if ticket_status:
+            query = query.where(Ticket.status == ticket_status)
 
-    result = await db.execute(query)
+        result = await db.execute(query)
         tickets = result.scalars().all()
         
         # Load messages for each ticket
@@ -348,24 +348,24 @@ async def update_ticket_status(
 ):
     """Update ticket status (Close/Open)."""
     try:
-    if ticket_status not in [s.value for s in TicketStatus]:
-        raise HTTPException(status_code=400, detail="Invalid status")
+        if ticket_status not in [s.value for s in TicketStatus]:
+            raise HTTPException(status_code=400, detail="Invalid status")
 
-    result = await db.execute(select(Ticket).where(Ticket.id == ticket_id))
-    ticket = result.scalar_one_or_none()
+        result = await db.execute(select(Ticket).where(Ticket.id == ticket_id))
+        ticket = result.scalar_one_or_none()
 
-    if not ticket:
-        raise HTTPException(status_code=404, detail="Ticket not found")
+        if not ticket:
+            raise HTTPException(status_code=404, detail="Ticket not found")
 
-    ticket.status = ticket_status
-    ticket.updated_at = datetime.utcnow()
-    await db.commit()
+        ticket.status = ticket_status
+        ticket.updated_at = datetime.utcnow()
+        await db.commit()
 
         logger.info(
             f"Ticket {ticket_id} status updated to {ticket_status} by user {current_user.id}"
         )
 
-    return {"message": f"Ticket status updated to {ticket_status}"}
+        return {"message": f"Ticket status updated to {ticket_status}"}
     except HTTPException:
         raise
     except Exception as e:

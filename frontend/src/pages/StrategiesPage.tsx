@@ -71,40 +71,40 @@ export default function StrategiesPage() {
     },
   ];
 
-  const colorMap: Record<string, { bg: string; text: string; border: string }> = {
-    blue: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
-    green: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
-    purple: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
-    orange: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
+  const colorMap: Record<string, { bg: string; text: string; border: string; gradient: string }> = {
+    blue: { bg: 'bg-blue-500/20', text: 'text-blue-300', border: 'border-blue-500/30', gradient: 'from-blue-600 to-blue-800' },
+    green: { bg: 'bg-green-500/20', text: 'text-green-300', border: 'border-green-500/30', gradient: 'from-green-600 to-green-800' },
+    purple: { bg: 'bg-purple-500/20', text: 'text-purple-300', border: 'border-purple-500/30', gradient: 'from-purple-600 to-purple-800' },
+    orange: { bg: 'bg-orange-500/20', text: 'text-orange-300', border: 'border-orange-500/30', gradient: 'from-orange-600 to-orange-800' },
   };
 
   const riskColors: Record<string, string> = {
-    'Low-Medium': 'bg-green-100 text-green-700',
-    'Medium': 'bg-yellow-100 text-yellow-700',
-    'Medium-High': 'bg-orange-100 text-orange-700',
-    'High': 'bg-red-100 text-red-700',
+    'Low-Medium': 'bg-green-500/20 text-green-300 border border-green-500/30',
+    'Medium': 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30',
+    'Medium-High': 'bg-orange-500/20 text-orange-300 border border-orange-500/30',
+    'High': 'bg-red-500/20 text-red-300 border border-red-500/30',
   };
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-          <Zap className="w-8 h-8 mr-3 text-blue-600" />
+        <h1 className="text-3xl font-bold text-white flex items-center">
+          <Zap className="w-8 h-8 mr-3 text-purple-400" />
           Trading Strategies
         </h1>
-        <p className="text-gray-600 mt-2">
+        <p className="text-gray-400 mt-2">
           Proven strategies for leveraging insider trading data in your investment decisions
         </p>
       </div>
 
       {/* Risk Disclaimer */}
-      <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
+      <div className="bg-gray-900/50 backdrop-blur-sm rounded-xl border border-white/10 p-4">
         <div className="flex items-start space-x-3">
-          <Shield className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
+          <Shield className="w-6 h-6 text-yellow-400 flex-shrink-0 mt-0.5" />
           <div>
-            <h3 className="font-semibold text-gray-900 mb-1">Important Disclaimer</h3>
-            <p className="text-sm text-gray-700">
+            <h3 className="font-semibold text-white mb-1">Important Disclaimer</h3>
+            <p className="text-sm text-gray-400">
               Insider trading data is one of many factors to consider when making investment decisions.
               Past performance does not guarantee future results. Always do your own research and consider
               consulting with a financial advisor before making investment decisions.
@@ -130,7 +130,7 @@ export default function StrategiesPage() {
                   { type: 'info', title: 'TradeSignal' }
                 );
               }}
-              className={`bg-white rounded-2xl shadow-sm border-2 ${colors.border} p-6 hover:shadow-md transition-all cursor-pointer`}
+              className="bg-gray-900/50 backdrop-blur-sm rounded-xl border border-white/10 p-4 hover:border-purple-500/50 transition-all duration-300 cursor-pointer"
             >
               <div className="flex items-start space-x-6">
                 <div className={`w-16 h-16 ${colors.bg} rounded-xl flex items-center justify-center flex-shrink-0`}>
@@ -140,18 +140,18 @@ export default function StrategiesPage() {
                 <div className="flex-1">
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h3 className="text-2xl font-bold text-gray-900 mb-2">{strategy.name}</h3>
-                      <p className="text-gray-600">{strategy.description}</p>
+                      <h3 className="text-2xl font-bold text-white mb-2">{strategy.name}</h3>
+                      <p className="text-gray-400">{strategy.description}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <Shield className="w-5 h-5 text-gray-600" />
+                      <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
+                        <Shield className="w-5 h-5 text-gray-400" />
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500">Risk Level</p>
+                        <p className="text-xs text-gray-400">Risk Level</p>
                         <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${riskColors[strategy.riskLevel]}`}>
                           {strategy.riskLevel}
                         </span>
@@ -159,23 +159,23 @@ export default function StrategiesPage() {
                     </div>
 
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <Clock className="w-5 h-5 text-gray-600" />
+                      <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
+                        <Clock className="w-5 h-5 text-gray-400" />
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500">Timeframe</p>
-                        <p className="font-medium text-gray-900 text-sm">{strategy.timeframe}</p>
+                        <p className="text-xs text-gray-400">Timeframe</p>
+                        <p className="font-medium text-white text-sm">{strategy.timeframe}</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="border-t border-gray-200 pt-4">
-                    <p className="text-sm font-semibold text-gray-700 mb-3">Key Features:</p>
+                  <div className="border-t border-white/10 pt-4">
+                    <p className="text-sm font-semibold text-white mb-3">Key Features:</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                       {strategy.features.map((feature, idx) => (
                         <div key={idx} className="flex items-start space-x-2">
                           <div className={`w-1.5 h-1.5 ${colors.bg} rounded-full mt-2 flex-shrink-0`}></div>
-                          <p className="text-sm text-gray-600">{feature}</p>
+                          <p className="text-sm text-gray-400">{feature}</p>
                         </div>
                       ))}
                     </div>
@@ -188,11 +188,11 @@ export default function StrategiesPage() {
       </div>
 
       {/* Coming Soon */}
-      <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-8 border border-indigo-200">
+      <div className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-8 border border-white/10">
         <div className="text-center">
-          <Zap className="w-12 h-12 text-indigo-600 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-gray-900 mb-2">Strategy Backtesting Coming Soon!</h3>
-          <p className="text-gray-600 max-w-2xl mx-auto mb-4">
+          <Zap className="w-12 h-12 text-purple-400 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-white mb-2">Strategy Backtesting Coming Soon!</h3>
+          <p className="text-gray-400 max-w-2xl mx-auto mb-4">
             We're building tools to backtest these strategies against historical data,
             so you can see exactly how they would have performed before investing real money.
           </p>
@@ -204,7 +204,7 @@ export default function StrategiesPage() {
                   { type: 'info', title: 'TradeSignal' }
                 );
               }}
-              className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+              className="px-6 py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors"
             >
               Get Notified
             </button>
@@ -215,7 +215,7 @@ export default function StrategiesPage() {
                   { type: 'info', title: 'TradeSignal' }
                 );
               }}
-              className="px-6 py-3 bg-white text-indigo-600 border-2 border-indigo-600 rounded-lg font-medium hover:bg-indigo-50 transition-colors"
+              className="px-6 py-3 bg-white/10 text-white border border-white/20 rounded-lg font-medium hover:bg-white/20 transition-colors"
             >
               Learn More
             </button>

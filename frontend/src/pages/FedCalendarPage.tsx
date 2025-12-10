@@ -55,28 +55,39 @@ export default function FedCalendarPage() {
 
   const upcomingEvents = calendar?.events || [];
 
+  // Calculate days until dynamically based on current date
+  const calculateDaysUntil = (eventDate: string): number => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const event = new Date(eventDate);
+    event.setHours(0, 0, 0, 0);
+    const diffTime = event.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays >= 0 ? diffDays : 0;
+  };
+
   return (
     <div className="space-y-6">
       <LegalDisclaimer />
 
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Federal Reserve Calendar</h1>
-        <p className="mt-2 text-gray-600">
+        <h1 className="text-3xl font-bold text-white">Federal Reserve Calendar</h1>
+        <p className="mt-2 text-gray-400">
           Track FOMC meetings, rate decisions, and economic data releases
         </p>
       </div>
 
       {/* Current Interest Rate */}
       {interestRate && (
-        <div className="card bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+        <div className="bg-gradient-to-r from-blue-900/40 to-indigo-900/40 border border-blue-500/30 rounded-xl p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">Current Interest Rate</h2>
-              <p className="text-sm text-gray-600 mt-1">{interestRate.description}</p>
+              <h2 className="text-xl font-semibold text-white">Current Interest Rate</h2>
+              <p className="text-sm text-gray-400 mt-1">{interestRate.description}</p>
             </div>
             <div className="text-right">
-              <div className="text-4xl font-bold text-blue-600">{interestRate.rate}%</div>
+              <div className="text-4xl font-bold text-blue-400">{interestRate.rate}%</div>
               <p className="text-sm text-gray-500 mt-1">As of {interestRate.date}</p>
             </div>
           </div>
@@ -84,11 +95,11 @@ export default function FedCalendarPage() {
       )}
 
       {/* Interest Rate History Chart */}
-      <div className="card">
+      <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10 p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
-            <LineChart className="h-5 w-5 text-blue-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Interest Rate History</h2>
+            <LineChart className="h-5 w-5 text-blue-400" />
+            <h2 className="text-xl font-semibold text-white">Interest Rate History</h2>
           </div>
           <div className="flex space-x-2">
             {[
@@ -100,10 +111,10 @@ export default function FedCalendarPage() {
               <button
                 key={option.days}
                 onClick={() => setRateHistoryDays(option.days)}
-                className={`px-3 py-1 text-sm rounded ${
+                className={`px-3 py-1 text-sm rounded transition-colors ${
                   rateHistoryDays === option.days
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
                 }`}
               >
                 {option.label}
@@ -117,57 +128,62 @@ export default function FedCalendarPage() {
             <LoadingSpinner />
           </div>
         ) : chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorRate" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 12, fill: '#6B7280' }}
-                tickLine={false}
-                axisLine={{ stroke: '#E5E7EB' }}
-              />
-              <YAxis
-                tick={{ fontSize: 12, fill: '#6B7280' }}
-                tickLine={false}
-                axisLine={{ stroke: '#E5E7EB' }}
-                tickFormatter={(value) => `${value}%`}
-                domain={['auto', 'auto']}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'white',
-                  border: '1px solid #E5E7EB',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                }}
-                formatter={(value: number) => [`${value}%`, 'Interest Rate']}
-                labelFormatter={(label, payload) => {
-                  if (payload && payload[0]) {
-                    return new Date(payload[0].payload.fullDate).toLocaleDateString('en-US', {
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric',
-                    });
-                  }
-                  return label;
-                }}
-              />
-              <Area
-                type="stepAfter"
-                dataKey="rate"
-                stroke="#3B82F6"
-                strokeWidth={2}
-                fillOpacity={1}
-                fill="url(#colorRate)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorRate" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 12, fill: '#9CA3AF' }}
+                  tickLine={false}
+                  axisLine={false}
+                  minTickGap={30}
+                />
+                <YAxis
+                  tick={{ fontSize: 12, fill: '#9CA3AF' }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => `${value}%`}
+                  domain={['auto', 'auto']}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#1F2937',
+                    border: '1px solid #374151',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5)',
+                    color: '#F3F4F6'
+                  }}
+                  itemStyle={{ color: '#60A5FA' }}
+                  formatter={(value: number) => [`${value}%`, 'Interest Rate']}
+                  labelFormatter={(label, payload) => {
+                    if (payload && payload[0]) {
+                      return new Date(payload[0].payload.fullDate).toLocaleDateString('en-US', {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric',
+                      });
+                    }
+                    return label;
+                  }}
+                />
+                <Area
+                  type="stepAfter"
+                  dataKey="rate"
+                  stroke="#3B82F6"
+                  strokeWidth={2}
+                  fillOpacity={1}
+                  fill="url(#colorRate)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         ) : (
           <div className="text-center py-8 text-gray-500">
             No rate history available. Configure FRED_API_KEY in .env for historical data.
@@ -179,12 +195,12 @@ export default function FedCalendarPage() {
       {indicators && indicators.indicators && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {indicators.indicators.inflation && (
-            <div className="card">
+            <div className="bg-gray-900/50 backdrop-blur-sm rounded-xl border border-white/10 p-6 shadow-lg">
               <div className="flex items-center space-x-2">
-                <TrendingUp className="h-5 w-5 text-green-600" />
-                <h3 className="font-semibold text-gray-900">Inflation (CPI)</h3>
+                <TrendingUp className="h-5 w-5 text-green-400" />
+                <h3 className="font-semibold text-white">Inflation (CPI)</h3>
               </div>
-              <p className="text-2xl font-bold text-gray-900 mt-2">
+              <p className="text-2xl font-bold text-white mt-2">
                 {indicators.indicators.inflation.value?.toFixed(2) || 'N/A'}
               </p>
               <p className="text-xs text-gray-500 mt-1">
@@ -194,12 +210,12 @@ export default function FedCalendarPage() {
           )}
 
           {indicators.indicators.unemployment && (
-            <div className="card">
+            <div className="bg-gray-900/50 backdrop-blur-sm rounded-xl border border-white/10 p-6 shadow-lg">
               <div className="flex items-center space-x-2">
-                <Users className="h-5 w-5 text-blue-600" />
-                <h3 className="font-semibold text-gray-900">Unemployment</h3>
+                <Users className="h-5 w-5 text-blue-400" />
+                <h3 className="font-semibold text-white">Unemployment</h3>
               </div>
-              <p className="text-2xl font-bold text-gray-900 mt-2">
+              <p className="text-2xl font-bold text-white mt-2">
                 {indicators.indicators.unemployment.value?.toFixed(1) || 'N/A'}%
               </p>
               <p className="text-xs text-gray-500 mt-1">
@@ -209,12 +225,12 @@ export default function FedCalendarPage() {
           )}
 
           {indicators.indicators.gdp && (
-            <div className="card">
+            <div className="bg-gray-900/50 backdrop-blur-sm rounded-xl border border-white/10 p-6 shadow-lg">
               <div className="flex items-center space-x-2">
-                <DollarSign className="h-5 w-5 text-green-600" />
-                <h3 className="font-semibold text-gray-900">GDP</h3>
+                <DollarSign className="h-5 w-5 text-green-400" />
+                <h3 className="font-semibold text-white">GDP</h3>
               </div>
-              <p className="text-2xl font-bold text-gray-900 mt-2">
+              <p className="text-2xl font-bold text-white mt-2">
                 ${indicators.indicators.gdp.value ? (indicators.indicators.gdp.value / 1e12).toFixed(2) + 'T' : 'N/A'}
               </p>
               <p className="text-xs text-gray-500 mt-1">
@@ -224,12 +240,12 @@ export default function FedCalendarPage() {
           )}
 
           {indicators.indicators.retail_sales && (
-            <div className="card">
+            <div className="bg-gray-900/50 backdrop-blur-sm rounded-xl border border-white/10 p-6 shadow-lg">
               <div className="flex items-center space-x-2">
-                <TrendingUp className="h-5 w-5 text-purple-600" />
-                <h3 className="font-semibold text-gray-900">Retail Sales</h3>
+                <TrendingUp className="h-5 w-5 text-purple-400" />
+                <h3 className="font-semibold text-white">Retail Sales</h3>
               </div>
-              <p className="text-2xl font-bold text-gray-900 mt-2">
+              <p className="text-2xl font-bold text-white mt-2">
                 ${indicators.indicators.retail_sales.value ? (indicators.indicators.retail_sales.value / 1e9).toFixed(1) + 'B' : 'N/A'}
               </p>
               <p className="text-xs text-gray-500 mt-1">
@@ -241,9 +257,9 @@ export default function FedCalendarPage() {
       )}
 
       {/* Upcoming Events */}
-      <div className="card">
+      <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10 p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">Upcoming Events</h2>
+          <h2 className="text-xl font-semibold text-white">Upcoming Events</h2>
           <span className="text-sm text-gray-500">{upcomingEvents.length} events</span>
         </div>
 
@@ -258,28 +274,28 @@ export default function FedCalendarPage() {
                 key={index}
                 className={`p-4 rounded-lg border-l-4 ${
                   event.importance === 'HIGH'
-                    ? 'bg-red-50 border-red-400'
-                    : 'bg-gray-50 border-gray-300'
+                    ? 'bg-red-900/20 border-red-500/50'
+                    : 'bg-gray-800/50 border-gray-600'
                 }`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-2">
-                      <Calendar className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm font-medium text-gray-700">{event.type}</span>
+                      <Calendar className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm font-medium text-gray-300">{event.type}</span>
                       {event.importance === 'HIGH' && (
-                        <span className="px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-800 rounded">
+                        <span className="px-2 py-0.5 text-xs font-semibold bg-red-500/20 text-red-300 rounded border border-red-500/20">
                           HIGH IMPORTANCE
                         </span>
                       )}
                     </div>
-                    <h3 className="font-semibold text-gray-900 mt-1">{event.description}</h3>
+                    <h3 className="font-semibold text-white mt-1">{event.description}</h3>
                     {event.expected_outcome && (
-                      <p className="text-sm text-gray-600 mt-1">{event.expected_outcome}</p>
+                      <p className="text-sm text-gray-400 mt-1">{event.expected_outcome}</p>
                     )}
                   </div>
                   <div className="text-right ml-4">
-                    <div className="text-lg font-bold text-gray-900">
+                    <div className="text-lg font-bold text-white">
                       {new Date(event.date).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
@@ -287,11 +303,12 @@ export default function FedCalendarPage() {
                       })}
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
-                      {event.days_until === 0
-                        ? 'Today'
-                        : event.days_until === 1
-                        ? 'Tomorrow'
-                        : `${event.days_until} days`}
+                      {(() => {
+                        const daysUntil = calculateDaysUntil(event.date);
+                        if (daysUntil === 0) return 'Today';
+                        if (daysUntil === 1) return 'Tomorrow';
+                        return `${daysUntil} days`;
+                      })()}
                     </p>
                   </div>
                 </div>
@@ -302,8 +319,8 @@ export default function FedCalendarPage() {
       </div>
 
       {/* Info Banner */}
-      <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
-        <p className="text-sm text-blue-700">
+      <div className="bg-blue-900/20 border-l-4 border-blue-500 p-4 rounded-r-lg">
+        <p className="text-sm text-blue-200">
           <strong>Note:</strong> FED meetings and rate decisions significantly impact stock markets.
           Track these events to time your trades around major market catalysts.
         </p>
@@ -311,4 +328,3 @@ export default function FedCalendarPage() {
     </div>
   );
 }
-

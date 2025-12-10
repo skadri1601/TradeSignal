@@ -30,7 +30,6 @@ async def get_general_news(
     request: Request,
     limit: int = Query(50, ge=1, le=100, description="Maximum articles to return"),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
 ):
     """
     Get general market news.
@@ -39,7 +38,7 @@ async def get_general_news(
         List of general market news articles
     """
     try:
-        service = NewsService(db)
+        service = NewsService()
         articles = await service.get_general_news(limit=limit)
 
         # Convert to NewsArticle schema
@@ -76,7 +75,6 @@ async def get_company_news(
     ticker: str,
     limit: int = Query(50, ge=1, le=100, description="Maximum articles to return"),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
 ):
     """
     Get company-specific news.
@@ -88,7 +86,7 @@ async def get_company_news(
         List of news articles for the company
     """
     try:
-        service = NewsService(db)
+        service = NewsService()
         articles = await service.get_company_news(ticker=ticker, limit=limit)
 
         # Convert to NewsArticle schema
@@ -126,7 +124,6 @@ async def get_crypto_news(
     request: Request,
     limit: int = Query(50, ge=1, le=100, description="Maximum articles to return"),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
 ):
     """
     Get crypto news.
@@ -135,7 +132,7 @@ async def get_crypto_news(
         List of crypto news articles
     """
     try:
-        service = NewsService(db)
+        service = NewsService()
         articles = await service.get_crypto_news(limit=limit)
 
         # Convert to NewsArticle schema
@@ -171,7 +168,6 @@ async def get_latest_news(
     request: Request,
     limit: int = Query(50, ge=1, le=100, description="Maximum articles to return"),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
 ):
     """
     Get latest news from all categories (general, company, crypto).
@@ -180,7 +176,7 @@ async def get_latest_news(
         Combined list of latest news articles from all categories
     """
     try:
-        service = NewsService(db)
+        service = NewsService()
         articles = await service.get_latest_news(limit=limit)
 
         # Convert to NewsArticle schema

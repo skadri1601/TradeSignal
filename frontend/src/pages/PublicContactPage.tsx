@@ -34,36 +34,48 @@ export default function PublicContactPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Hero Section */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            Have Questions? We're Here to Help
-          </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Get in touch with our team and we'll respond to you as soon as possible.
-          </p>
-        </div>
+    <div className="min-h-screen bg-black text-white selection:bg-purple-500/30 overflow-x-hidden">
+      
+      {/* Background Ambience */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px]" />
+      </div>
 
-        {/* Main Content - Two Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 max-w-6xl mx-auto">
-          {/* Contact Form - Left Side (60%) */}
-          <div className="lg:col-span-3">
-            <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Send us a message</h2>
-              <ContactForm
-                onSubmit={handleSubmit}
-                isSubmitting={isSubmitting}
-                submitStatus={submitStatus}
-              />
-            </div>
+      <div className="relative pt-32 pb-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Hero Section */}
+          <div className="text-center mb-16 relative z-10">
+            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+              Have Questions? <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
+                We're Here to Help
+              </span>
+            </h1>
+            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+              Get in touch with our team and we'll respond to you as soon as possible.
+            </p>
           </div>
 
-          {/* FAQ Section - Right Side (40%) */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-200">
-              <FAQSection />
+          {/* Main Content - Two Column Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 max-w-6xl mx-auto relative z-10">
+            {/* Contact Form - Left Side (60%) */}
+            <div className="lg:col-span-3">
+              <div className="bg-gray-900/50 backdrop-blur-sm border border-white/10 rounded-3xl p-8 shadow-xl">
+                <h2 className="text-2xl font-bold text-white mb-6">Send us a message</h2>
+                <ContactForm
+                  onSubmit={handleSubmit}
+                  isSubmitting={isSubmitting}
+                  submitStatus={submitStatus}
+                />
+              </div>
+            </div>
+
+            {/* FAQ Section - Right Side (40%) */}
+            <div className="lg:col-span-2">
+              <div className="bg-gray-900/50 backdrop-blur-sm border border-white/10 rounded-3xl p-8 shadow-xl h-full">
+                <FAQSection />
+              </div>
             </div>
           </div>
         </div>
