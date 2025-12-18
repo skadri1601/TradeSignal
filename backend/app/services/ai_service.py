@@ -255,6 +255,13 @@ class AIService:
                 else:
                     companies_map[ticker]["sell_count"] += 1
 
+            # Sort companies by total value (descending)
+            sorted_companies = sorted(
+                companies_map.values(),
+                key=lambda x: x["total_value"],
+                reverse=True
+            )[:10]  # Top 10 companies
+            
             # Generate AI summary for the daily report
             # We aggregate top companies into a single prompt to save API calls
             top_company_data = []
@@ -305,6 +312,176 @@ class AIService:
         except Exception as e:
             logger.error(f"Error generating daily summary: {e}", exc_info=True)
             return {"error": str(e)}
+
+    async def generate_daily_summary_material_only(self) -> Optional[Dict[str, Any]]:
+        """
+        Generate daily summary filtering for material trades only.
+        
+        Material trades: $50K+ value OR 10K+ shares.
+        Includes contextual analysis: why it matters, historical context, sector implications.
+        """
+        if not self._check_availability():
+            return None
+
+        try:
+            # Get trades from last 24 hours
+            cutoff_date = datetime.utcnow() - timedelta(days=1)
+
+            result = await self.db.execute(
+                select(Trade, Company, Insider)
+                .join(Company, Trade.company_id == Company.id)
+                .join(Insider, Trade.insider_id == Insider.id)
+                .where(Trade.filing_date >= cutoff_date)
+                .order_by(Trade.filing_date.desc())
+            )
+            all_trades = result.all()
+
+            # Filter for material trades: $50K+ OR 10K+ shares
+            material_trades = []
+            for trade, company, insider in all_trades:
+                trade_value = await self._get_trade_value(trade)
+                shares = self._get_trade_shares(trade)
+                
+                # Material trade criteria
+                is_material = (
+                    trade_value >= 50000 or  # $50K+ value
+                    shares >= 10000  # 10K+ shares
+                )
+                
+                if is_material:
+                    material_trades.append((trade, company, insider))
+
+            if not material_trades:
+                return {
+                    "company_summaries": [],
+                    "total_trades": 0,
+                    "material_trades": 0,
+                    "generated_at": datetime.utcnow().isoformat(),
+                    "period": "last 24 hours",
+                    "message": "No material trades found in the last 24 hours.",
+                }
+
+            # Group material trades by company
+            companies_map = {}
+            for trade, company, insider in material_trades:
+                ticker = company.ticker
+                if ticker not in companies_map:
+                    companies_map[ticker] = {
+                        "ticker": ticker,
+                        "company_name": company.name,
+                        "trades": [],
+                        "total_value": 0,
+                        "buy_count": 0,
+                        "sell_count": 0,
+                        "insiders": set(),
+                        "material_trade_count": 0,
+                    }
+
+                trade_value = await self._get_trade_value(trade)
+                shares = self._get_trade_shares(trade)
+                
+                companies_map[ticker]["trades"].append({
+                    "insider": insider.name,
+                    "role": insider.title or "Insider",
+                    "type": trade.transaction_type,
+                    "shares": shares,
+                    "value": trade_value,
+                    "date": trade.filing_date.isoformat(),
+                })
+                companies_map[ticker]["total_value"] += trade_value
+                companies_map[ticker]["insiders"].add(insider.name)
+                companies_map[ticker]["material_trade_count"] += 1
+                
+                if trade.transaction_type == "BUY":
+                    companies_map[ticker]["buy_count"] += 1
+                else:
+                    companies_map[ticker]["sell_count"] += 1
+
+            # Sort by total value
+            sorted_companies = sorted(
+                companies_map.values(),
+                key=lambda x: x["total_value"],
+                reverse=True
+            )[:10]
+
+            # Generate contextual AI analysis with historical context and sector implications
+            ai_overview = await self._generate_contextual_daily_analysis(
+                sorted_companies, len(material_trades), len(all_trades)
+            )
+
+            # Build company summaries
+            company_summaries = []
+            for company_data in sorted_companies:
+                company_data["insiders"] = list(company_data["insiders"])
+                company_summaries.append({
+                    "ticker": company_data["ticker"],
+                    "company_name": company_data["company_name"],
+                    "total_value": company_data["total_value"],
+                    "trade_count": company_data["material_trade_count"],
+                    "buy_count": company_data["buy_count"],
+                    "sell_count": company_data["sell_count"],
+                    "insider_count": len(company_data["insiders"]),
+                    "latest_date": company_data["trades"][0]["date"] if company_data["trades"] else None,
+                })
+
+            return {
+                "ai_overview": ai_overview,
+                "company_summaries": company_summaries,
+                "total_trades": len(all_trades),
+                "material_trades": len(material_trades),
+                "generated_at": datetime.utcnow().isoformat(),
+                "period": "last 24 hours",
+            }
+
+        except Exception as e:
+            logger.error(f"Error generating material-only daily summary: {e}", exc_info=True)
+            return {"error": str(e)}
+
+    async def _generate_contextual_daily_analysis(
+        self, companies: List[Dict], material_count: int, total_count: int
+    ) -> str:
+        """
+        Generate contextual analysis with:
+        - Why it matters
+        - Historical context
+        - Sector implications
+        """
+        if not companies:
+            return "No material insider trading activity detected in the last 24 hours."
+
+        # Prepare company context
+        company_context = []
+        for c in companies[:5]:  # Top 5 for context
+            insiders_str = ", ".join(list(c["insiders"])[:3])
+            company_context.append(
+                f"- {c['ticker']} ({c['company_name']}): "
+                f"${c['total_value']:,.0f} in material trades "
+                f"({c['buy_count']} buys, {c['sell_count']} sells). "
+                f"Key insiders: {insiders_str}"
+            )
+
+        system_prompt = (
+            "You are a senior financial analyst providing contextual analysis of insider trading activity.\n"
+            "Provide analysis that includes:\n"
+            "1. **Why it matters**: Significance of these trades for investors\n"
+            "2. **Historical context**: How this compares to typical activity patterns\n"
+            "3. **Sector implications**: What this might indicate about broader sector trends\n\n"
+            "Be concise (4-5 sentences) but insightful. Focus on actionable intelligence."
+        )
+
+        user_prompt = f"""
+        MATERIAL TRADES ANALYSIS (Last 24 Hours):
+        
+        Total Trades: {total_count}
+        Material Trades (≥$50K or ≥10K shares): {material_count}
+        
+        Top Activity:
+        {chr(10).join(company_context)}
+        
+        Provide contextual analysis explaining why these trades matter, historical context, and sector implications.
+        """
+
+        return await self._call_ai_provider(system_prompt, user_prompt, max_tokens=400)
 
     async def _generate_daily_overview(self, top_companies: List[Dict], total_trade_count: int) -> str:
         """Generate a single AI overview for the entire day's activity."""

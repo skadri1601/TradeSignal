@@ -252,9 +252,18 @@ class SECClient:
                 xml_pattern = r'href="(/Archives/edgar/data/[^"]+\.xml)"'
                 all_matches = re.findall(xml_pattern, html_content)
 
-                # Filter: get raw XML (NOT in xslF345X subfolder)
-                # The raw XML has no path prefix, styled one has "xslF345X05/" prefix
-                xml_matches = [m for m in all_matches if "/xslF345X" not in m]
+                # Filter: get raw Form 4 XML (NOT in xslF345X subfolder, NOT exfilingfees)
+                # Priority: form4.xml > wf-form4.xml > doc4.xml
+                # Exclude: exfilingfees_htm.xml (not a Form 4), styled versions (xslF345X)
+                xml_matches = [
+                    m for m in all_matches
+                    if "/xslF345X" not in m and "exfilingfees" not in m.lower()
+                ]
+
+                # Prioritize files named "form4.xml"
+                form4_files = [m for m in xml_matches if "form4.xml" in m.lower()]
+                if form4_files:
+                    xml_matches = form4_files
 
                 if not xml_matches:
                     logger.error(f"No raw XML document found in filing: {filing_url}")

@@ -101,7 +101,8 @@ class TierService:
         limits = await TierService.get_tier_limits(tier)
         usage = await TierService.get_or_create_usage(user_id, db)
 
-        ai_limit = limits["ai_requests_per_day"]
+        # Updated key name from subscription.py
+        ai_limit = limits.get("ai_requests_limit", limits.get("ai_requests_per_day", 0))
 
         # -1 means unlimited
         if ai_limit == -1:
@@ -120,7 +121,7 @@ class TierService:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=(
-                    f"Daily AI request limit exhausted ({ai_limit}/{ai_limit}). "
+                    f"Daily AI request limit exhausted ({usage.ai_requests}/{ai_limit}). "
                     f"Limit resets in {hours}h {minutes}m. Upgrade your plan for more."
                 ),
                 headers={"Retry-After": str(seconds_remaining)},
@@ -350,8 +351,8 @@ class TierService:
                 "companies_viewed": usage.companies_viewed,
             },
             "remaining": {
-                "ai_requests": limits["ai_requests_per_day"] - usage.ai_requests
-                if limits["ai_requests_per_day"] != -1
+                "ai_requests": limits.get("ai_requests_limit", limits.get("ai_requests_per_day", 0)) - usage.ai_requests
+                if limits.get("ai_requests_limit", limits.get("ai_requests_per_day", 0)) != -1
                 else -1,
             },
         }
