@@ -35,7 +35,13 @@ from slowapi.errors import RateLimitExceeded
 from app.config import settings
 from app.database import db_manager
 from app.core.limiter import limiter
+from app.core.observability import setup_observability
+from app.middleware.error_handler import register_error_handlers
+from app.services.cache_service import cache_service
 from prometheus_fastapi_instrumentator import Instrumentator
+
+# Background tasks registry
+_background_tasks = set()
 
 
 # Configure logging (Phase 5.4: Structured JSON logging in production)
@@ -57,6 +63,39 @@ else:
 
 # Configure rate limiter (uses in-memory storage, upgrade to Redis for production)
 # limiter = Limiter(key_func=get_remote_address)  # Moved to app.core.limiter
+
+
+async def background_db_reconnect():
+    """
+    Background task to periodically attempt database reconnection.
+
+    Runs when database is initially unavailable. Attempts reconnection
+    every 30 seconds until successful.
+    """
+    logger.info("🔄 Background database reconnection task started")
+    attempt = 0
+
+    while True:
+        await asyncio.sleep(30)  # Wait 30 seconds between attempts
+
+        # Check if database is already available
+        if db_manager.is_available:
+            logger.info("✅ Database is now available - stopping reconnection attempts")
+            break
+
+        attempt += 1
+        logger.info(f"🔄 Attempting database reconnection (attempt #{attempt})...")
+
+        try:
+            connection_ok = await db_manager.check_connection()
+            if connection_ok:
+                logger.info(f"✅ Database reconnected successfully after {attempt} attempts")
+                logger.info("📡 Application is now fully operational")
+                break
+            else:
+                logger.warning(f"⚠️  Reconnection attempt #{attempt} failed - will retry in 30s")
+        except Exception as e:
+            logger.warning(f"⚠️  Reconnection attempt #{attempt} failed: {e} - will retry in 30s")
 
 
 @asynccontextmanager
@@ -137,7 +176,12 @@ async def lifespan(app: FastAPI):
                 logger.error("=" * 80)
                 logger.error(f" Database connection check FAILED: {error_str}")
                 logger.error(" Possible causes:")
-                if "authentication" in error_str.lower() or "password" in error_str.lower():
+                if "gaierror" in error_str.lower() or "getaddrinfo failed" in error_str.lower():
+                    logger.error("  - DNS resolution failed (cannot resolve database hostname)")
+                    logger.error("  - Check network connectivity and DNS settings")
+                    logger.error("  - Try flushing DNS cache: ipconfig /flushdns (Windows)")
+                    logger.error("  - Consider switching to Google DNS (8.8.8.8, 8.8.4.4)")
+                elif "authentication" in error_str.lower() or "password" in error_str.lower():
                     logger.error("  - Incorrect username or password in DATABASE_URL")
                 elif "does not exist" in error_str.lower() or "database" in error_str.lower():
                     logger.error("  - Database name does not exist")
@@ -154,7 +198,7 @@ async def lifespan(app: FastAPI):
                 db_connected = False
 
         if db_connected:
-            logger.info(" Database connection established")
+            logger.info("✅ Database connection established")
 
             # Create database tables (if they don't exist) with timeout
             try:
@@ -168,17 +212,27 @@ async def lifespan(app: FastAPI):
                     engine = db_manager.get_engine()
                     async with engine.begin() as conn:
                         await conn.run_sync(Base.metadata.create_all)
-                
+
                 # Add timeout to table creation to prevent hanging
                 try:
                     await asyncio.wait_for(_create_tables(), timeout=30.0)
-                    logger.info(" Database tables created/verified")
+                    logger.info("✅ Database tables created/verified")
                 except asyncio.TimeoutError:
-                    logger.warning(" Database table creation timed out (tables may already exist)")
+                    logger.warning("⚠️  Database table creation timed out (tables may already exist)")
             except Exception as e:
-                logger.warning(f" Failed to create tables: {e}")
+                logger.warning(f"⚠️  Failed to create tables: {e}")
         else:
-            logger.warning(" Database connection failed (app will start anyway)")
+            logger.warning("=" * 80)
+            logger.warning("⚠️  DATABASE UNAVAILABLE - Starting in degraded mode")
+            logger.warning("⚠️  Endpoints requiring database will return 503 SERVICE UNAVAILABLE")
+            logger.warning("⚠️  Background reconnection task will attempt to restore connectivity")
+            logger.warning("=" * 80)
+
+            # Start background reconnection task
+            task = asyncio.create_task(background_db_reconnect())
+            _background_tasks.add(task)
+            task.add_done_callback(_background_tasks.discard)
+            logger.info("🔄 Background database reconnection task started")
 
         # Log feature flags
         logger.info(
@@ -242,7 +296,16 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     logger.info("Shutting down application...")
-    
+
+    # Cancel background tasks
+    logger.info(f"Cancelling {len(_background_tasks)} background tasks...")
+    for task in _background_tasks:
+        task.cancel()
+    # Wait for all background tasks to finish cancellation
+    if _background_tasks:
+        await asyncio.gather(*_background_tasks, return_exceptions=True)
+        logger.info("Background tasks cancelled")
+
     # Stop scheduler first (with timeout to prevent hanging)
     # if settings.scheduler_enabled:
     #     try:
@@ -277,6 +340,13 @@ async def lifespan(app: FastAPI):
             db_manager._engine = None
             db_manager._session_factory = None
     
+    # Disconnect cache service
+    try:
+        await cache_service.disconnect()
+        logger.info("Cache service disconnected")
+    except Exception as e:
+        logger.warning(f"Cache service disconnect error: {e}")
+    
     logger.info("Application shutdown complete")
 
 
@@ -302,6 +372,9 @@ except Exception as e:
 # Add rate limiter to app state
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Register error handlers
+register_error_handlers(app)
 
 
 # HTTPS Redirect and Security Headers Middleware (must be added first)
@@ -606,7 +679,9 @@ from app.routers import (  # noqa: E402
     ai,
     patterns,
     alerts,
+    research,
 )
+from app.routers import enterprise_api  # noqa: E402
 
 # Include all routers with API v1 prefix
 app.include_router(
@@ -676,6 +751,45 @@ from app.routers import tickets  # noqa: E402
 
 app.include_router(tickets.router, prefix=f"{settings.api_v1_prefix}", tags=["Tickets"])
 app.include_router(alerts.router, prefix=f"{settings.api_v1_prefix}", tags=["Alerts"])
+app.include_router(research.router, tags=["Research"])  # Research router has its own /api/research prefix
+app.include_router(
+    enterprise_api.router, prefix=f"{settings.api_v1_prefix}", tags=["Enterprise API"]
+)
+from app.routers import api_docs, enterprise_research_api, marketing_api, webhook_api, visualization_api, pricing_api, health_api  # noqa: E402
+
+app.include_router(
+    api_docs.router, prefix=f"{settings.api_v1_prefix}", tags=["API Documentation"]
+)
+app.include_router(
+    enterprise_research_api.router,
+    prefix=f"{settings.api_v1_prefix}",
+    tags=["Enterprise Research API"],
+)
+app.include_router(
+    marketing_api.router,
+    prefix=f"{settings.api_v1_prefix}",
+    tags=["Marketing"],
+)
+app.include_router(
+    webhook_api.router,
+    prefix=f"{settings.api_v1_prefix}",
+    tags=["Webhooks"],
+)
+app.include_router(
+    visualization_api.router,
+    prefix=f"{settings.api_v1_prefix}",
+    tags=["Visualizations"],
+)
+app.include_router(
+    pricing_api.router,
+    prefix=f"{settings.api_v1_prefix}",
+    tags=["Pricing"],
+)
+app.include_router(
+    health_api.router,
+    prefix=f"{settings.api_v1_prefix}",
+    tags=["Health"],
+)
 
 
 if __name__ == "__main__":

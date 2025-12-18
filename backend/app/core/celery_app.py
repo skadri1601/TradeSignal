@@ -99,6 +99,21 @@ celery_app.conf.update(
             "task": "precompute_top_patterns",
             "schedule": celery.schedules.crontab(minute=30, hour="*/6"), # Every 6 hours at :30
         },
+        # AI Insights tasks
+        "generate-daily-ai-summary": {
+            "task": "generate_daily_ai_summary",
+            "schedule": celery.schedules.crontab(minute=0, hour=11), # 6 AM EST = 11 AM UTC
+        },
+        # IVT tasks
+        "batch-process-ivt-calculations": {
+            "task": "batch_process_ivt_calculations",
+            "schedule": celery.schedules.crontab(minute=0, hour=3), # 3 AM UTC (nightly)
+        },
+        # TS Score tasks
+        "batch-update-ts-scores": {
+            "task": "batch_update_ts_scores",
+            "schedule": celery.schedules.crontab(minute=0, hour="*/6"), # Every 6 hours
+        },
     },
 )
 

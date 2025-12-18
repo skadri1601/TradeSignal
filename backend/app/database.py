@@ -6,6 +6,8 @@ Provides async engine, session factory, and FastAPI dependency.
 """
 
 import logging
+import socket
+import time
 from typing import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -22,6 +24,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import settings
+from app.utils.dns_resolver import resolve_database_url, DNSResolutionError
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -38,10 +41,31 @@ class DatabaseManager:
     def __init__(self) -> None:
         self._engine: AsyncEngine | None = None
         self._session_factory: async_sessionmaker[AsyncSession] | None = None
+        self._database_available: bool = False  # Track database availability
+        self._last_connection_attempt: float = 0  # Timestamp of last connection attempt
+        self._resolved_database_url: str | None = None  # Cached resolved URL
 
     def get_engine(self) -> AsyncEngine:
         if self._engine is None:
             try:
+                # Resolve DNS before creating engine
+                # This prevents DNS failures from crashing the application
+                try:
+                    if self._resolved_database_url is None:
+                        logger.info("Resolving database URL hostname...")
+                        self._resolved_database_url = resolve_database_url(settings.database_url_async)
+                        logger.info("✅ Database URL resolved successfully")
+                    database_url = self._resolved_database_url
+                except DNSResolutionError as dns_error:
+                    logger.error(f"❌ DNS resolution failed: {dns_error}")
+                    logger.warning("⚠️  Cannot create database engine - DNS resolution failed")
+                    self._database_available = False
+                    raise
+                except Exception as dns_error:
+                    logger.error(f"❌ Unexpected error during DNS resolution: {dns_error}")
+                    # Fall back to original URL if DNS resolution fails unexpectedly
+                    database_url = settings.database_url_async
+
                 # Determine pool class based on environment
                 pool_class = (
                     NullPool if settings.environment == "testing" else QueuePool
@@ -75,52 +99,70 @@ class DatabaseManager:
                 # Configure pool size based on database type
                 # Supabase Session/Transaction mode has connection limits
                 if is_supabase:
-                    # Use QueuePool with aggressive recycling for Supabase to improve performance
-                    # NullPool was too slow (creating new connection per request)
-                    pool_class = QueuePool
+                    # CRITICAL FIX: Use NullPool for Supabase to avoid "MaxClientsInSessionMode" error
+                    # NullPool creates a new connection per request and closes it immediately
+                    # This prevents exhausting the Supabase pooler's connection limit
+                    # Session mode has strict max_clients limit tied to pool_size
+                    pool_class = NullPool
                     # Add statement_cache_size=0 to ensure asyncpg doesn't cache statements
                     connect_args["statement_cache_size"] = 0
-                    logger.info("Using Supabase-optimized configuration (QueuePool, no statement cache)")
+                    logger.info("Using Supabase-optimized configuration (NullPool for Session mode compatibility, no statement cache)")
                 else:
                     pool_class = (
                         NullPool if settings.environment == "testing" else QueuePool
                     )
                     pool_size = 10  # Standard pool size for direct PostgreSQL
                     max_overflow = 20  # Allow additional burst connections
-                
+
                 # Create async engine with asyncpg driver
                 # For Supabase, connections are recycled more frequently to avoid prepared statement conflicts
                 pool_recycle_time = 60 if is_supabase else 3600  # 60 seconds for Supabase, 1 hour for direct
-                
+
                 # Build engine arguments
                 engine_args = {
                     "echo": settings.debug,
                     # Disable pre-ping for Supabase to reduce latency (PgBouncer handles liveness)
                     # Enable for others for safety
-                    "pool_pre_ping": False if is_supabase else True, 
+                    "pool_pre_ping": False if is_supabase else True,
                     "poolclass": pool_class,
                     "connect_args": connect_args,
                 }
-                
+
                 # Only add pool arguments if NOT using NullPool
                 if pool_class != NullPool:
-                    engine_args["pool_size"] = pool_size if not is_supabase else 10 # Default to 10 for Supabase too
-                    engine_args["max_overflow"] = max_overflow if not is_supabase else 20
+                    engine_args["pool_size"] = pool_size if not is_supabase else 3  # Smaller pool for Supabase
+                    engine_args["max_overflow"] = max_overflow if not is_supabase else 5  # Limited overflow
                     engine_args["pool_recycle"] = pool_recycle_time
                     engine_args["pool_timeout"] = 30
 
                 self._engine = create_async_engine(
-                    settings.database_url_async,
+                    database_url,  # Use resolved URL instead of settings.database_url_async
                     **engine_args
                 )
                 logger.info(
                     f"Database engine created successfully (environment: {settings.environment})"
                 )
+                self._database_available = True  # Mark as available on success
+            except DNSResolutionError:
+                # DNS resolution failed - re-raise to prevent engine creation
+                self._database_available = False
+                raise
             except Exception as e:
                 logger.error(f"Failed to create database engine: {e}")
+                self._database_available = False
                 raise
 
         return self._engine
+
+    @property
+    def is_available(self) -> bool:
+        """
+        Check if database is currently available.
+
+        Returns:
+            bool: True if database connection is available, False otherwise
+        """
+        return self._database_available
 
     def get_session_factory(self) -> async_sessionmaker[AsyncSession]:
         if self._session_factory is None:
@@ -137,23 +179,29 @@ class DatabaseManager:
     @asynccontextmanager
     async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
         session_factory = self.get_session_factory()
-        async with session_factory() as session:
-            try:
-                yield session
-                await session.commit()
-            except HTTPException:
-                # Don't rollback or log for HTTP exceptions - these are expected auth errors, etc.
+        session = None
+        try:
+            session = session_factory()
+            yield session
+            await session.commit()
+        except HTTPException:
+            # Don't rollback or log for HTTP exceptions - these are expected auth errors, etc.
+            if session:
                 await session.rollback()
-                raise
-            except SQLAlchemyError as e:
+            raise
+        except SQLAlchemyError as e:
+            if session:
                 await session.rollback()
-                logger.error(f"Database session error: {e}")
-                raise
-            except Exception as e:
+            logger.error(f"Database session error: {e}")
+            raise
+        except Exception as e:
+            if session:
                 await session.rollback()
-                logger.error(f"Unexpected error in database session: {e}")
-                raise
-            finally:
+            logger.error(f"Unexpected error in database session: {e}")
+            raise
+        finally:
+            # CRITICAL: Always close session to release connection back to pool (or close for NullPool)
+            if session:
                 await session.close()
 
     async def check_connection(self) -> bool:
@@ -164,14 +212,17 @@ class DatabaseManager:
             bool: True if connection successful, False otherwise
 
         Used by health check endpoint to verify database status.
-        
+        Updates the _database_available flag based on connection status.
+
         Note: Uses raw SQL execution without prepared statements to avoid
         DuplicatePreparedStatementError with pgbouncer in transaction mode.
         """
+        self._last_connection_attempt = time.time()
+
         try:
             import asyncio
             engine = self.get_engine()
-            
+
             # Create a connection with timeout protection
             # Use raw SQL string execution to avoid prepared statements
             async def _connect_and_test():
@@ -187,19 +238,34 @@ class DatabaseManager:
                 finally:
                     if conn:
                         await conn.close()
-            
+
             # Wrap the entire operation in a timeout
             try:
                 result = await asyncio.wait_for(_connect_and_test(), timeout=10.0)
                 if result:
                     logger.info("Database connection check: OK")
+                    self._database_available = True
+                else:
+                    self._database_available = False
                 return result
             except asyncio.TimeoutError:
                 logger.warning("Database connection check timed out after 10s")
+                self._database_available = False
                 return False
         except asyncio.CancelledError:
             logger.warning("Database connection check was cancelled")
+            self._database_available = False
             raise  # Re-raise CancelledError so it can be handled upstream
+        except DNSResolutionError as dns_error:
+            logger.error(f"Database connection check failed (DNS): {dns_error}")
+            logger.error("  -> Cannot resolve database hostname. Check network connectivity and DNS settings.")
+            self._database_available = False
+            return False
+        except socket.gaierror as dns_error:
+            logger.error(f"Database connection check failed (DNS): {dns_error}")
+            logger.error("  -> DNS resolution failed. Check network connectivity and DNS settings.")
+            self._database_available = False
+            return False
         except SQLAlchemyError as e:
             error_str = str(e)
             # Handle DuplicatePreparedStatementError gracefully
@@ -212,6 +278,7 @@ class DatabaseManager:
                 )
                 # Return True since NullPool should prevent this in actual usage
                 # The connection check itself may fail, but real connections will work
+                self._database_available = True
                 return True
             logger.error(f"Database connection check failed (SQLAlchemyError): {error_str}")
             # Provide more specific error context
@@ -221,6 +288,9 @@ class DatabaseManager:
                 logger.error("  -> Database does not exist: Check database name in DATABASE_URL")
             elif "could not connect" in error_str.lower() or "connection refused" in error_str.lower():
                 logger.error("  -> Connection refused: Check if database server is running and host/port are correct")
+            elif "gaierror" in error_str.lower() or "getaddrinfo" in error_str.lower():
+                logger.error("  -> DNS resolution failed: Check network connectivity and DNS settings")
+            self._database_available = False
             return False
         except Exception as e:
             error_str = str(e)
@@ -231,9 +301,17 @@ class DatabaseManager:
                     f"This is expected with pgbouncer in transaction mode. "
                     f"Connection may still work for actual queries. Error: {error_str}"
                 )
+                self._database_available = True
                 return True
+            # Check for DNS-related errors
+            if "gaierror" in error_str.lower() or "getaddrinfo" in error_str.lower():
+                logger.error(f"Database connection check failed (DNS): {error_str}")
+                logger.error("  -> DNS resolution failed. Check network connectivity and DNS settings.")
+                self._database_available = False
+                return False
             logger.error(f"Unexpected error during connection check: {error_str}")
             logger.error(f"Error type: {type(e).__name__}")
+            self._database_available = False
             return False
 
     async def close(self) -> None:
