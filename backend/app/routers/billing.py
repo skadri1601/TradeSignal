@@ -161,32 +161,116 @@ async def get_usage_stats(
     """
     Get current user's usage statistics and tier limits.
     """
-    tier = await TierService.get_user_tier(current_user.id, db)
-    limits = await TierService.get_tier_limits(tier)
-    usage = await TierService.get_or_create_usage(current_user.id, db)
+    # #region agent log
+    import json
+    try:
+        with open(r'c:\Users\kadri\TradeSignal\.cursor\debug.log', 'a') as f:
+            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"billing.py:164","message":"get_usage_stats entry","data":{"user_id":current_user.id if current_user else None},"timestamp":int(datetime.utcnow().timestamp()*1000)}) + '\n')
+    except Exception as log_err:
+        logger.debug(f"Debug log write failed: {log_err}")
+    logger.info(f"[DEBUG] get_usage_stats called for user {current_user.id if current_user else None}")
+    # #endregion
+    try:
+        tier = await TierService.get_user_tier(current_user.id, db)
+        # #region agent log
+        try:
+            with open(r'c:\Users\kadri\TradeSignal\.cursor\debug.log', 'a') as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"billing.py:171","message":"tier retrieved","data":{"tier":tier},"timestamp":int(datetime.utcnow().timestamp()*1000)}) + '\n')
+        except: pass
+        logger.info(f"[DEBUG] Tier retrieved: {tier}")
+        # #endregion
+        limits = await TierService.get_tier_limits(tier)
+        # #region agent log
+        try:
+            with open(r'c:\Users\kadri\TradeSignal\.cursor\debug.log', 'a') as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"billing.py:177","message":"limits retrieved","data":{"limits_keys":list(limits.keys()) if limits else None,"has_ai_requests_per_day":"ai_requests_per_day" in limits if limits else False,"has_ai_requests_limit":"ai_requests_limit" in limits if limits else False},"timestamp":int(datetime.utcnow().timestamp()*1000)}) + '\n')
+        except: pass
+        logger.info(f"[DEBUG] Limits keys: {list(limits.keys()) if limits else None}, has_ai_requests_per_day: {'ai_requests_per_day' in limits if limits else False}, has_ai_requests_limit: {'ai_requests_limit' in limits if limits else False}")
+        # #endregion
+        usage = await TierService.get_or_create_usage(current_user.id, db)
+        # #region agent log
+        try:
+            with open(r'c:\Users\kadri\TradeSignal\.cursor\debug.log', 'a') as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"B","location":"billing.py:185","message":"usage retrieved","data":{"usage_ai_requests":usage.ai_requests if usage else None},"timestamp":int(datetime.utcnow().timestamp()*1000)}) + '\n')
+        except: pass
+        logger.info(f"[DEBUG] Usage retrieved: ai_requests={usage.ai_requests if usage else None}")
+        # #endregion
 
-    # Calculate reset time (midnight UTC)
-    now = datetime.utcnow()
-    tomorrow = (now + timedelta(days=1)).replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
+        # Calculate reset time (midnight UTC)
+        now = datetime.utcnow()
+        tomorrow = (now + timedelta(days=1)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
 
-    return {
-        "tier": tier,
-        "limits": limits,
-        "usage": {
-            "ai_requests": usage.ai_requests,
-            "alerts_triggered": usage.alerts_triggered,
-            "api_calls": usage.api_calls,
-            "companies_viewed": usage.companies_viewed,
-        },
-        "remaining": {
-            "ai_requests": limits["ai_requests_per_day"] - usage.ai_requests
-            if limits["ai_requests_per_day"] != -1
-            else -1,
-        },
-        "reset_at": tomorrow.isoformat() + "Z",
-    }
+        # #region agent log
+        try:
+            with open(r'c:\Users\kadri\TradeSignal\.cursor\debug.log', 'a') as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"billing.py:194","message":"before accessing ai_requests_per_day","data":{"limits_keys":list(limits.keys()) if limits else None},"timestamp":int(datetime.utcnow().timestamp()*1000)}) + '\n')
+        except: pass
+        logger.info(f"[DEBUG] Before accessing ai_requests_per_day, limits keys: {list(limits.keys()) if limits else None}")
+        # #endregion
+        
+        # Handle both key names for backward compatibility
+        # TIER_LIMITS uses "ai_requests_limit" but frontend expects "ai_requests_per_day"
+        ai_limit = limits.get("ai_requests_limit", limits.get("ai_requests_per_day", 0))
+        
+        # Ensure limits dict includes the key frontend expects
+        limits_for_response = limits.copy()
+        if "ai_requests_limit" in limits and "ai_requests_per_day" not in limits:
+            limits_for_response["ai_requests_per_day"] = limits["ai_requests_limit"]
+        
+        # #region agent log
+        try:
+            with open(r'c:\Users\kadri\TradeSignal\.cursor\debug.log', 'a') as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"billing.py:204","message":"ai_limit calculated","data":{"ai_limit":ai_limit,"usage_ai_requests":usage.ai_requests,"limits_has_both_keys":"ai_requests_per_day" in limits_for_response and "ai_requests_limit" in limits_for_response},"timestamp":int(datetime.utcnow().timestamp()*1000)}) + '\n')
+        except: pass
+        logger.info(f"[DEBUG] ai_limit={ai_limit}, usage_ai_requests={usage.ai_requests}, has_both_keys={'ai_requests_per_day' in limits_for_response and 'ai_requests_limit' in limits_for_response}")
+        # #endregion
+
+        result = {
+            "tier": tier,
+            "limits": limits_for_response,
+            "usage": {
+                "ai_requests": usage.ai_requests,
+                "alerts_triggered": usage.alerts_triggered,
+                "api_calls": usage.api_calls,
+                "companies_viewed": usage.companies_viewed,
+            },
+            "remaining": {
+                "ai_requests": ai_limit - usage.ai_requests
+                if ai_limit != -1
+                else -1,
+            },
+            "reset_at": tomorrow.isoformat() + "Z",
+        }
+        # #region agent log
+        try:
+            with open(r'c:\Users\kadri\TradeSignal\.cursor\debug.log', 'a') as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"billing.py:218","message":"get_usage_stats success","data":{},"timestamp":int(datetime.utcnow().timestamp()*1000)}) + '\n')
+        except: pass
+        logger.info("[DEBUG] get_usage_stats returning success")
+        # #endregion
+        return result
+    except KeyError as e:
+        # #region agent log
+        try:
+            with open(r'c:\Users\kadri\TradeSignal\.cursor\debug.log', 'a') as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"billing.py:225","message":"KeyError caught","data":{"error":str(e),"error_type":type(e).__name__},"timestamp":int(datetime.utcnow().timestamp()*1000)}) + '\n')
+        except: pass
+        logger.error(f"[DEBUG] KeyError in get_usage_stats: {e}", exc_info=True)
+        # #endregion
+        logger.error(f"KeyError in get_usage_stats: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Configuration error: {str(e)}")
+    except Exception as e:
+        # #region agent log
+        try:
+            with open(r'c:\Users\kadri\TradeSignal\.cursor\debug.log', 'a') as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"B,C,D","location":"billing.py:232","message":"Exception caught","data":{"error":str(e),"error_type":type(e).__name__},"timestamp":int(datetime.utcnow().timestamp()*1000)}) + '\n')
+        except: pass
+        logger.error(f"[DEBUG] Exception in get_usage_stats: {type(e).__name__}: {e}", exc_info=True)
+        # #endregion
+        logger.error(f"Error in get_usage_stats: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to fetch usage statistics")
 
 
 @router.post("/create-checkout-session")
@@ -868,6 +952,250 @@ async def resume_subscription(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error resuming subscription: {str(e)}",
+        )
+
+
+@router.post("/upgrade")
+async def upgrade_subscription(
+    upgrade_request: CheckoutRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Upgrade subscription to a higher tier with proration.
+
+    Handles immediate upgrade with prorated billing.
+    """
+    if not STRIPE_SECRET_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Payment processing is not configured.",
+        )
+
+    # Get current subscription
+    result = await db.execute(
+        select(Subscription).where(Subscription.user_id == current_user.id)
+    )
+    subscription = result.scalar_one_or_none()
+
+    if not subscription or not subscription.stripe_subscription_id:
+        # No active subscription, use regular checkout
+        return await create_checkout_session(upgrade_request, current_user, db)
+
+    new_tier = upgrade_request.tier.lower()
+    billing_period = upgrade_request.billing_period.lower()
+
+    # Map "basic" to "plus"
+    if new_tier == "basic":
+        new_tier = "plus"
+
+    # Validate tier hierarchy
+    tier_hierarchy = {
+        "free": 0,
+        "basic": 1,
+        "plus": 2,
+        "pro": 3,
+        "enterprise": 4,
+    }
+    current_tier_level = tier_hierarchy.get(subscription.tier, 0)
+    new_tier_level = tier_hierarchy.get(new_tier, 0)
+
+    if new_tier_level <= current_tier_level:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot upgrade to {new_tier} (same or lower than current tier {subscription.tier})",
+        )
+
+    # Get new price ID
+    price_key = f"{new_tier}_{billing_period}"
+    if price_key not in STRIPE_PRICES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid tier/billing_period combination: {price_key}",
+        )
+
+    new_price_id = STRIPE_PRICES[price_key]
+    if not new_price_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Payment processing is not configured.",
+        )
+
+    try:
+        # Update subscription in Stripe with proration
+        stripe_subscription = stripe.Subscription.modify(
+            subscription.stripe_subscription_id,
+            items=[
+                {
+                    "id": stripe.Subscription.retrieve(
+                        subscription.stripe_subscription_id
+                    ).items.data[0].id,
+                    "price": new_price_id,
+                }
+            ],
+            proration_behavior="always_invoice",  # Charge immediately with proration
+            metadata={
+                "user_id": str(current_user.id),
+                "tier": new_tier,
+                "billing_period": billing_period,
+                "upgraded_from": subscription.tier,
+            },
+        )
+
+        # Update database
+        subscription.tier = new_tier
+        subscription.stripe_price_id = new_price_id
+        subscription.billing_period = billing_period
+        subscription.current_period_start = datetime.fromtimestamp(
+            stripe_subscription.current_period_start
+        )
+        subscription.current_period_end = datetime.fromtimestamp(
+            stripe_subscription.current_period_end
+        )
+        subscription.updated_at = datetime.utcnow()
+
+        await db.commit()
+
+        logger.info(
+            f"Subscription upgraded for user {current_user.id}: {subscription.tier} -> {new_tier}"
+        )
+
+        return {
+            "message": "Subscription upgraded successfully",
+            "tier": new_tier,
+            "billing_period": billing_period,
+            "current_period_end": subscription.current_period_end.isoformat(),
+            "prorated": True,
+        }
+
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe error during upgrade: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error upgrading subscription: {str(e)}",
+        )
+
+
+@router.post("/downgrade")
+async def downgrade_subscription(
+    downgrade_request: CheckoutRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Downgrade subscription to a lower tier.
+
+    Downgrade takes effect at the end of the current billing period.
+    """
+    if not STRIPE_SECRET_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Payment processing is not configured.",
+        )
+
+    # Get current subscription
+    result = await db.execute(
+        select(Subscription).where(Subscription.user_id == current_user.id)
+    )
+    subscription = result.scalar_one_or_none()
+
+    if not subscription or not subscription.stripe_subscription_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active subscription found",
+        )
+
+    new_tier = downgrade_request.tier.lower()
+    billing_period = downgrade_request.billing_period.lower()
+
+    # Map "basic" to "plus"
+    if new_tier == "basic":
+        new_tier = "plus"
+
+    # Validate tier hierarchy
+    tier_hierarchy = {
+        "free": 0,
+        "basic": 1,
+        "plus": 2,
+        "pro": 3,
+        "enterprise": 4,
+    }
+    current_tier_level = tier_hierarchy.get(subscription.tier, 0)
+    new_tier_level = tier_hierarchy.get(new_tier, 0)
+
+    if new_tier_level >= current_tier_level:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot downgrade to {new_tier} (same or higher than current tier {subscription.tier})",
+        )
+
+    # Get new price ID
+    price_key = f"{new_tier}_{billing_period}"
+    if price_key not in STRIPE_PRICES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid tier/billing_period combination: {price_key}",
+        )
+
+    new_price_id = STRIPE_PRICES[price_key]
+    if not new_price_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Payment processing is not configured.",
+        )
+
+    try:
+        # Update subscription in Stripe (downgrade at period end, no proration)
+        stripe_subscription = stripe.Subscription.modify(
+            subscription.stripe_subscription_id,
+            items=[
+                {
+                    "id": stripe.Subscription.retrieve(
+                        subscription.stripe_subscription_id
+                    ).items.data[0].id,
+                    "price": new_price_id,
+                }
+            ],
+            proration_behavior="none",  # No immediate charge
+            metadata={
+                "user_id": str(current_user.id),
+                "tier": new_tier,
+                "billing_period": billing_period,
+                "downgraded_from": subscription.tier,
+            },
+        )
+
+        # Update database (tier changes immediately, but billing continues until period end)
+        subscription.tier = new_tier
+        subscription.stripe_price_id = new_price_id
+        subscription.billing_period = billing_period
+        subscription.current_period_start = datetime.fromtimestamp(
+            stripe_subscription.current_period_start
+        )
+        subscription.current_period_end = datetime.fromtimestamp(
+            stripe_subscription.current_period_end
+        )
+        subscription.updated_at = datetime.utcnow()
+
+        await db.commit()
+
+        logger.info(
+            f"Subscription downgraded for user {current_user.id}: {subscription.tier} -> {new_tier}"
+        )
+
+        return {
+            "message": "Subscription will be downgraded at the end of the current billing period",
+            "tier": new_tier,
+            "billing_period": billing_period,
+            "current_period_end": subscription.current_period_end.isoformat(),
+            "effective_date": subscription.current_period_end.isoformat(),
+        }
+
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe error during downgrade: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error downgrading subscription: {str(e)}",
         )
 
 

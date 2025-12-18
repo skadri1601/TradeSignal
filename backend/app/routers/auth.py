@@ -300,12 +300,27 @@ async def login(
             user = result.scalar_one_or_none()
             logger.debug(f"Database query completed, user found: {user is not None}")
         except (OperationalError, DatabaseError) as db_error:
+            error_msg = str(db_error)
             logger.error(
-                f"Database connection error during login: {db_error}", exc_info=True
+                f"Database connection error during login: {error_msg}", exc_info=True
             )
+
+            # Provide specific error messages based on error type
+            if "gaierror" in error_msg or "getaddrinfo failed" in error_msg:
+                detail = (
+                    "Cannot reach database server (DNS resolution failed). "
+                    "This may be a temporary network issue. Please try again in a moment."
+                )
+            elif "connection refused" in error_msg.lower():
+                detail = "Database server is not accepting connections. Please try again later."
+            elif "timeout" in error_msg.lower():
+                detail = "Database connection timed out. Please try again."
+            else:
+                detail = "Database connection error. Please try again later."
+
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Database connection error. Please try again later.",
+                detail=detail,
             )
         except SQLAlchemyError as db_error:
             logger.error(f"Database error during login: {db_error}", exc_info=True)

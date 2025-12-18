@@ -991,3 +991,150 @@ async def update_contact_status(
         "message": f"Contact submission status updated to {status}",
         "contact": ContactSubmissionItem.model_validate(contact),
     }
+
+
+# Feature Flags Management (Super Admin Only)
+
+class FeatureFlagUpdate(BaseModel):
+    """Request model for updating feature flags."""
+
+    enabled: bool
+    description: Optional[str] = None
+
+
+@router.get("/feature-flags")
+async def get_feature_flags(
+    current_user: User = Depends(get_current_super_admin),
+):
+    """
+    Get all feature flags and their current status.
+    Super Admin only.
+    """
+    from app.config import settings
+
+    return {
+        "feature_flags": {
+            "enable_ai_insights": {
+                "enabled": settings.enable_ai_insights,
+                "description": "Enable AI-powered trade insights",
+            },
+            "enable_webhooks": {
+                "enabled": settings.enable_webhooks,
+                "description": "Enable webhook notifications",
+            },
+            "enable_email_alerts": {
+                "enabled": settings.enable_email_alerts,
+                "description": "Enable email alert notifications",
+            },
+            "enable_push_notifications": {
+                "enabled": settings.enable_push_notifications,
+                "description": "Enable browser push notifications",
+            },
+        },
+        "note": "Feature flags are managed via environment variables. Changes require application restart.",
+    }
+
+
+@router.get("/subscription-analytics")
+async def get_subscription_analytics(
+    current_user: User = Depends(get_current_super_admin),
+    db: AsyncSession = Depends(get_db),
+    days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
+):
+    """
+    Get subscription analytics including conversion rates, churn, and revenue.
+    Super Admin only.
+    """
+    from datetime import timedelta
+
+    cutoff_date = datetime.utcnow() - timedelta(days=days)
+
+    # Total subscriptions by tier
+    tier_counts = {}
+    for tier in ["free", "basic", "plus", "pro", "enterprise"]:
+        result = await db.execute(
+            select(func.count(Subscription.id)).where(
+                Subscription.tier == tier, Subscription.is_active.is_(True)
+            )
+        )
+        tier_counts[tier] = result.scalar() or 0
+
+    # New subscriptions in period
+    new_subs_result = await db.execute(
+        select(func.count(Subscription.id)).where(
+            Subscription.created_at >= cutoff_date,
+            Subscription.tier != "free",
+        )
+    )
+    new_subscriptions = new_subs_result.scalar() or 0
+
+    # Cancellations in period
+    canceled_subs_result = await db.execute(
+        select(func.count(Subscription.id)).where(
+            Subscription.updated_at >= cutoff_date,
+            Subscription.status == SubscriptionStatus.CANCELED.value,
+        )
+    )
+    canceled_subscriptions = canceled_subs_result.scalar() or 0
+
+    # Revenue estimate (using pricing from /pricing endpoint)
+    pricing = {
+        "plus": {"monthly": 9, "yearly": 90},
+        "pro": {"monthly": 29, "yearly": 290},
+        "enterprise": {"monthly": 99, "yearly": 990},
+    }
+
+    # Get subscriptions with billing period
+    active_paid_subs = await db.execute(
+        select(Subscription).where(
+            Subscription.tier.in_(["plus", "pro", "enterprise"]),
+            Subscription.is_active.is_(True),
+        )
+    )
+    paid_subscriptions = active_paid_subs.scalars().all()
+
+    monthly_revenue = 0
+    yearly_revenue = 0
+    for sub in paid_subscriptions:
+        tier = sub.tier
+        period = sub.billing_period or "monthly"
+        if tier in pricing:
+            if period == "yearly":
+                yearly_revenue += pricing[tier]["yearly"]
+            else:
+                monthly_revenue += pricing[tier]["monthly"]
+
+    total_mrr = monthly_revenue + (yearly_revenue / 12)
+    total_arr = (monthly_revenue * 12) + yearly_revenue
+
+    # Conversion rate (new paid / total new users)
+    new_users_result = await db.execute(
+        select(func.count(User.id)).where(User.created_at >= cutoff_date)
+    )
+    new_users = new_users_result.scalar() or 0
+
+    conversion_rate = (new_subscriptions / new_users * 100) if new_users > 0 else 0
+
+    # Churn rate
+    total_active_paid = sum(
+        tier_counts.get(tier, 0) for tier in ["plus", "pro", "enterprise"]
+    )
+    churn_rate = (
+        (canceled_subscriptions / total_active_paid * 100) if total_active_paid > 0 else 0
+    )
+
+    return {
+        "period_days": days,
+        "tier_distribution": tier_counts,
+        "new_subscriptions": new_subscriptions,
+        "canceled_subscriptions": canceled_subscriptions,
+        "new_users": new_users,
+        "conversion_rate": round(conversion_rate, 2),
+        "churn_rate": round(churn_rate, 2),
+        "revenue": {
+            "monthly_recurring_revenue": round(total_mrr, 2),
+            "annual_recurring_revenue": round(total_arr, 2),
+            "monthly_subscriptions": monthly_revenue,
+            "yearly_subscriptions": yearly_revenue,
+        },
+    }

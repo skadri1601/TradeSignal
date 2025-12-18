@@ -5,6 +5,7 @@ from typing import Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime, timedelta
+import asyncio
 
 from app.config import settings
 from app.models.company import Company
@@ -169,98 +170,104 @@ async def _enrich_from_sec(db: AsyncSession, company: Company) -> Company:
 
 
 @celery_app.task(name="enrich_company_profile")
-async def enrich_company_profile_task(company_id: int):
+def enrich_company_profile_task(company_id: int):
     """
     Celery task to enrich a company's profile data from external sources.
     This task consolidates enrichment from CompanyProfileService (Yahoo) and SEC.
     """
-    logger.info(f"Starting enrich_company_profile_task for company ID: {company_id}")
-    async with db_manager.get_session() as db:
-        result = await db.execute(select(Company).where(Company.id == company_id))
-        company = result.scalar_one_or_none()
+    async def _async_task():
+        logger.info(f"Starting enrich_company_profile_task for company ID: {company_id}")
+        async with db_manager.get_session() as db:
+            result = await db.execute(select(Company).where(Company.id == company_id))
+            company = result.scalar_one_or_none()
 
-        if not company:
-            logger.warning(f"Company with ID {company_id} not found for enrichment.")
-            return
+            if not company:
+                logger.warning(f"Company with ID {company_id} not found for enrichment.")
+                return
 
-        original_updated_at = company.updated_at
-        
-        # --- 1. Enrich from CompanyProfileService (Yahoo Finance) ---
-        # Note: CompanyProfileService still takes a DB session for its own operations
-        profile_service = CompanyProfileService(db)
-        try:
-            company = await profile_service.enrich_company_if_needed(company.id)
-            if company and company.updated_at != original_updated_at:
-                logger.info(f"Company {company.ticker} enriched by CompanyProfileService (Yahoo).")
-                original_updated_at = company.updated_at
-        except Exception as e:
-            logger.error(f"Error enriching company {company.ticker} from CompanyProfileService: {e}", exc_info=True)
-
-
-        # --- 2. Enrich from SEC EDGAR (if needed) ---
-        # Check if critical data is still missing after Yahoo enrichment
-        needs_sec_enrichment = (
-            not company.sector
-            or not company.industry
-            or not company.description
-        )
-
-        if needs_sec_enrichment and company.cik:
-            logger.info(f"Company {company.ticker} still needs SEC enrichment.")
-            try:
-                company = await _enrich_from_sec(db, company)
-                if company and company.updated_at != original_updated_at:
-                     logger.info(f"Company {company.ticker} enriched by SEC EDGAR.")
-            except Exception as e:
-                logger.error(f"Error enriching company {company.ticker} from SEC: {e}", exc_info=True)
-        else:
-            logger.debug(f"Company {company.ticker} does not need SEC enrichment or CIK is missing.")
+            original_updated_at = company.updated_at
             
-        # Final update to timestamp if any changes were made within this task.
-        # This is handled by each _enrich function if they commit.
-        # But we ensure the overall 'updated_at' is current.
-        company.updated_at = datetime.utcnow()
-        await db.commit()
-        await db.refresh(company)
-        logger.info(f"Finished enrich_company_profile_task for company ID: {company_id}.")
+            # --- 1. Enrich from CompanyProfileService (Yahoo Finance) ---
+            # Note: CompanyProfileService still takes a DB session for its own operations
+            profile_service = CompanyProfileService(db)
+            try:
+                company = await profile_service.enrich_company_if_needed(company.id)
+                if company and company.updated_at != original_updated_at:
+                    logger.info(f"Company {company.ticker} enriched by CompanyProfileService (Yahoo).")
+                    original_updated_at = company.updated_at
+            except Exception as e:
+                logger.error(f"Error enriching company {company.ticker} from CompanyProfileService: {e}", exc_info=True)
+
+
+            # --- 2. Enrich from SEC EDGAR (if needed) ---
+            # Check if critical data is still missing after Yahoo enrichment
+            needs_sec_enrichment = (
+                not company.sector
+                or not company.industry
+                or not company.description
+            )
+
+            if needs_sec_enrichment and company.cik:
+                logger.info(f"Company {company.ticker} still needs SEC enrichment.")
+                try:
+                    company = await _enrich_from_sec(db, company)
+                    if company and company.updated_at != original_updated_at:
+                         logger.info(f"Company {company.ticker} enriched by SEC EDGAR.")
+                except Exception as e:
+                    logger.error(f"Error enriching company {company.ticker} from SEC: {e}", exc_info=True)
+            else:
+                logger.debug(f"Company {company.ticker} does not need SEC enrichment or CIK is missing.")
+                
+            # Final update to timestamp if any changes were made within this task.
+            # This is handled by each _enrich function if they commit.
+            # But we ensure the overall 'updated_at' is current.
+            company.updated_at = datetime.utcnow()
+            await db.commit()
+            await db.refresh(company)
+            logger.info(f"Finished enrich_company_profile_task for company ID: {company_id}.")
+    
+    asyncio.run(_async_task())
 
 @celery_app.task(name="enrich_all_companies_profile")
-async def enrich_all_companies_profile_task():
+def enrich_all_companies_profile_task():
     """
     Orchestrator task to enrich profile data for all companies in the database.
     This should be scheduled periodically.
     """
-    logger.info("Starting enrich_all_companies_profile_task...")
-    async with db_manager.get_session() as db:
-        # Fetch companies that need enrichment (e.g., missing key fields or stale data)
-        # For simplicity, initially enqueue all, but can optimize later.
-        companies_to_enrich = await db.execute(
-            select(Company).filter(
-                (Company.cik.isnot(None)) # Only enrich if we have a CIK
+    async def _async_task():
+        logger.info("Starting enrich_all_companies_profile_task...")
+        async with db_manager.get_session() as db:
+            # Fetch companies that need enrichment (e.g., missing key fields or stale data)
+            # For simplicity, initially enqueue all, but can optimize later.
+            companies_to_enrich = await db.execute(
+                select(Company).filter(
+                    (Company.cik.isnot(None)) # Only enrich if we have a CIK
+                )
             )
-        )
-        companies = companies_to_enrich.scalars().all()
+            companies = companies_to_enrich.scalars().all()
 
-        for company in companies:
-            # Check for staleness to avoid enriching already fresh companies
-            days_since_update = (
-                (datetime.utcnow() - company.updated_at).days if company.updated_at else settings.company_enrichment_stale_days + 1
-            )
-            is_stale = days_since_update > settings.company_enrichment_stale_days
-            
-            needs_enrichment = (
-                not company.logo_url
-                or not company.sector
-                or not company.industry
-                or not company.market_cap
-                or not company.description
-                or is_stale
-            )
-            
-            if needs_enrichment:
-                logger.debug(f"Enqueuing enrichment for company: {company.name} (ID: {company.id}, Ticker: {company.ticker})")
-                enrich_company_profile_task.delay(company.id)
-            else:
-                logger.debug(f"Company {company.name} (ID: {company.id}) is already enriched and not stale. Skipping.")
+            for company in companies:
+                # Check for staleness to avoid enriching already fresh companies
+                days_since_update = (
+                    (datetime.utcnow() - company.updated_at).days if company.updated_at else settings.company_enrichment_stale_days + 1
+                )
+                is_stale = days_since_update > settings.company_enrichment_stale_days
                 
-    logger.info("Finished enqueueing company profile enrichment tasks.")
+                needs_enrichment = (
+                    not company.logo_url
+                    or not company.sector
+                    or not company.industry
+                    or not company.market_cap
+                    or not company.description
+                    or is_stale
+                )
+                
+                if needs_enrichment:
+                    logger.debug(f"Enqueuing enrichment for company: {company.name} (ID: {company.id}, Ticker: {company.ticker})")
+                    enrich_company_profile_task.delay(company.id)
+                else:
+                    logger.debug(f"Company {company.name} (ID: {company.id}) is already enriched and not stale. Skipping.")
+                    
+        logger.info("Finished enqueueing company profile enrichment tasks.")
+    
+    asyncio.run(_async_task())

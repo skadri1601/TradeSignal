@@ -312,5 +312,71 @@ async def database_diagnostics() -> Dict[str, Any]:
         }
         diagnostics["connection_status"] = "error"
         diagnostics["recommendations"].append(f"Connection error: {str(e)}")
-    
+
     return diagnostics
+
+
+@router.get("/dns-test")
+async def dns_test() -> Dict[str, Any]:
+    """
+    Test DNS resolution for database hostname.
+
+    Returns DNS cache statistics and resolution test results.
+    Useful for debugging DNS-related connectivity issues.
+
+    Returns:
+        dict: DNS resolution status and cache statistics
+    """
+    from app.utils.dns_resolver import (
+        get_dns_cache_stats,
+        resolve_hostname,
+        DNSResolutionError
+    )
+    from urllib.parse import urlparse
+    import time
+
+    result = {
+        "timestamp": datetime.now().isoformat(),
+        "hostname": None,
+        "resolution_status": None,
+        "resolved_ip": None,
+        "resolution_time_ms": None,
+        "cache_stats": None,
+        "error": None
+    }
+
+    try:
+        # Extract hostname from DATABASE_URL
+        parsed = urlparse(settings.database_url)
+        hostname = parsed.hostname
+
+        if not hostname:
+            result["error"] = "No hostname found in DATABASE_URL"
+            return result
+
+        result["hostname"] = hostname
+
+        # Test DNS resolution
+        start_time = time.time()
+        try:
+            resolved_ip = resolve_hostname(hostname, use_cache=False)
+            resolution_time = (time.time() - start_time) * 1000  # Convert to milliseconds
+
+            result["resolution_status"] = "success"
+            result["resolved_ip"] = resolved_ip
+            result["resolution_time_ms"] = round(resolution_time, 2)
+        except DNSResolutionError as dns_error:
+            result["resolution_status"] = "failed"
+            result["error"] = str(dns_error)
+        except Exception as e:
+            result["resolution_status"] = "error"
+            result["error"] = f"Unexpected error: {str(e)}"
+
+        # Get cache statistics
+        result["cache_stats"] = get_dns_cache_stats()
+
+    except Exception as e:
+        logger.error(f"Error in DNS test endpoint: {e}", exc_info=True)
+        result["error"] = f"Test error: {str(e)}"
+
+    return result
