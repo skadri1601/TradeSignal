@@ -1,6 +1,5 @@
 import { ReactNode } from 'react';
-import Sidebar from './Sidebar';
-import TopBar from './TopBar';
+import DashboardNavbar from './DashboardNavbar';
 import GlobalFooter from './GlobalFooter';
 
 interface LayoutProps {
@@ -9,11 +8,10 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
-      <Sidebar />
-      <div className="ml-64 flex flex-col min-h-screen">
-        <TopBar />
-        <main className="p-8 flex-grow">
+    <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-purple-500/30 font-sans">
+      <DashboardNavbar />
+      <div className="flex flex-col min-h-screen pt-24">
+        <main className="flex-grow px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
           {children}
         </main>
         <GlobalFooter />

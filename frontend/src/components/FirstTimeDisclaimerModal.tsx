@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import { useCustomAlert } from '../hooks/useCustomAlert';
 import CustomAlert from './common/CustomAlert';
+import { AlertTriangle, CheckCircle, Info } from 'lucide-react';
 
 interface FirstTimeDisclaimerModalProps {
   onAccept: () => void;
@@ -29,64 +30,89 @@ export const FirstTimeDisclaimerModal = ({ onAccept }: FirstTimeDisclaimerModalP
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-      <div className="bg-white rounded-lg max-w-2xl max-h-[80vh] overflow-y-auto p-6 shadow-2xl">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold mb-4 text-gray-900 flex items-center">
-            <span className="text-3xl mr-2">⚠️</span>
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+      <div className="bg-[#0f0f1a] border border-white/10 rounded-2xl max-w-2xl max-h-[85vh] overflow-y-auto p-8 shadow-2xl relative">
+        {/* Glow Effect */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-1 bg-gradient-to-r from-transparent via-purple-500 to-transparent opacity-50"></div>
+
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold mb-6 text-white flex items-center gap-3">
+            <AlertTriangle className="w-8 h-8 text-yellow-500" />
             Important Disclaimer
           </h2>
 
-          <div className="mb-6 text-gray-700 space-y-3">
-            <div className="bg-red-50 border-l-4 border-red-500 p-4">
-              <p className="font-bold text-red-800 text-lg">
-                THIS IS NOT FINANCIAL ADVICE
-              </p>
+          <div className="space-y-6 text-gray-300 leading-relaxed">
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-5 flex gap-4 items-start">
+              <Info className="w-6 h-6 text-red-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-red-400 text-lg mb-1">
+                  THIS IS NOT FINANCIAL ADVICE
+                </p>
+                <p className="text-sm text-red-200/80">
+                  TradeSignal is for <strong>educational purposes only</strong>.
+                  We do not provide investment advice, financial advice, or trading recommendations.
+                  Always consult a licensed financial advisor before making investment decisions.
+                </p>
+              </div>
             </div>
 
-            <p>
-              TradeSignal is for <strong>educational purposes only</strong>.
-              We do not provide investment advice, financial advice, or trading recommendations.
-              Always consult a licensed financial advisor before making investment decisions.
-            </p>
-
-            <p className="font-semibold text-gray-900">
+            <p className="text-lg">
               By clicking "I Understand", you acknowledge that:
             </p>
 
-            <ul className="list-disc ml-6 space-y-2 bg-gray-50 p-4 rounded">
-              <li>This is not professional financial advice</li>
-              <li>You will not rely on this information for investment decisions</li>
-              <li>Trading stocks involves substantial risk of loss</li>
-              <li>Data may be delayed or inaccurate</li>
-              <li>You use this service at your own risk</li>
-              <li>Past performance does not guarantee future results</li>
-              <li>We are not responsible for your investment decisions</li>
+            <ul className="space-y-3 bg-white/5 border border-white/5 p-6 rounded-xl text-sm">
+              <li className="flex items-start gap-3">
+                <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mt-2 shrink-0"></span>
+                This is not professional financial advice
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mt-2 shrink-0"></span>
+                You will not rely on this information for investment decisions
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mt-2 shrink-0"></span>
+                Trading stocks involves substantial risk of loss
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mt-2 shrink-0"></span>
+                Data may be delayed or inaccurate
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mt-2 shrink-0"></span>
+                You use this service at your own risk
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mt-2 shrink-0"></span>
+                Past performance does not guarantee future results
+              </li>
             </ul>
 
-            <div className="bg-yellow-50 border border-yellow-300 rounded p-4">
-              <p className="text-sm text-yellow-800">
-                <strong>Data Sources:</strong> Stock prices are provided by Yahoo Finance
+            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 text-sm text-yellow-200/80">
+              <p>
+                <strong className="text-yellow-400">Data Sources:</strong> Stock prices are provided by third-party feeds
                 and may be delayed. SEC filings are scraped from public sources.
                 AI insights are experimental and may be incorrect.
               </p>
             </div>
           </div>
 
-          <div className="border-t border-gray-300 pt-4 mb-4">
-            <label className="flex items-start cursor-pointer">
-              <input
-                type="checkbox"
-                checked={termsAccepted}
-                onChange={(e) => setTermsAccepted(e.target.checked)}
-                className="mt-1 mr-3 h-5 w-5 cursor-pointer"
-                id="terms-checkbox"
-              />
-              <span className="text-sm text-gray-700">
+          <div className="border-t border-white/10 pt-6 mt-8 mb-6">
+            <label className="flex items-start cursor-pointer group">
+              <div className="relative flex items-center">
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-white/30 bg-black/50 checked:border-purple-500 checked:bg-purple-500 transition-all"
+                  id="terms-checkbox"
+                />
+                <CheckCircle className="absolute pointer-events-none opacity-0 peer-checked:opacity-100 text-white w-3.5 h-3.5 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity" />
+              </div>
+              <span className="ml-3 text-sm text-gray-400 group-hover:text-gray-300 transition-colors">
                 I have read and agree to the{' '}
                 <a
                   href="/terms"
-                  className="text-blue-600 underline hover:text-blue-800"
+                  className="text-purple-400 hover:text-purple-300 underline underline-offset-2"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -95,31 +121,30 @@ export const FirstTimeDisclaimerModal = ({ onAccept }: FirstTimeDisclaimerModalP
                 {' '}and{' '}
                 <a
                   href="/privacy"
-                  className="text-blue-600 underline hover:text-blue-800"
+                  className="text-purple-400 hover:text-purple-300 underline underline-offset-2"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   Privacy Policy
                 </a>
-                . I understand that this is not financial advice and I will not make
-                investment decisions based solely on information from this site.
+                . I understand that this is not financial advice.
               </span>
             </label>
           </div>
 
           <button
             onClick={handleAccept}
-            className={`w-full py-3 rounded-lg font-semibold transition-colors duration-200 ${
+            className={`w-full py-4 rounded-xl font-bold text-lg tracking-wide transition-all duration-300 shadow-lg ${
               termsAccepted
-                ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                ? 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white shadow-purple-900/30 transform hover:scale-[1.02]'
+                : 'bg-white/10 text-gray-500 cursor-not-allowed border border-white/5'
             }`}
             disabled={!termsAccepted}
           >
             {termsAccepted ? 'I Understand and Accept' : 'Please Accept Terms to Continue'}
           </button>
 
-          <p className="text-xs text-gray-500 text-center mt-3">
+          <p className="text-xs text-gray-600 text-center mt-4">
             You must accept these terms to use TradeSignal
           </p>
         </div>
