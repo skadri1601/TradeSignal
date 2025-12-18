@@ -1,16 +1,15 @@
 # TradeSignal Backend
 
-FastAPI-based backend service for the TradeSignal platform. Provides RESTful APIs for insider trading intelligence, congressional trades, user authentication, billing, and real-time notifications.
+FastAPI-based backend service for the TradeSignal platform. Provides RESTful APIs for insider trading intelligence, congressional trades, user authentication, billing, research analytics, and real-time notifications.
 
 ## Architecture
 
 ### Tech Stack
 - **FastAPI** - Async web framework with automatic OpenAPI docs
 - **SQLAlchemy** - ORM for database interactions
-- **PostgreSQL** - Primary relational database
+- **PostgreSQL** - Primary relational database (Supabase hosted)
 - **Redis** - Caching and rate limiting
 - **Celery** - Distributed task queue for background jobs
-- **Alembic** - Database migrations (if enabled)
 - **Pydantic** - Data validation and serialization
 - **Prometheus** - Metrics and monitoring
 
@@ -23,8 +22,9 @@ backend/
 │   │   ├── limiter.py         # Rate limiting
 │   │   ├── logging_config.py   # Structured logging
 │   │   ├── redis_cache.py     # Redis caching
-│   │   └── security.py        # Auth utilities
-│   ├── models/                 # SQLAlchemy models
+│   │   ├── security.py        # Auth utilities
+│   │   └── observability.py   # Metrics and tracing
+│   ├── models/                 # SQLAlchemy models (30+)
 │   │   ├── user.py            # User and authentication
 │   │   ├── trade.py           # Insider trades
 │   │   ├── congressional_trade.py
@@ -32,48 +32,77 @@ backend/
 │   │   ├── insider.py
 │   │   ├── subscription.py    # Billing models
 │   │   ├── alert.py
-│   │   ├── payment.py
-│   │   ├── ticket.py
+│   │   ├── intrinsic_value.py # IVT research
+│   │   ├── tradesignal_score.py # TS Score
+│   │   ├── risk_level.py      # Risk assessment
+│   │   ├── thesis.py          # Investment thesis
+│   │   ├── portfolio.py       # User portfolios
+│   │   ├── webhook.py         # Webhook configs
 │   │   └── ...
-│   ├── routers/                # API endpoints
+│   ├── routers/                # API endpoints (25+)
 │   │   ├── auth.py            # Authentication
 │   │   ├── trades.py          # Insider trades
 │   │   ├── congressional_trades.py
 │   │   ├── companies.py
 │   │   ├── insiders.py
 │   │   ├── billing.py         # Stripe integration
+│   │   ├── research.py        # Research API (PRO)
+│   │   ├── ai.py              # AI insights (PRO)
+│   │   ├── patterns.py        # Pattern detection
+│   │   ├── alerts.py          # User alerts
 │   │   ├── news.py
 │   │   ├── fed.py             # Federal Reserve
+│   │   ├── earnings.py        # Earnings calendar
+│   │   ├── stocks.py          # Stock prices
 │   │   ├── admin.py
 │   │   ├── health.py
+│   │   ├── scheduler.py       # Task scheduling
+│   │   ├── enterprise_api.py  # Enterprise endpoints
+│   │   ├── webhook_api.py     # Webhook management
 │   │   └── ...
 │   ├── schemas/                # Pydantic schemas
 │   │   ├── trade.py
 │   │   ├── company.py
-│   │   ├── insider.py
+│   │   ├── research.py        # Research schemas
 │   │   └── ...
-│   ├── services/               # Business logic
-│   │   ├── scraper_service.py
-│   │   ├── form4_parser.py
+│   ├── services/               # Business logic (40+)
+│   │   ├── sec_client.py      # SEC EDGAR client
+│   │   ├── form4_parser.py    # Form 4 XML parsing
 │   │   ├── congressional_scraper.py
 │   │   ├── stock_price_service.py
 │   │   ├── notification_service.py
-│   │   ├── tier_service.py
+│   │   ├── tier_service.py    # Subscription tiers
+│   │   ├── ai_service.py      # AI analysis
+│   │   ├── dcf_service.py     # DCF calculations
+│   │   ├── ts_score_service.py # TradeSignal score
+│   │   ├── risk_level_service.py
+│   │   ├── thesis_service.py
+│   │   ├── cache_service.py
+│   │   ├── webhook_service.py
 │   │   └── ...
 │   ├── tasks/                  # Celery tasks
-│   │   └── stock_tasks.py
+│   │   ├── sec_tasks.py       # SEC scraping tasks
+│   │   ├── analysis_tasks.py
+│   │   ├── enrichment_tasks.py
+│   │   ├── ai_tasks.py
+│   │   ├── ts_score_tasks.py
+│   │   └── ...
 │   ├── middleware/
-│   │   └── https_redirect.py
+│   │   ├── https_redirect.py
+│   │   ├── error_handler.py
+│   │   └── feature_gating.py
 │   ├── config.py               # Settings management
 │   ├── database.py             # DB connection
 │   └── main.py                 # Application entry
 ├── tests/                      # Unit tests
+├── scripts/                    # Utility scripts
+├── docs/                       # API documentation
 ├── requirements.txt
 ├── Dockerfile
 └── .env.example
 ```
 
-## API Endpoints
+## API Endpoints (25+ Routers)
 
 ### Authentication (`/api/v1/auth`)
 - `POST /register` - Create new user account
@@ -86,7 +115,8 @@ backend/
 ### Insider Trades (`/api/v1/trades`)
 - `GET /` - List all insider trades with filters
 - `GET /{id}` - Get specific trade details
-- `POST /scrape` - Trigger manual scrape (admin)
+- `GET /recent` - Get recent trades
+- `GET /stats` - Trade statistics
 
 ### Congressional Trades (`/api/v1/congressional-trades`)
 - `GET /` - List congressional trades with filters
@@ -104,6 +134,30 @@ backend/
 - `GET /{id}` - Get insider profile
 - `GET /{id}/trades` - Get trades by insider
 
+### Research API (`/api/v1/research`) - PRO Tier
+- `GET /ivt/{ticker}` - Intrinsic Value vs Price
+- `GET /ts-score/{ticker}` - TradeSignal Score (1-5)
+- `GET /risk-level/{ticker}` - Risk assessment
+- `GET /thesis/{ticker}` - Investment thesis
+- `GET /summary/{ticker}` - Full research summary
+- `GET /competitive-strength/{ticker}` - Competitive analysis
+- `GET /management-score/{ticker}` - Management rating
+
+### AI Insights (`/api/v1/ai`) - PRO Tier
+- `GET /analysis/{ticker}` - AI-powered analysis
+- `GET /summary/{ticker}` - AI summary
+- `POST /ask` - Ask AI questions
+
+### Patterns (`/api/v1/patterns`)
+- `GET /` - List detected patterns
+- `GET /{ticker}` - Patterns for company
+
+### Alerts (`/api/v1/alerts`)
+- `GET /` - List user alerts
+- `POST /` - Create alert
+- `PUT /{id}` - Update alert
+- `DELETE /{id}` - Delete alert
+
 ### Billing (`/api/v1/billing`)
 - `POST /create-checkout-session` - Create Stripe checkout
 - `POST /webhook` - Stripe webhook handler
@@ -119,20 +173,44 @@ backend/
 - `GET /calendar` - Get Fed economic calendar
 - `GET /events` - List upcoming events
 
+### Earnings (`/api/v1/earnings`)
+- `GET /calendar` - Earnings calendar
+- `GET /{ticker}` - Company earnings
+
+### Stocks (`/api/v1/stocks`)
+- `GET /{ticker}/price` - Current price
+- `GET /{ticker}/history` - Price history
+
 ### Admin (`/api/v1/admin`)
 - `GET /users` - List all users (superuser only)
 - `PUT /users/{id}` - Update user (superuser only)
 - `DELETE /users/{id}` - Delete user (superuser only)
 - `GET /stats` - System statistics
+- `GET /tickets` - Support tickets
+
+### Scheduler (`/api/v1/scheduler`)
+- `GET /status` - Scheduler status
+- `POST /trigger/{task}` - Trigger task manually
+
+### Enterprise API (`/api/v1/enterprise`)
+- High-volume API access for enterprise customers
+- Bulk data endpoints
+- Custom integrations
+
+### Webhooks (`/api/v1/webhooks`)
+- `GET /` - List webhooks
+- `POST /` - Create webhook
+- `DELETE /{id}` - Delete webhook
 
 ### Health & Monitoring
 - `GET /api/v1/health` - Health check
+- `GET /api/v1/health/detailed` - Detailed health
 - `GET /metrics` - Prometheus metrics
 
-## Database Models
+## Database Models (30+)
 
 ### Core Models
-- **User** - User accounts with roles (free, pro, enterprise, admin)
+- **User** - User accounts with roles (free, plus, pro, enterprise, admin)
 - **Subscription** - Stripe subscription data
 - **Payment** - Payment history
 - **Trade** - Insider trading transactions
@@ -142,32 +220,71 @@ backend/
 - **Alert** - User alerts and notifications
 - **Ticket** - Support tickets
 
-## Service Layer
+### Research Models (PRO Features)
+- **IntrinsicValue** - IVT calculations
+- **TradesignalScore** - TS Score ratings
+- **RiskLevel** - Risk assessments
+- **Thesis** - Investment theses
+- **CompetitiveStrength** - Competitive analysis
+- **ManagementScore** - Management ratings
 
-### Scraper Service
-- Automated SEC Form 4 scraping
-- Scheduled scraping with Celery
-- Configurable scrape hours and frequency
-- Duplicate detection
+### Enterprise Models
+- **Portfolio** - User portfolios
+- **Webhook** - Webhook configurations
+- **Organization** - Enterprise organizations
+- **FeatureUsageLog** - Usage tracking
 
-### Congressional Scraper
-- Political stock transaction scraping
-- Congress member profile tracking
+## Service Layer (40+ Services)
 
-### Stock Price Service
-- Real-time stock price fetching
-- Price history and charts
-- Market data integration
+### Data Collection
+- **SECClient** - SEC EDGAR API client
+- **Form4Parser** - Form 4 XML parsing with robust error handling
+- **CongressionalScraper** - Congressional trade scraping
 
-### Notification Service
-- Multi-channel alerts (email, push)
-- Configurable alert rules
-- Priority-based notifications
+### Research Services
+- **DCFService** - Discounted cash flow calculations
+- **TSScoreService** - TradeSignal score computation
+- **RiskLevelService** - Risk assessment
+- **ThesisService** - Investment thesis generation
+- **CompetitiveStrengthService** - Competitive analysis
 
-### Tier Service
-- Feature access control by subscription tier
-- Rate limiting by tier
-- Usage tracking
+### AI Services
+- **AIService** - AI-powered analysis and summaries
+- **PredictiveModelingService** - ML predictions
+
+### Infrastructure
+- **CacheService** - Redis caching
+- **NotificationService** - Multi-channel notifications
+- **WebhookService** - Webhook delivery
+- **TierService** - Feature access control
+
+## Background Tasks (Celery)
+
+### SEC Tasks (`tasks/sec_tasks.py`)
+- `scrape_form4_filings` - Scrape SEC Form 4 filings
+- `process_form4_document` - Parse individual Form 4
+- Robust XML parsing with null checks
+- Correct Form 4 XML file detection
+
+### Analysis Tasks
+- `calculate_ts_scores` - Compute TradeSignal scores
+- `update_risk_levels` - Update risk assessments
+- `generate_theses` - Generate investment theses
+
+### Enrichment Tasks
+- `enrich_company_data` - Add company metadata
+- `update_stock_prices` - Refresh price data
+
+## Subscription Tiers
+
+| Feature | Free | Plus | PRO | Enterprise |
+|---------|------|------|-----|------------|
+| API Rate Limit | 100/hr | 500/hr | 2000/hr | Unlimited |
+| Insider Trades | Limited | Full | Full | Full |
+| Research API | - | - | ✓ | ✓ |
+| AI Insights | - | - | ✓ | ✓ |
+| Webhooks | - | - | - | ✓ |
+| Custom Alerts | 3 | 10 | Unlimited | Unlimited |
 
 ## Authentication & Security
 
@@ -177,7 +294,7 @@ backend/
 - Password hashing with bcrypt
 
 ### Rate Limiting
-- Tiered rate limits (free: 100/hour, pro: 1000/hour, enterprise: unlimited)
+- Tiered rate limits by subscription
 - Redis-backed rate limiter
 - Per-endpoint customization
 
@@ -188,27 +305,12 @@ backend/
 - Input validation (Pydantic)
 - Secret management via environment variables
 
-## Background Tasks
-
-### Celery Workers
-- Scheduled scraping (hourly during market hours)
-- Stock price updates
-- Alert processing
-- Email sending
-
-### Task Configuration
-```python
-# Scraper runs every hour from 9 AM to 4 PM ET
-SCRAPER_SCHEDULE_HOURS = "9-16"
-SCRAPER_TIMEZONE = "America/New_York"
-```
-
 ## Environment Variables
 
 ### Required
 ```env
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/tradesignal
+# Database (Supabase)
+DATABASE_URL=postgresql://user:password@db.supabase.co:5432/postgres
 
 # Redis
 REDIS_URL=redis://localhost:6379/0
@@ -220,11 +322,12 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 # Stripe
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRICE_ID_PLUS=price_...
 STRIPE_PRICE_ID_PRO=price_...
 STRIPE_PRICE_ID_ENTERPRISE=price_...
 
 # SEC API
-SEC_API_KEY=your-sec-api-key
+SEC_USER_AGENT=TradeSignal/1.0 (your@email.com)
 ```
 
 ### Optional
@@ -233,7 +336,6 @@ SEC_API_KEY=your-sec-api-key
 ENABLE_AI_INSIGHTS=true
 ENABLE_WEBHOOKS=true
 ENABLE_EMAIL_ALERTS=true
-ENABLE_PUSH_NOTIFICATIONS=true
 SCHEDULER_ENABLED=true
 
 # Logging
@@ -245,7 +347,8 @@ CORS_ORIGINS=http://localhost:3000,https://yourdomain.com
 
 # Rate Limiting
 RATE_LIMIT_FREE_TIER=100
-RATE_LIMIT_PRO_TIER=1000
+RATE_LIMIT_PLUS_TIER=500
+RATE_LIMIT_PRO_TIER=2000
 ```
 
 ## Development
@@ -263,7 +366,6 @@ pip install -r requirements.txt
 cp .env.example .env
 
 # Edit .env with your configuration
-nano .env
 ```
 
 ### Running Locally
@@ -272,7 +374,7 @@ nano .env
 uvicorn app.main:app --reload --port 8000
 
 # Run Celery worker (separate terminal)
-celery -A app.core.celery_app worker --loglevel=info
+celery -A app.core.celery_app worker --loglevel=info --pool=solo
 
 # Run Celery beat scheduler (separate terminal)
 celery -A app.core.celery_app beat --loglevel=info
@@ -314,6 +416,7 @@ tests/
 ├── test_trades_api.py
 ├── test_tier_service.py
 ├── test_form4_parser.py
+├── test_research_api.py
 └── ...
 ```
 
@@ -343,7 +446,7 @@ docker-compose restart backend
 ### Production Checklist
 - [ ] Set `DEBUG=false`
 - [ ] Use strong `SECRET_KEY`
-- [ ] Configure production database
+- [ ] Configure production database (Supabase)
 - [ ] Set up Redis for production
 - [ ] Enable HTTPS redirect
 - [ ] Configure CORS origins
@@ -351,7 +454,6 @@ docker-compose restart backend
 - [ ] Enable Prometheus monitoring
 - [ ] Configure backups
 - [ ] Set up health checks
-- [ ] Use environment-specific configs
 
 ## Monitoring
 
@@ -370,46 +472,39 @@ Available at `/metrics`:
 ### Health Checks
 - Database connectivity
 - Redis connectivity
-- Disk space
-- Memory usage
+- Celery worker status
 - API endpoint: `/api/v1/health`
 
 ## Troubleshooting
 
 ### Database Connection Issues
 ```bash
-# Check PostgreSQL is running
-docker-compose ps postgres
-
 # Check DATABASE_URL is correct
 echo $DATABASE_URL
+
+# Test connection
+python -c "from app.database import engine; print(engine.url)"
 ```
 
 ### Redis Connection Issues
 ```bash
 # Check Redis is running
-docker-compose ps redis
-
-# Test Redis connection
 redis-cli ping
 ```
 
-### Scraper Not Running
+### Celery Worker Not Processing
 ```bash
-# Check scheduler is enabled
-echo $SCHEDULER_ENABLED  # should be 'true'
-
-# Check Celery beat is running
+# Check worker is running
 celery -A app.core.celery_app inspect active
+
+# Check for errors in logs
+celery -A app.core.celery_app worker --loglevel=debug
 ```
 
-## Contributing
-
-1. Follow PEP 8 style guide
-2. Add type hints to all functions
-3. Write docstrings for public functions
-4. Add unit tests for new features
-5. Update this README for significant changes
+### SEC Scraper Issues
+- Ensure `SEC_USER_AGENT` is set with valid email
+- Check rate limiting (10 requests/second max)
+- Verify Form 4 XML parsing handles null elements
 
 ## License
 

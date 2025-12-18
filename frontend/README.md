@@ -1,6 +1,6 @@
 # TradeSignal Frontend
 
-React-based frontend application for TradeSignal. Provides a modern, responsive user interface for tracking insider trades, congressional stock transactions, and market intelligence.
+React-based frontend application for TradeSignal. Provides a modern, responsive user interface for tracking insider trades, congressional stock transactions, and market intelligence with professional research tools.
 
 ## Tech Stack
 
@@ -11,6 +11,7 @@ React-based frontend application for TradeSignal. Provides a modern, responsive 
 - **Tailwind CSS** - Utility-first CSS framework
 - **Headless UI** - Unstyled, accessible UI components
 - **Recharts** - Composable charting library
+- **React Query** - Server state management
 - **Axios** - HTTP client for API communication
 
 ## Project Structure
@@ -23,6 +24,7 @@ frontend/
 │   │   ├── auth.ts            # Authentication API
 │   │   ├── billing.ts         # Stripe billing API
 │   │   ├── companies.ts       # Companies API
+│   │   ├── research.ts        # Research API (PRO features)
 │   │   ├── congressionalTrades.ts
 │   │   ├── fed.ts
 │   │   ├── jobs.ts
@@ -39,10 +41,18 @@ frontend/
 │   │   │   ├── Header.tsx
 │   │   │   ├── Sidebar.tsx
 │   │   │   ├── TopBar.tsx
+│   │   │   ├── DashboardNavbar.tsx
 │   │   │   └── Layout.tsx
+│   │   ├── research/          # Research badge components (PRO)
+│   │   │   ├── IVTBadge.tsx   # Intrinsic Value vs Price
+│   │   │   ├── TSScoreBadge.tsx # TradeSignal Score (1-5)
+│   │   │   └── RiskLevelBadge.tsx # Risk assessment
 │   │   ├── CompanyLogo.tsx
 │   │   ├── CookieConsent.tsx
 │   │   ├── FirstTimeDisclaimerModal.tsx
+│   │   ├── Paywall.tsx
+│   │   ├── UpgradeCTA.tsx
+│   │   ├── TierComparisonTable.tsx
 │   │   ├── ProtectedRoute.tsx
 │   │   ├── TierRestrictionBanner.tsx
 │   │   └── UsageStats.tsx
@@ -51,19 +61,25 @@ frontend/
 │   │   └── NotificationContext.tsx
 │   ├── hooks/                  # Custom React hooks
 │   │   ├── useCustomAlert.ts
-│   │   └── useCustomConfirm.ts
-│   ├── pages/                  # Page components
+│   │   ├── useCustomConfirm.ts
+│   │   └── useFeatureAccess.ts # Tier-based feature gating
+│   ├── pages/                  # Page components (20+)
 │   │   ├── LoginPage.tsx
 │   │   ├── RegisterPage.tsx
 │   │   ├── ForgotPasswordPage.tsx
 │   │   ├── ResetPasswordPage.tsx
+│   │   ├── LandingPage.tsx
 │   │   ├── DashboardNew.tsx
 │   │   ├── TradesPage.tsx
 │   │   ├── CongressionalTradesPage.tsx
-│   │   ├── CompanyPage.tsx
+│   │   ├── CompanyPage.tsx     # With research badges
 │   │   ├── InsiderPage.tsx
+│   │   ├── MarketOverviewPage.tsx
 │   │   ├── NewsPage.tsx
 │   │   ├── FedCalendarPage.tsx
+│   │   ├── PatternsPage.tsx
+│   │   ├── AIInsightsPage.tsx
+│   │   ├── AlertsPage.tsx
 │   │   ├── LessonsPage.tsx
 │   │   ├── StrategiesPage.tsx
 │   │   ├── PricingPage.tsx
@@ -75,7 +91,11 @@ frontend/
 │   │   ├── BillingCancelPage.tsx
 │   │   ├── CareersPage.tsx
 │   │   ├── ContactPage.tsx
+│   │   ├── BlogPage.tsx
 │   │   ├── FAQPage.tsx
+│   │   ├── AboutPage.tsx
+│   │   ├── TermsOfServicePage.tsx
+│   │   ├── PrivacyPolicyPage.tsx
 │   │   └── NotFound.tsx
 │   ├── types/                  # TypeScript type definitions
 │   │   └── index.ts
@@ -115,10 +135,16 @@ frontend/
 
 ### Company & Insider Pages
 - Company profiles with key metrics
+- **Research Badges (PRO)** - IVT, TS Score, Risk Level
 - Insider trading history
 - Stock price charts
 - News and filings
 - Related trades and insiders
+
+### Research Components (PRO Features)
+- **IVTBadge** - Shows intrinsic value vs current price (undervalued/overvalued)
+- **TSScoreBadge** - 1-5 star TradeSignal rating with visual display
+- **RiskLevelBadge** - 5-tier risk assessment with descriptions
 
 ### Admin Dashboard
 - User management (view, edit, delete users)
@@ -129,24 +155,28 @@ frontend/
 
 ### Billing & Subscriptions
 - Stripe checkout integration
-- 3-tier subscription system (Free, Pro, Enterprise)
+- 4-tier subscription system (Free, Plus, Pro, Enterprise)
 - Payment history
 - Subscription management (upgrade, cancel)
-- Feature access control
+- Feature access control with UpgradeCTA components
 
 ### Additional Pages
 - **News** - Financial news aggregation
 - **Fed Calendar** - Economic events and FOMC meetings
+- **Patterns** - Trading pattern analysis
+- **AI Insights** - AI-powered analysis (PRO)
 - **Lessons** - Educational content for trading
 - **Strategies** - Trading strategy guides
 - **Support** - Help desk and ticket system
 - **FAQ** - Frequently asked questions
+- **Blog** - Company blog
 - **Contact** - Contact form
 - **Careers** - Job listings and applications
 
 ## Routing
 
 ### Public Routes (no auth required)
+- `/` - Landing page
 - `/about` - About page
 - `/pricing` - Pricing tiers
 - `/terms` - Terms of service
@@ -154,6 +184,7 @@ frontend/
 - `/faq` - FAQ
 - `/contact` - Contact form
 - `/careers` - Job listings
+- `/blog` - Blog
 
 ### Authentication Routes (full-screen, no layout)
 - `/login` - Login page
@@ -162,14 +193,17 @@ frontend/
 - `/reset-password/:token` - Password reset confirmation
 
 ### Protected Routes (auth required)
-- `/` - Dashboard
+- `/dashboard` - Dashboard
 - `/trades` - Insider trades
 - `/congressional-trades` - Congressional trades
 - `/market-overview` - Market data
-- `/companies/:ticker` - Company details
+- `/companies/:ticker` - Company details (with research badges)
 - `/insiders/:id` - Insider profile
 - `/news` - News feed
 - `/fed-calendar` - Fed calendar
+- `/patterns` - Pattern analysis
+- `/ai-insights` - AI insights (PRO)
+- `/alerts` - Alerts management
 - `/lessons` - Educational content
 - `/strategies` - Trading strategies
 - `/profile` - User profile
@@ -185,7 +219,7 @@ frontend/
 
 ### AuthContext
 Manages authentication state globally:
-- Current user data
+- Current user data with subscription tier
 - Login/logout functions
 - Token management
 - Role-based access control
@@ -205,13 +239,14 @@ Centralized Axios instance with:
 - Response interceptors (handle errors, refresh tokens)
 - Error handling and retry logic
 
-### API Modules
-Each API module exports typed functions:
+### Research API (`src/api/research.ts`)
+PRO tier research endpoints:
 ```typescript
-// Example: auth.ts
-export const login = async (email: string, password: string): Promise<LoginResponse>
-export const register = async (data: RegisterRequest): Promise<User>
-export const getCurrentUser = async (): Promise<User>
+export const getIVTData = async (ticker: string): Promise<IVTData>
+export const getTSScore = async (ticker: string): Promise<TSScoreData>
+export const getRiskLevel = async (ticker: string): Promise<RiskLevelData>
+export const getThesis = async (ticker: string): Promise<ThesisData>
+export const getResearchSummary = async (ticker: string): Promise<ResearchSummary>
 ```
 
 ## Environment Variables
@@ -240,7 +275,6 @@ npm install
 cp .env.example .env
 
 # Edit .env with your configuration
-nano .env
 ```
 
 ### Run Development Server
@@ -283,6 +317,26 @@ npm run type-check
 } />
 ```
 
+### Tier-Gated Features
+```typescript
+import { useFeatureAccess } from '../hooks/useFeatureAccess';
+
+const { hasAccess, tier } = useFeatureAccess();
+
+if (!hasAccess('research')) {
+  return <UpgradeCTA feature="Research Badges" requiredTier="PRO" />;
+}
+```
+
+### Research Badges Usage
+```typescript
+import { IVTBadge, TSScoreBadge, RiskLevelBadge } from '../components/research';
+
+<IVTBadge ticker={ticker} />
+<TSScoreBadge ticker={ticker} />
+<RiskLevelBadge ticker={ticker} />
+```
+
 ### API Calls with Error Handling
 ```typescript
 try {
@@ -294,21 +348,11 @@ try {
 }
 ```
 
-### Authentication Check
-```typescript
-const { user, isAuthenticated } = useContext(AuthContext);
-
-if (!isAuthenticated) {
-  return <Navigate to="/login" />;
-}
-```
-
 ## Styling
 
 ### Tailwind CSS
 Utility-first approach with custom configuration:
 ```typescript
-// Example component
 <div className="bg-white shadow rounded-lg p-6 hover:shadow-lg transition-shadow">
   <h2 className="text-2xl font-bold text-gray-900">Title</h2>
   <p className="text-gray-600 mt-2">Description</p>
@@ -340,10 +384,11 @@ const filteredTrades = useMemo(() =>
 );
 ```
 
-### Image Optimization
-- Use appropriate image formats (WebP, AVIF)
-- Lazy load images below the fold
-- Responsive images with `srcset`
+### React Query
+Server state caching and automatic refetching:
+```typescript
+const { data, isLoading } = useQuery(['research', ticker], () => getResearchSummary(ticker));
+```
 
 ## Testing
 
@@ -394,17 +439,11 @@ VITE_API_URL=https://api-staging.tradesignal.com npm run build
 ### CORS Issues
 Ensure backend CORS settings include your frontend URL:
 ```python
-# backend/app/config.py
 CORS_ORIGINS = "http://localhost:3000,https://tradesignal.com"
 ```
 
 ### Authentication Not Persisting
-Check if `localStorage` is available and not blocked:
-```typescript
-if (typeof window !== 'undefined' && window.localStorage) {
-  // Safe to use localStorage
-}
-```
+Check if `localStorage` is available and not blocked.
 
 ### API Calls Failing
 1. Check `VITE_API_URL` in `.env`
@@ -419,15 +458,6 @@ rm -rf node_modules dist .vite
 npm install
 npm run build
 ```
-
-## Contributing
-
-1. Follow React best practices
-2. Use TypeScript for all new code
-3. Follow the existing component structure
-4. Add prop types for all components
-5. Write meaningful commit messages
-6. Update this README for significant changes
 
 ## Browser Support
 

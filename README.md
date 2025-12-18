@@ -1,6 +1,6 @@
 # TradeSignal
 
-> Real-time insider trading intelligence platform for tracking SEC Form 4 filings, congressional trades, and market-moving transactions with AI-powered insights.
+> Real-time insider trading intelligence platform for tracking SEC Form 4 filings, congressional trades, and market-moving transactions with AI-powered insights and professional research tools.
 
 ## Overview
 
@@ -10,7 +10,7 @@ TradeSignal is a comprehensive financial intelligence platform that aggregates a
 
 ### Backend
 - **FastAPI** - High-performance async Python web framework
-- **PostgreSQL** - Primary database for structured data
+- **PostgreSQL** - Primary database (Supabase hosted)
 - **Redis** - Caching and rate limiting
 - **Celery** - Distributed task queue for scheduled scraping
 - **SQLAlchemy** - ORM and database management
@@ -22,47 +22,106 @@ TradeSignal is a comprehensive financial intelligence platform that aggregates a
 - **Vite** - Fast build tool and dev server
 - **Tailwind CSS** - Utility-first styling
 - **React Router** - Client-side routing
+- **React Query** - Server state management
 
 ### Infrastructure
 - **Docker & Docker Compose** - Containerization
 - **Nginx** - Reverse proxy (production)
+- **Supabase** - Managed PostgreSQL database
 - **Grafana** - Metrics visualization (optional)
 
 ## Key Features
 
-### Backend (14 Core Services)
+### Backend Services (25+ API Routers)
+
+#### Core Services
 1. **Authentication** - JWT-based auth with login, register, password reset
 2. **Insider Trades** - SEC Form 4 scraping and tracking
 3. **Congressional Trades** - Political stock transaction monitoring
 4. **Companies & Insiders** - Detailed profiles and historical data
-5. **Billing** - Stripe integration with 3-tier subscription system (Free, Plus, Pro, Enterprise)
-6. **News** - Financial news aggregation and filtering
-7. **Federal Reserve** - Fed calendar and economic event tracking
-8. **Jobs** - Career opportunities and applications
-9. **Admin Dashboard** - User management and system administration
-10. **Contact & Support** - Ticket system for user inquiries
-11. **Health Checks** - System monitoring and uptime tracking
-12. **Push Notifications** - Real-time alerts for important trades
-13. **Stock Prices** - Live market data integration
-14. **Scheduler** - Automated scraping with configurable schedules
+5. **Billing** - Stripe integration with 4-tier subscription system
 
-### Frontend (16 Pages)
-1. **Authentication** - Login, Register, Password Reset, Profile
-2. **Dashboard** - Overview of recent trades and market activity
-3. **Trades** - Insider trading activity with filtering
-4. **Congressional Trades** - Political trading transparency
-5. **Market Overview** - Live market indices and sector performance
-6. **News** - Curated financial news feed
-7. **Fed Calendar** - Upcoming economic events
-8. **Company Pages** - Detailed company information and insider activity
-9. **Insider Pages** - Individual insider profiles and trade history
-10. **Admin Dashboard** - System administration interface
-11. **Pricing** - Subscription tiers and feature comparison
-12. **Support & FAQ** - Help center and documentation
-13. **Contact & Careers** - Public pages for inquiries and job listings
-14. **Lessons & Strategies** - Educational content for users
-15. **Order History** - Billing and subscription management
-16. **Terms, Privacy, About** - Legal and informational pages
+#### Research & Analytics (PRO Features)
+6. **Research API** - IVT, TS Score, Risk Level, Thesis data
+7. **AI Insights** - AI-powered trade analysis and summaries
+8. **Patterns Detection** - Insider trading pattern recognition
+9. **Enterprise Research** - Advanced research endpoints
+
+#### Data & Monitoring
+10. **News** - Financial news aggregation and filtering
+11. **Federal Reserve** - Fed calendar and economic event tracking
+12. **Earnings** - Earnings calendar and reports
+13. **Stock Prices** - Live market data integration
+14. **Data Health** - Data quality monitoring
+
+#### Administration
+15. **Admin Dashboard** - User management and system administration
+16. **Scheduler** - Automated scraping with configurable schedules
+17. **Tasks** - Background task management
+18. **Health Checks** - System monitoring and uptime tracking
+
+#### User Features
+19. **Alerts** - Custom trade alerts and notifications
+20. **Push Notifications** - Real-time alerts for important trades
+21. **Contact & Support** - Ticket system for user inquiries
+22. **Jobs** - Career opportunities and applications
+
+#### Enterprise Features
+23. **Webhooks** - Custom webhook integrations
+24. **Enterprise API** - High-volume API access
+25. **Marketing API** - Campaign management
+
+### Frontend Pages (20+)
+
+#### Authentication
+- Login, Register, Password Reset, Profile
+
+#### Dashboard & Trading
+- **Dashboard** - Overview of recent trades and market activity
+- **Trades** - Insider trading activity with filtering
+- **Congressional Trades** - Political trading transparency
+- **Market Overview** - Live market indices and sector performance
+- **Patterns** - Trading pattern analysis
+
+#### Company & Insider Research
+- **Company Pages** - Detailed company info with research badges (IVT, TS Score, Risk Level)
+- **Insider Pages** - Individual insider profiles and trade history
+
+#### News & Events
+- **News** - Curated financial news feed
+- **Fed Calendar** - Upcoming economic events
+
+#### AI & Research (PRO)
+- **AI Insights** - AI-powered analysis
+
+#### Education
+- **Lessons** - Educational content for users
+- **Strategies** - Trading strategy guides
+
+#### Account & Billing
+- **Pricing** - Subscription tiers and feature comparison
+- **Order History** - Billing and subscription management
+- **Profile** - User settings
+
+#### Support & Info
+- **Support & FAQ** - Help center and documentation
+- **Contact & Careers** - Public pages for inquiries and job listings
+- **Blog** - Company blog
+- **About, Terms, Privacy** - Legal and informational pages
+
+## Subscription Tiers
+
+| Feature | Free | Plus | PRO | Enterprise |
+|---------|------|------|-----|------------|
+| Insider Trades | Limited | Full | Full | Full |
+| Congressional Trades | View | Full | Full | Full |
+| Research Badges (IVT, TS Score, Risk) | - | - | ✓ | ✓ |
+| AI Insights | - | - | ✓ | ✓ |
+| Pattern Detection | - | - | ✓ | ✓ |
+| Custom Alerts | 3 | 10 | Unlimited | Unlimited |
+| API Access | - | - | Limited | Full |
+| Webhooks | - | - | - | ✓ |
+| Priority Support | - | - | ✓ | ✓ |
 
 ## Quick Start
 
@@ -121,6 +180,12 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
+#### Celery Worker (for background tasks)
+```bash
+cd backend
+celery -A app.core.celery_app worker --loglevel=info --pool=solo
+```
+
 #### Frontend
 ```bash
 cd frontend
@@ -132,8 +197,8 @@ npm run dev
 
 ### Backend Key Variables
 ```env
-# Database
-DATABASE_URL=postgresql://user:pass@localhost:5432/tradesignal
+# Database (Supabase)
+DATABASE_URL=postgresql://user:pass@db.supabase.co:5432/postgres
 
 # Redis
 REDIS_URL=redis://localhost:6379/0
@@ -147,7 +212,7 @@ STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 
 # SEC API
-SEC_API_KEY=your-sec-api-key
+SEC_USER_AGENT=YourApp/1.0 (your@email.com)
 
 # Feature Flags
 ENABLE_AI_INSIGHTS=true
@@ -173,6 +238,8 @@ Interactive API documentation is available at:
 - `/api/v1/congressional-trades/*` - Congressional trades
 - `/api/v1/companies/*` - Company data
 - `/api/v1/insiders/*` - Insider profiles
+- `/api/v1/research/*` - Research data (PRO)
+- `/api/v1/ai/*` - AI insights (PRO)
 - `/api/v1/news/*` - Financial news
 - `/api/v1/admin/*` - Administration
 
@@ -182,12 +249,13 @@ Interactive API documentation is available at:
 TradeSignal/
 ├── backend/                 # FastAPI backend
 │   ├── app/
-│   │   ├── core/           # Core utilities (security, cache, limiter)
+│   │   ├── core/           # Core utilities (security, cache, celery)
 │   │   ├── models/         # SQLAlchemy database models
-│   │   ├── routers/        # API endpoint routes
+│   │   ├── routers/        # API endpoint routes (25+)
 │   │   ├── schemas/        # Pydantic request/response schemas
 │   │   ├── services/       # Business logic layer
 │   │   ├── tasks/          # Celery background tasks
+│   │   ├── middleware/     # Custom middleware
 │   │   └── main.py         # Application entry point
 │   ├── tests/              # Backend tests
 │   └── requirements.txt    # Python dependencies
@@ -195,11 +263,15 @@ TradeSignal/
 │   ├── src/
 │   │   ├── api/           # API client functions
 │   │   ├── components/    # React components
+│   │   │   ├── research/  # Research badges (IVT, TS Score, Risk)
+│   │   │   ├── layout/    # Layout components
+│   │   │   └── ...
 │   │   ├── contexts/      # React contexts (Auth, Notifications)
 │   │   ├── hooks/         # Custom React hooks
-│   │   ├── pages/         # Page components
+│   │   ├── pages/         # Page components (20+)
 │   │   └── App.tsx        # Application root
 │   └── package.json       # Node dependencies
+├── Docs/                   # Documentation
 ├── docker-compose.yml     # Docker orchestration
 └── README.md             # This file
 ```
@@ -211,17 +283,6 @@ TradeSignal/
 3. Run tests: `pytest` (backend) / `npm test` (frontend)
 4. Commit changes: `git commit -m "feat: your feature"`
 5. Push and create PR: `git push origin feature/your-feature`
-
-## Monitoring
-
-Optional monitoring stack with Prometheus and Grafana:
-```bash
-docker-compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
-```
-
-Access:
-- Prometheus: http://localhost:9090
-- Grafana: http://localhost:3001 (admin/admin)
 
 ## Testing
 
@@ -245,7 +306,7 @@ npm run test:watch    # Watch mode
 Production deployment guide:
 1. Set production environment variables
 2. Configure SSL/TLS certificates
-3. Set up production database (PostgreSQL)
+3. Set up production database (Supabase recommended)
 4. Configure Redis for production
 5. Deploy with Docker Compose or Kubernetes
 6. Set up monitoring and logging
@@ -253,54 +314,19 @@ Production deployment guide:
 
 See [backend/README.md](backend/README.md) and [frontend/README.md](frontend/README.md) for detailed deployment instructions.
 
-## Contributing
+## Documentation
 
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+- **[Backend README](backend/README.md)** - Backend setup and development
+- **[Frontend README](frontend/README.md)** - Frontend setup and development
+- **[Docs/](Docs/)** - Additional documentation
+- **API Documentation** - Interactive API docs at `http://localhost:8000/docs`
 
-Please follow the existing code style and include tests for new features.
+## Support
+
+- **Documentation:** See [Docs/](Docs/) directory
+- **Email Support:** support@tradesignal.com
+- **Issues:** Create a GitHub issue
 
 ## License
 
 This project is proprietary software. All rights reserved.
-
-## Documentation
-
-### User Documentation
-
-- **[Getting Started Guide](docs/GETTING_STARTED.md)** - New user guide and first steps
-- **[FAQ](docs/FAQ.md)** - Frequently asked questions
-- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and solutions
-- **[Release Notes](docs/RELEASE_NOTES_ALPHA_v1.0.0.md)** - Alpha v1.0.0 release notes and data source status
-- **[Changelog](CHANGELOG.md)** - Version history and changes
-
-### Feature Guides
-
-- **[Insider Trades Guide](docs/FEATURES/INSIDER_TRADES.md)** - How to use insider trading features
-- **[Congressional Trades Guide](docs/FEATURES/CONGRESSIONAL_TRADES.md)** - Congressional trade monitoring (Beta)
-- **[AI Insights Guide](docs/FEATURES/AI_INSIGHTS.md)** - AI-powered analysis features (Beta)
-
-### Alerts & Notifications
-
-- **[Alerts Setup Guide](docs/ALERTS_SETUP.md)** - How to create and manage alerts
-- **[Discord Webhooks Guide](docs/ALERTS_DISCORD_WEBHOOKS.md)** - Setting up Discord webhook notifications
-
-### Developer Documentation
-
-- **[Backend README](backend/README.md)** - Backend setup and development
-- **[Frontend README](frontend/README.md)** - Frontend setup and development
-- **API Documentation** - Interactive API docs at `http://localhost:8000/docs` (Swagger UI)
-
-## Support
-
-- **Documentation:** See [docs/](docs/) directory for user guides
-- **Email Support:** support@tradesignal.com
-- **Issues:** Create a GitHub issue
-- **Technical Docs:** [backend/README.md](backend/README.md), [frontend/README.md](frontend/README.md)
-
-## Roadmap
-
-See [TradeSignal.md](TradeSignal.md) for future features and enhancements.

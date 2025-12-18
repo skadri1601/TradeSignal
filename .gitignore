@@ -227,14 +227,26 @@ celerydb
 worker.pid
 docker-compose.override.yml
 
-# Markdown files
-backend.md
-Debug_log.md
-claudeplan.md
+# Markdown files - ignore all except specific ones
+*.md
+!README.md
+!frontend/README.md
+!backend/README.md
+!Docs/**/*.md
+claudeplan*.md
+final_deploy.md
 geminiplan.md
-Tradesignal_deploy.md
-tradesignal.md
-troubleshooting.md
+implementation.md
+improvement.md
 production_security_hardening_8aaf6e21.plan.md
+TradeSignal*.md
+TROUBLESHOOTING.md
+TradeSignal Business Viability Analysis.pdf
+Understanding Morningstar’s Research Model for Stocks.pdf
 
-
+backend/scripts/manual_scrape_test.py	
+backend/celerybeat-schedule.dir	
+backend/celerybeat-schedule.dat	
+backend/celerybeat-schedule.*
+backend/scripts/manual_scrape_test.py
+TradeSignal_deploy.md
