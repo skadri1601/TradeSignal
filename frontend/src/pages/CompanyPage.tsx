@@ -4,9 +4,12 @@ import { companiesApi } from '../api/companies';
 import { earningsApi } from '../api/earnings';
 import { congressionalTradesApi } from '../api/congressionalTrades';
 import { patternsApi } from '../api/patterns';
+import { researchApi } from '../api/research';
 import TradeList from '../components/trades/TradeList';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { LegalDisclaimer } from '../components/LegalDisclaimer';
+import { IVTBadge, TSScoreBadge, RiskLevelBadge } from '../components/research';
+import { UpgradeCTA } from '../components/UpgradeCTA';
 import { formatCurrency } from '../utils/formatters';
 import {
   Building2,
@@ -19,7 +22,8 @@ import {
   ArrowRight,
   AlertCircle,
   CheckCircle,
-  MinusCircle
+  MinusCircle,
+  LineChart
 } from 'lucide-react';
 
 export default function CompanyPage() {
@@ -56,6 +60,28 @@ export default function CompanyPage() {
     queryKey: ['patternAnalysis', ticker],
     queryFn: () => patternsApi.analyzeCompany(ticker!, 90),
     enabled: !!ticker,
+  });
+
+  // Research data queries
+  const { data: researchIVT, isLoading: ivtLoading } = useQuery({
+    queryKey: ['researchIVT', ticker],
+    queryFn: () => researchApi.getIVT(ticker!),
+    enabled: !!ticker,
+    retry: false, // Don't retry on 402 (payment required)
+  });
+
+  const { data: researchTSScore, isLoading: tsScoreLoading } = useQuery({
+    queryKey: ['researchTSScore', ticker],
+    queryFn: () => researchApi.getTSScore(ticker!),
+    enabled: !!ticker,
+    retry: false,
+  });
+
+  const { data: researchRiskLevel, isLoading: riskLevelLoading } = useQuery({
+    queryKey: ['researchRiskLevel', ticker],
+    queryFn: () => researchApi.getRiskLevel(ticker!),
+    enabled: !!ticker,
+    retry: false,
   });
 
   if (companyLoading) {
@@ -198,6 +224,55 @@ export default function CompanyPage() {
           </div>
         ) : (
           <p className="text-gray-500 text-center py-4">No pattern data available</p>
+        )}
+      </div>
+
+      {/* Research Analysis Section */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-2">
+            <LineChart className="h-5 w-5 text-indigo-400" />
+            <h2 className="text-xl font-bold text-white">Research Analysis</h2>
+          </div>
+        </div>
+
+        {ivtLoading || tsScoreLoading || riskLevelLoading ? (
+          <div className="flex items-center justify-center h-24">
+            <LoadingSpinner />
+          </div>
+        ) : researchIVT || researchTSScore || researchRiskLevel ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {researchIVT && (
+              <IVTBadge
+                currentPrice={researchIVT.current_price}
+                intrinsicValue={researchIVT.intrinsic_value}
+                discountPct={researchIVT.discount_pct}
+                calculationDate={researchIVT.calculation_date}
+              />
+            )}
+            {researchTSScore && (
+              <TSScoreBadge
+                score={researchTSScore.score}
+                rating={researchTSScore.rating}
+                priceToIVT={researchTSScore.price_to_ivt_ratio}
+                riskAdjusted={researchTSScore.risk_adjusted}
+              />
+            )}
+            {researchRiskLevel && (
+              <RiskLevelBadge
+                level={researchRiskLevel.level}
+                category={researchRiskLevel.category}
+                volatilityScore={researchRiskLevel.volatility_score}
+              />
+            )}
+          </div>
+        ) : (
+          <UpgradeCTA
+            variant="card"
+            feature="Research Analysis"
+            requiredTier="pro"
+            message="Access intrinsic value analysis, TradeSignal scores, risk assessments, and more with PRO"
+          />
         )}
       </div>
 

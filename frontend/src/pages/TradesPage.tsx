@@ -113,7 +113,21 @@ export default function TradesPage() {
     placeholderData: previousData => previousData,
   });
 
-  const tradesForChart = useMemo(() => data?.items ?? [], [data]);
+  // Fetch more trades for chart (last 30 days, up to 500 trades)
+  const { data: chartTradesData } = useQuery<Trade[]>({
+    queryKey: ['trades', 'chart', filters],
+    queryFn: () => tradesApi.getRecentTrades(30),
+    enabled: !hasActiveFilters, // Only fetch when no filters are active
+    staleTime: 60000, // Cache for 1 minute
+  });
+
+  const tradesForChart = useMemo(() => {
+    // If filters are active, use paginated data; otherwise use chart data
+    if (hasActiveFilters) {
+      return data?.items ?? [];
+    }
+    return chartTradesData ?? [];
+  }, [data, chartTradesData, hasActiveFilters]);
 
   const handleStreamMessage = useCallback(
     (payload: { type?: string; trade?: Trade }) => {

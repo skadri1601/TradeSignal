@@ -47,13 +47,13 @@ const AlertsPage = lazy(() => import('./pages/AlertsPage'));
 
 // Loading skeleton component
 const PageLoader = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gray-50">
+  <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
     <div className="space-y-4 w-full max-w-4xl px-4">
       {[...Array(5)].map((_, i) => (
-        <div key={i} className="animate-pulse flex space-x-4 p-4 bg-white rounded-lg shadow">
-          <div className="h-4 bg-gray-300 rounded w-1/4"></div>
-          <div className="h-4 bg-gray-300 rounded w-1/2"></div>
-          <div className="h-4 bg-gray-300 rounded w-1/4"></div>
+        <div key={i} className="animate-pulse flex space-x-4 p-4 bg-white/5 border border-white/5 rounded-lg">
+          <div className="h-4 bg-white/10 rounded w-1/4"></div>
+          <div className="h-4 bg-white/10 rounded w-1/2"></div>
+          <div className="h-4 bg-white/10 rounded w-1/4"></div>
         </div>
       ))}
     </div>
