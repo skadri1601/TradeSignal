@@ -55,7 +55,7 @@ class TradeService:
         skip: int = 0,
         limit: int = 20,
         filters: Optional[TradeFilter] = None,
-        sort_by: str = "transaction_date",
+        sort_by: str = "filing_date",
         order: str = "desc",
     ) -> tuple[List[Trade], int]:
         """
@@ -87,11 +87,14 @@ class TradeService:
         total = total_result.scalar_one()
 
         # Apply sorting
-        sort_column = getattr(Trade, sort_by, Trade.transaction_date)
+        # Default to filing_date if sort_by field doesn't exist
+        sort_column = getattr(Trade, sort_by, Trade.filing_date)
         if order == "desc":
-            query = query.order_by(desc(sort_column))
+            # Add secondary sort by id (desc) to ensure consistent ordering when dates are equal
+            query = query.order_by(desc(sort_column), desc(Trade.id))
         else:
-            query = query.order_by(sort_column)
+            # Add secondary sort by id (asc) to ensure consistent ordering when dates are equal
+            query = query.order_by(sort_column, Trade.id)
 
         # Apply pagination
         query = query.offset(skip).limit(limit)
@@ -175,8 +178,8 @@ class TradeService:
         result = await db.execute(
             select(Trade)
             .options(selectinload(Trade.company), selectinload(Trade.insider))
-            .where(Trade.transaction_date >= cutoff_date)
-            .order_by(desc(Trade.transaction_date))
+            .where(Trade.filing_date >= cutoff_date)
+            .order_by(desc(Trade.filing_date), desc(Trade.id))  # Secondary sort by id for consistency
             .limit(limit)
         )
         return list(result.scalars().all())

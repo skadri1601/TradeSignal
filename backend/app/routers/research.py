@@ -69,9 +69,8 @@ async def get_intrinsic_value(
         # Check if IVT exists in database
         result = await db.execute(
             select(IntrinsicValueTarget)
-            .join(Company)
-            .where(Company.ticker == ticker)
-            .order_by(IntrinsicValueTarget.calculation_date.desc())
+            .where(IntrinsicValueTarget.ticker == ticker)
+            .order_by(IntrinsicValueTarget.calculated_at.desc())
             .limit(1)
         )
         ivt = result.scalar_one_or_none()
@@ -83,8 +82,8 @@ async def get_intrinsic_value(
                 "intrinsic_value": float(ivt.intrinsic_value),
                 "current_price": float(ivt.current_price),
                 "discount_pct": float(ivt.discount_premium_pct),
-                "calculation_date": ivt.calculation_date.isoformat(),
-                "confidence_score": float(ivt.confidence_score) if ivt.confidence_score else None,
+                "calculation_date": ivt.calculated_at.isoformat(),
+                "confidence_score": None,  # Model doesn't have this field
                 "wacc": float(ivt.wacc) if ivt.wacc else None,
                 "terminal_growth_rate": float(ivt.terminal_growth_rate) if ivt.terminal_growth_rate else None,
                 "cached": True
@@ -121,15 +120,14 @@ async def get_ts_score(
         # Check if TS Score exists in database
         result = await db.execute(
             select(TradeSignalScore)
-            .join(Company)
-            .where(Company.ticker == ticker)
-            .order_by(TradeSignalScore.calculation_date.desc())
+            .where(TradeSignalScore.ticker == ticker)
+            .order_by(TradeSignalScore.calculated_at.desc())
             .limit(1)
         )
         ts_score = result.scalar_one_or_none()
 
         if ts_score:
-            # Map numeric score to rating text
+            # Use rating from model if available, otherwise map from score
             rating_map = {
                 5: "Strong Buy",
                 4: "Buy",
@@ -138,16 +136,16 @@ async def get_ts_score(
                 1: "Strong Sell"
             }
 
-            score_value = float(ts_score.score)
-            rating_text = rating_map.get(round(score_value), "Hold")
+            score_value = float(ts_score.score) if ts_score.score else 3.0
+            rating_text = ts_score.rating or rating_map.get(round(score_value), "Hold")
 
             return {
                 "ticker": ticker,
                 "score": score_value,
                 "rating": rating_text,
-                "price_to_ivt_ratio": float(ts_score.price_to_ivt_ratio) if ts_score.price_to_ivt_ratio else None,
-                "risk_adjusted": ts_score.risk_adjusted_score is not None,
-                "calculation_date": ts_score.calculation_date.isoformat() if ts_score.calculation_date else None,
+                "price_to_ivt_ratio": float(ts_score.p_ivt_ratio) if ts_score.p_ivt_ratio else None,
+                "risk_adjusted": ts_score.risk_level is not None,  # Model doesn't have risk_adjusted_score
+                "calculation_date": ts_score.calculated_at.isoformat() if ts_score.calculated_at else None,
                 "cached": True
             }
 
@@ -181,9 +179,8 @@ async def get_risk_level(
         # Check if risk assessment exists
         result = await db.execute(
             select(RiskLevelAssessment)
-            .join(Company)
-            .where(Company.ticker == ticker)
-            .order_by(RiskLevelAssessment.assessment_date.desc())
+            .where(RiskLevelAssessment.ticker == ticker)
+            .order_by(RiskLevelAssessment.calculated_at.desc())
             .limit(1)
         )
         risk = result.scalar_one_or_none()
@@ -191,15 +188,15 @@ async def get_risk_level(
         if risk:
             return {
                 "ticker": ticker,
-                "level": risk.risk_category,
-                "category": risk.risk_category,
+                "level": risk.risk_level,
+                "category": risk.risk_level,  # Use risk_level as category
                 "volatility_score": float(risk.earnings_volatility_score) if risk.earnings_volatility_score else None,
-                "assessment_date": risk.assessment_date.isoformat() if risk.assessment_date else None,
+                "assessment_date": risk.calculated_at.isoformat() if risk.calculated_at else None,
                 "components": {
                     "earnings_volatility": float(risk.earnings_volatility_score) if risk.earnings_volatility_score else None,
                     "financial_leverage": float(risk.financial_leverage_score) if risk.financial_leverage_score else None,
                     "operating_leverage": float(risk.operating_leverage_score) if risk.operating_leverage_score else None,
-                    "concentration_risk": float(risk.concentration_risk_score) if risk.concentration_risk_score else None,
+                    "concentration_risk": float(risk.concentration_score) if risk.concentration_score else None,
                     "industry_stability": float(risk.industry_stability_score) if risk.industry_stability_score else None
                 },
                 "cached": True
@@ -413,19 +410,15 @@ async def get_research_coverage(
     Returns tickers that have at least one research component available.
     """
     try:
-        # Get tickers with IVT coverage
+        # Get tickers with IVT coverage (query ticker directly from model)
         ivt_result = await db.execute(
-            select(Company.ticker)
-            .join(IntrinsicValueTarget)
-            .distinct()
+            select(IntrinsicValueTarget.ticker).distinct()
         )
         ivt_tickers = set([row[0] for row in ivt_result.all()])
 
-        # Get tickers with TS Score coverage
+        # Get tickers with TS Score coverage (query ticker directly from model)
         ts_result = await db.execute(
-            select(Company.ticker)
-            .join(TradeSignalScore)
-            .distinct()
+            select(TradeSignalScore.ticker).distinct()
         )
         ts_tickers = set([row[0] for row in ts_result.all()])
 

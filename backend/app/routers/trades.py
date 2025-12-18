@@ -196,7 +196,7 @@ async def get_recent_trades(
     **Note:** Days parameter is limited by your subscription tier (Free: 30 days,
     Plus: 365 days, Pro/Enterprise: unlimited)
 
-    Returns trades from the last N days, sorted by transaction date (newest first).
+    Returns trades from the last N days, sorted by filing date (newest first).
     """
     # Enforce historical data days restriction
     max_allowed_days = await TierService.check_historical_data_access(
@@ -243,7 +243,7 @@ async def get_significant_trades(
     """
     Get significant trades (high value).
 
-    Returns trades above the significance threshold, sorted by transaction date (newest first).
+    Returns trades above the significance threshold, sorted by filing date (newest first).
 
     **Parameters:**
     - limit: Maximum trades to return (1-500, default: 100)
@@ -254,7 +254,7 @@ async def get_significant_trades(
         skip=0,
         limit=limit,
         filters=filters,
-        sort_by="transaction_date",
+        sort_by="filing_date",
         order="desc",
     )
     return [TradeWithDetails.model_validate(trade) for trade in trades]

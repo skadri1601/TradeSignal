@@ -11,8 +11,8 @@ from app.models.processed_filing import ProcessedFiling
 from app.models.trade import Trade
 from app.models.insider import Insider
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
-from datetime import datetime, timedelta
+from sqlalchemy import select, and_, func
+from datetime import datetime, timedelta, date
 from typing import List, Dict, Any, Optional
 import asyncio
 
@@ -68,6 +68,10 @@ def scrape_recent_form4_filings(company_info: Dict[str, Any]):
                 logger.info(f"No new Form 4 filings found for {company_name} (CIK: {cik}).")
                 return
 
+            logger.info(f"Found {len(filings_metadata)} filings for {company_name} ({company_ticker}). Processing...")
+            new_filings_count = 0
+            skipped_filings_count = 0
+
             for filing_meta in filings_metadata:
                 accession_number = filing_meta.get("accession_number")
                 filing_url = filing_meta.get("filing_url")
@@ -83,6 +87,7 @@ def scrape_recent_form4_filings(company_info: Dict[str, Any]):
                         select(ProcessedFiling).filter(ProcessedFiling.accession_number == accession_number)
                     )
                     if existing_filing.scalar_one_or_none():
+                        skipped_filings_count += 1
                         logger.debug(f"Filing {accession_number} for {company_name} already processed. Skipping.")
                         continue
 
@@ -96,6 +101,12 @@ def scrape_recent_form4_filings(company_info: Dict[str, Any]):
                         accession_number, 
                         filing_date_str
                     )
+                    new_filings_count += 1
+
+            logger.info(
+                f"Completed scraping for {company_name} ({company_ticker}): "
+                f"{new_filings_count} new filings enqueued, {skipped_filings_count} already processed"
+            )
 
         except Exception as e:
             logger.error(f"Error scraping Form 4 filings for {company_name} (CIK: {cik}): {e}", exc_info=True)
@@ -107,23 +118,87 @@ def scrape_recent_form4_filings(company_info: Dict[str, Any]):
 def scrape_all_active_companies_form4_filings_task():
     """
     Orchestrator task to scrape Form 4 filings for all active companies in the database.
+    
+    Implements cooldown mechanism to skip recently scraped companies and processing
+    limits to prevent queue overflow.
     """
     async def _async_task():
         logger.info("Starting scrape_all_active_companies_form4_filings_task...")
+        
+        cooldown_hours = settings.scraper_cooldown_hours
+        max_companies = settings.scraper_max_companies_per_run
+        cooldown_cutoff = datetime.utcnow() - timedelta(hours=cooldown_hours)
+        
         async with db_manager.get_session() as db:
+            # Get all companies with CIK
             companies_result = await db.execute(select(Company).filter(Company.cik.isnot(None)))
-            companies = companies_result.scalars().all()
+            all_companies = companies_result.scalars().all()
+            total_companies = len(all_companies)
             
-            for company in companies:
-                logger.info(f"Enqueuing scrape for company: {company.name} (CIK: {company.cik})")
+            logger.info(f"Found {total_companies} companies with CIK. Checking cooldown (last {cooldown_hours} hours)...")
+            
+            # Get last scrape time per company (by ticker)
+            # Query ProcessedFiling to find the most recent processed_at for each ticker
+            last_scrape_query = (
+                select(
+                    ProcessedFiling.ticker,
+                    func.max(ProcessedFiling.processed_at).label("last_scraped_at")
+                )
+                .where(ProcessedFiling.ticker.isnot(None))
+                .group_by(ProcessedFiling.ticker)
+            )
+            last_scrape_result = await db.execute(last_scrape_query)
+            last_scrapes = {row.ticker: row.last_scraped_at for row in last_scrape_result.all()}
+            
+            # Filter companies: skip those within cooldown, prioritize others
+            companies_to_process = []
+            skipped_count = 0
+            
+            for company in all_companies:
+                last_scraped = last_scrapes.get(company.ticker)
+                
+                if last_scraped:
+                    # Convert timezone-aware datetime to naive for comparison
+                    if last_scraped.tzinfo is not None:
+                        last_scraped = last_scraped.replace(tzinfo=None)
+                    
+                    if last_scraped > cooldown_cutoff:
+                        skipped_count += 1
+                        logger.debug(
+                            f"Skipping {company.name} ({company.ticker}): "
+                            f"last scraped {last_scraped.strftime('%Y-%m-%d %H:%M:%S')} "
+                            f"(within {cooldown_hours}h cooldown)"
+                        )
+                        continue
+                
+                companies_to_process.append(company)
+            
+            # Apply processing limit
+            companies_enqueued = 0
+            if len(companies_to_process) > max_companies:
+                logger.info(
+                    f"Processing limit reached: {len(companies_to_process)} companies eligible, "
+                    f"limiting to {max_companies} companies per run"
+                )
+                companies_to_process = companies_to_process[:max_companies]
+            
+            # Enqueue scraping tasks
+            for company in companies_to_process:
+                logger.info(f"Enqueuing scrape for company: {company.name} ({company.ticker}, CIK: {company.cik})")
                 company_info = {
                     "company_id": company.id,
                     "cik": company.cik,
                     "ticker": company.ticker,
                     "name": company.name
                 }
-                scrape_recent_form4_filings.delay(company_info) # Call the task by name (string)
-        logger.info("Finished enqueuing Form 4 scraping tasks for all active companies.")
+                scrape_recent_form4_filings.delay(company_info)
+                companies_enqueued += 1
+            
+            logger.info(
+                f"Finished enqueuing Form 4 scraping tasks: "
+                f"{companies_enqueued} enqueued, {skipped_count} skipped (cooldown), "
+                f"{total_companies} total companies"
+            )
     
     asyncio.run(_async_task())
 
@@ -143,7 +218,42 @@ def process_form4_document_task(
     async def _async_task():
         logger.info(f"Processing Form 4 document for {accession_number} ({company_name})...")
         try:
-            xml_content = await sec_client.fetch_form4_document(filing_url)
+            try:
+                xml_content = await sec_client.fetch_form4_document(filing_url)
+            except ValueError as e:
+                # Handle missing XML document gracefully
+                if "No raw XML document found" in str(e):
+                    logger.warning(
+                        f"No raw XML document found for filing {accession_number} ({company_name}). "
+                        f"Filing URL: {filing_url}. This may be a filing format issue. Skipping."
+                    )
+                    # Mark as processed to avoid retrying indefinitely
+                    async with db_manager.get_session() as db:
+                        company_result = await db.execute(
+                            select(Company).where(Company.id == company_id)
+                        )
+                        company = company_result.scalar_one_or_none()
+                        ticker = company.ticker if company else None
+                        
+                        filing_date = datetime.strptime(filing_date_str.split("T")[0], "%Y-%m-%d").date()
+                        now_naive = datetime.utcnow().replace(tzinfo=None)
+                        processed_filing = ProcessedFiling(
+                            accession_number=accession_number,
+                            filing_url=filing_url,
+                            filing_date=filing_date,
+                            ticker=ticker,
+                            trades_created=0,  # No trades created due to missing XML
+                            processed_at=now_naive,
+                            created_at=now_naive,
+                        )
+                        db.add(processed_filing)
+                        await db.commit()
+                        logger.info(f"Marked filing {accession_number} as processed (no XML found)")
+                    return
+                else:
+                    # Re-raise other ValueError exceptions
+                    raise
+            
             parsed_data = parse_form4_xml(xml_content, cik, company_name)
 
             # Skip if parsing failed (no reportingOwner found)
@@ -197,8 +307,8 @@ def process_form4_document_task(
                 db.add(processed_filing)
                 await db.flush() # Flush to get processed_filing.id
 
-                # Save trades and insiders (pass company_id we already have)
-                trades_count = await save_trades_and_insiders(db, processed_filing.id, parsed_data, company_id)
+                # Save trades and insiders (pass company_id, filing_date, filing_url we already have)
+                trades_count = await save_trades_and_insiders(db, processed_filing.id, parsed_data, company_id, filing_date, filing_url)
                 
                 # Update trades_created count
                 processed_filing.trades_created = trades_count
@@ -292,16 +402,18 @@ def parse_form4_xml(xml_content: str, cik: str, company_name: str) -> Dict[str, 
         return None
 
 
-async def save_trades_and_insiders(db: AsyncSession, processed_filing_id: int, parsed_data: Dict[str, Any], company_id: int) -> int:
+async def save_trades_and_insiders(db: AsyncSession, processed_filing_id: int, parsed_data: Dict[str, Any], company_id: int, filing_date: date, filing_url: str) -> int:
     """
     Save parsed trade and insider data to the database.
-    
+
     Args:
         db: Database session
         processed_filing_id: ID of the ProcessedFiling record
         parsed_data: Parsed Form 4 data
         company_id: Company ID (already known from task context)
-    
+        filing_date: Date of the SEC filing
+        filing_url: URL to the SEC filing
+
     Returns:
         Number of trades created
     """
@@ -338,50 +450,50 @@ async def save_trades_and_insiders(db: AsyncSession, processed_filing_id: int, p
         try:
             transaction_date = datetime.strptime(trade_data["transaction_date"], "%Y-%m-%d").date()
             trade_type = "BUY" if trade_data["acquired_disposed_code"] == "A" else "SELL"
-            
+
+            # Calculate total value
+            shares = trade_data["transaction_shares"]
+            price = trade_data["transaction_price_per_share"]
+            total_value = shares * price if shares and price else None
+
             # Check if this exact trade already exists (to prevent duplicates if re-processing)
-            # This is a simple check; more robust would involve hashing trade details
-            existing_trade = await db.execute(
+            existing_trade_result = await db.execute(
                 select(Trade).filter(
-                    Trade.processed_filing_id == processed_filing_id,
                     Trade.insider_id == insider.id,
                     Trade.company_id == company.id,
                     Trade.transaction_date == transaction_date,
-                    Trade.transaction_shares == trade_data["transaction_shares"],
-                    Trade.transaction_price_per_share == trade_data["transaction_price_per_share"],
-                    Trade.transaction_type == trade_type,
-                    Trade.security_title == trade_data["security_title"]
-                )
+                    Trade.shares == shares,
+                    Trade.price_per_share == price,
+                    Trade.transaction_type == trade_type
+                ).limit(1)
             )
-            if existing_trade.scalar_one_or_none():
-                logger.debug(f"Duplicate trade found for filing {processed_filing_id}, insider {insider.id}, company {company.id}. Skipping.")
+            existing_trade = existing_trade_result.first()
+            if existing_trade:
+                logger.debug(f"Duplicate trade found for insider {insider.id}, company {company.id}. Skipping.")
                 continue
 
-
+            # Map to actual Trade model columns
             trade = Trade(
-                processed_filing_id=processed_filing_id,
                 insider_id=insider.id,
                 company_id=company.id,
-                security_title=trade_data["security_title"],
                 transaction_date=transaction_date,
-                transaction_shares=trade_data["transaction_shares"],
-                price_per_share=trade_data["transaction_price_per_share"],
+                filing_date=filing_date,  # Use filing date from processed_filing
+                transaction_type=trade_type,
                 transaction_code=trade_data["transaction_code"],
-                equity_swap_involved=trade_data["equity_swap_involved"].lower() == 'true',
-                acquired_disposed_code=trade_data["acquired_disposed_code"],
-                shares_owned_after_transaction=trade_data["shares_owned_after_transaction"],
-                direct_indirect_ownership=trade_data["direct_indirect_ownership"],
-                nature_of_ownership=trade_data["nature_of_ownership"],
-                is_derivative=trade_data["is_derivative"],
-                conversion_exercise_price=trade_data.get("conversion_exercise_price"),
-                underlying_security_title=trade_data.get("underlying_security_title"),
-                underlying_security_shares=trade_data.get("underlying_security_shares"),
-                transaction_type=trade_type
+                shares=shares,
+                price_per_share=price,
+                total_value=total_value,
+                shares_owned_after=trade_data["shares_owned_after_transaction"],
+                ownership_type=trade_data["direct_indirect_ownership"],
+                derivative_transaction=trade_data["is_derivative"],
+                sec_filing_url=filing_url,
+                form_type="Form 4",
+                notes=trade_data.get("security_title", "")  # Store security title in notes
             )
             db.add(trade)
             trades_created += 1
-            logger.debug(f"Added trade for {insider.name} in {company.ticker}: {trade_type} {trade.transaction_shares} shares of {trade.security_title} at ${trade.transaction_price_per_share}")
+            logger.debug(f"Added trade for {insider.name} in {company.ticker}: {trade_type} {shares} shares at ${price}")
         except Exception as e:
             logger.error(f"Error saving trade for filing {processed_filing_id}: {e}, trade data: {trade_data}", exc_info=True)
-    
+
     return trades_created

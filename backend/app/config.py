@@ -189,6 +189,11 @@ class Settings(BaseSettings):
         description="Hours to wait before re-scraping same company",
         alias="SCRAPER_COOLDOWN_HOURS",
     )
+    scraper_max_companies_per_run: int = Field(
+        default=100,
+        description="Maximum number of companies to process per scraper run",
+        alias="SCRAPER_MAX_COMPANIES_PER_RUN",
+    )
 
     # Congressional Trading Configuration (Phase 7)
     congressional_scraper_enabled: bool = Field(

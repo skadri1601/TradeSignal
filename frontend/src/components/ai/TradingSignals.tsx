@@ -37,14 +37,14 @@ export default function TradingSignals() {
     const s = strength.toLowerCase();
     if (s === 'strong') {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-gradient-to-r from-blue-600/30 to-indigo-600/30 text-blue-200 border border-blue-500/50 shadow-sm">
           STRONG
         </span>
       );
     }
     if (s === 'moderate') {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-gradient-to-r from-orange-500/30 to-amber-500/30 text-orange-200 border border-orange-500/50 shadow-sm">
           MODERATE
         </span>
       );
@@ -157,11 +157,19 @@ export default function TradingSignals() {
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div className="bg-black/20 rounded-lg p-3">
                 <span className="text-xs text-gray-500 uppercase tracking-wide">Buy Ratio</span>
-                <p className="text-lg font-mono font-semibold text-white mt-1">{(signal.buy_ratio * 100).toFixed(1)}%</p>
+                <p className="text-lg font-mono font-semibold text-white mt-1">
+                  {signal.buy_ratio != null && !isNaN(signal.buy_ratio) 
+                    ? `${Math.min(100, Math.max(0, signal.buy_ratio)).toFixed(1)}%`
+                    : 'N/A'}
+                </p>
               </div>
               <div className="bg-black/20 rounded-lg p-3">
                 <span className="text-xs text-gray-500 uppercase tracking-wide">Total Value</span>
-                <p className="text-lg font-mono font-semibold text-white mt-1">${(signal.total_value / 1_000_000).toFixed(2)}M</p>
+                <p className="text-lg font-mono font-semibold text-white mt-1">
+                  {signal.total_value != null && !isNaN(signal.total_value) && signal.total_value > 0
+                    ? `$${(signal.total_value / 1_000_000).toFixed(2)}M`
+                    : 'N/A'}
+                </p>
               </div>
             </div>
 

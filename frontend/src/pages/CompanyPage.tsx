@@ -63,26 +63,32 @@ export default function CompanyPage() {
   });
 
   // Research data queries
-  const { data: researchIVT, isLoading: ivtLoading } = useQuery({
+  const { data: researchIVT, isLoading: ivtLoading, error: ivtError } = useQuery({
     queryKey: ['researchIVT', ticker],
     queryFn: () => researchApi.getIVT(ticker!),
     enabled: !!ticker,
     retry: false, // Don't retry on 402 (payment required)
   });
 
-  const { data: researchTSScore, isLoading: tsScoreLoading } = useQuery({
+  const { data: researchTSScore, isLoading: tsScoreLoading, error: tsScoreError } = useQuery({
     queryKey: ['researchTSScore', ticker],
     queryFn: () => researchApi.getTSScore(ticker!),
     enabled: !!ticker,
     retry: false,
   });
 
-  const { data: researchRiskLevel, isLoading: riskLevelLoading } = useQuery({
+  const { data: researchRiskLevel, isLoading: riskLevelLoading, error: riskLevelError } = useQuery({
     queryKey: ['researchRiskLevel', ticker],
     queryFn: () => researchApi.getRiskLevel(ticker!),
     enabled: !!ticker,
     retry: false,
   });
+
+  // Check if any error is a 402 (payment required) vs 404 (not found)
+  const hasPaymentRequiredError = 
+    (ivtError as any)?.response?.status === 402 ||
+    (tsScoreError as any)?.response?.status === 402 ||
+    (riskLevelError as any)?.response?.status === 402;
 
   if (companyLoading) {
     return (
@@ -266,13 +272,15 @@ export default function CompanyPage() {
               />
             )}
           </div>
-        ) : (
+        ) : hasPaymentRequiredError ? (
           <UpgradeCTA
             variant="card"
             feature="Research Analysis"
             requiredTier="pro"
             message="Access intrinsic value analysis, TradeSignal scores, risk assessments, and more with PRO"
           />
+        ) : (
+          <p className="text-gray-500 text-center py-4">Research data not yet available for this company. Coverage coming soon.</p>
         )}
       </div>
 

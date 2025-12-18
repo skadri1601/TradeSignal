@@ -5,7 +5,18 @@ Phase 7: Scalability - Background task processing.
 
 from celery import Celery
 import os
+import logging
 import celery.schedules
+
+# Configure SQLAlchemy loggers early to reduce verbosity in Celery workers
+# This prevents verbose SQL query logs from cluttering Celery output
+sqlalchemy_log_level = os.getenv("SQLALCHEMY_LOG_LEVEL", "WARNING").upper()
+sqlalchemy_log_level_value = getattr(logging, sqlalchemy_log_level, logging.WARNING)
+
+# Configure all SQLAlchemy loggers to reduce noise
+for logger_name in ["sqlalchemy.engine", "sqlalchemy.pool", "sqlalchemy.dialects", "sqlalchemy.orm"]:
+    sqlalchemy_logger = logging.getLogger(logger_name)
+    sqlalchemy_logger.setLevel(sqlalchemy_log_level_value)
 
 # Create Celery app
 celery_app = Celery(
@@ -81,9 +92,9 @@ celery_app.conf.update(
             "args": ("retail_sales", "RSXFS")
         },
         # SEC data scraping tasks
-        "scrape-form4-filings-hourly": {
+        "scrape-form4-filings-every-2-hours": {
             "task": "scrape_all_active_companies_form4_filings", # A new task to iterate companies
-            "schedule": celery.schedules.crontab(minute=0, hour="*"), # Every hour
+            "schedule": celery.schedules.crontab(minute=0, hour="*/2"), # Every 2 hours
         },
         # Company enrichment tasks
         "enrich-all-companies-weekly": {
