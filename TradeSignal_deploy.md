@@ -1,169 +1,120 @@
 # TradeSignal Production Deployment Guide
-**Target:** Live Launch (Dec 14, 2025)
-**Objective:** Define the exact services, costs, and vendors required to take TradeSignal from "Localhost" to "Production".
 
----
+This guide details the steps required to deploy TradeSignal to a production server with a custom domain.
 
-## 1. Hosting & Infrastructure (The Foundation)
+## 1. System Requirements
 
-You need a place for your code to live. Since you have a separate Frontend (React) and Backend (FastAPI/Python), a "Hybrid" hosting strategy is best for performance and cost.
+*   **OS:** Linux (Ubuntu 22.04 LTS recommended) or Windows Server with WSL2.
+*   **Hardware:**
+    *   Minimum: 2 vCPU, 4GB RAM (for small scale).
+    *   Recommended: 4 vCPU, 8GB+ RAM (to handle AI processing and Celery workers efficiently).
+*   **Software:**
+    *   Docker Engine (v24+)
+    *   Docker Compose (v2+)
+    *   Git
 
-### A. Frontend Hosting
-**Requirement:** Serve your React static files globally with low latency.
-*   **Recommendation:** **Vercel** (Best for React/Vite apps)
-*   **Why:** Zero-config deployment, global CDN, automatic SSL (HTTPS), and free DDoS protection.
-*   **Cost:**
-    *   *Hobby Tier:* **$0/mo** (Perfect for MVP start).
-    *   *Pro Tier:* **$20/mo** (If you need team collaboration or exceed bandwidth).
+## 2. Domain Configuration
 
-### B. Backend Hosting (API + Workers)
-**Requirement:** Run Python (FastAPI) and Celery (Background Workers for scraping).
-*   **Recommendation:** **DigitalOcean Droplet (VPS)** or **Railway**
-*   **Option 1: DigitalOcean (Recommended for Control & Cost)**
-    *   *Setup:* One "Droplet" (Virtual Machine) running Docker Compose.
-    *   *Spec:* 2 vCPU / 4GB RAM (Minimum for AI/Scraping workloads).
-    *   *Cost:* **~$24/mo** (Basic Droplet).
-*   **Option 2: Railway / Render (Recommended for Ease of Use)**
-    *   *Setup:* Connect GitHub repo, auto-deploys.
-    *   *Cost:* **~$10-20/mo** (Variable based on usage).
+Since the final domain name is pending, we will refer to it as `yourdomain.com` in this guide.
 
-### C. Database (PostgreSQL)
-**Requirement:** Persistent storage for Users, Trades, and History.
-*   **Recommendation:** **Managed PostgreSQL** (Don't host your own DB for production unless you are a sysadmin expert).
-*   **Vendor:** **DigitalOcean Managed Databases** or **Supabase**.
-*   **Why:** Automatic backups, point-in-time recovery, high availability.
-*   **Cost:**
-    *   *Supabase:* **$0/mo** (Free tier is very generous: 500MB).
-    *   *DigitalOcean:* **$15/mo** (Managed cluster).
+1.  **DNS Records:** Log in to your domain registrar (GoDaddy, Namecheap, AWS Route53, etc.).
+2.  **A Record:** Create an `@` record pointing to your server's Public IP address.
+3.  **CNAME Record:** Create a `www` record pointing to `@` (or your domain name).
 
-### D. Redis (Cache & Queue)
-**Requirement:** Required for Celery (Task Queue) and Caching API responses.
-*   **Recommendation:** Self-hosted on your Backend VPS (cheapest) or Managed Redis (easiest).
-*   **Cost:**
-    *   *Self-hosted (Docker):* **$0** (Included in your Backend VPS cost).
-    *   *Upstash (Managed):* **$0/mo** (Free tier up to 10k requests/day).
+## 3. Environment Setup
 
----
+Never commit `.env` files to the repository. Create a `.env.prod` file on the server in the root directory:
 
-## 2. External Data APIs (The Product Core)
+```bash
+# General
+ENVIRONMENT=production
+DEBUG=false
+DOMAIN_NAME=yourdomain.com
 
-This is where your actual money goes. These APIs power your features.
+# Database (PostgreSQL)
+POSTGRES_USER=tradesignal_prod
+POSTGRES_PASSWORD=YOUR_STRONG_PASSWORD_HERE
+POSTGRES_DB=tradesignal
+DATABASE_URL=postgresql+asyncpg://tradesignal_prod:YOUR_STRONG_PASSWORD_HERE@postgres:5432/tradesignal
 
-### A. Congressional Data
-**Requirement:** Real-time, reliable data on politician trades.
-*   **Vendor:** **Finnhub**
-*   **Why:** The "Free" fallbacks (Senate Stock Watcher) are unreliable/stale. For a paid product, you need paid reliability.
-*   **Plan:** **Stock Data Plan**
-*   **Cost:** **~$50/mo** (Estimated for API access). *Note: Check specific endpoint pricing, Finnhub pricing changes.*
+# Security
+JWT_SECRET=YOUR_SUPER_SECRET_LONG_RANDOM_STRING
+CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
 
-### B. AI Insights (LLM)
-**Requirement:** Generate daily summaries and "Why it matters" analysis.
-*   **Option 1: Google Gemini (Current Implementation)**
-    *   *Plan:* **Gemini 1.5 Flash**
-    *   *Cost:* **Free Tier** available (15 RPM). **Pay-as-you-go** after that. Extremely cheap ($0.35 / 1M tokens).
-    *   *Estimated Cost:* **<$5/mo** for MVP.
-*   **Option 2: OpenAI (GPT-4o-mini)**
-    *   *Plan:* Pay-as-you-go API.
-    *   *Estimated Cost:* **$5-$10/mo** (Depends on usage).
+# AI Providers (Required)
+OPENAI_API_KEY=sk-...
+GEMINI_API_KEY=...
+AI_PROVIDER=gemini
+GEMINI_MODEL=gemini-2.0-flash
 
-### C. Earnings Data
-**Requirement:** Reliable earnings dates/estimates.
-*   **Vendor:** **Alpha Vantage** or **Finnhub** (Bundle with above).
-*   **Why:** `yfinance` (Yahoo) scraping will get your IP banned in production.
-*   **Cost:** Included in Finnhub or **Free Tier** of Alpha Vantage (25 requests/day).
+# Redis
+REDIS_HOST=redis
+REDIS_PORT=6379
+```
 
----
+## 4. Production Docker Configuration
 
-## 3. Operational Services
+We will use a dedicated `docker-compose.prod.yml` (to be created) which includes:
 
-### A. Email (Transactional)
-**Requirement:** Sending "Confirm Email", "Reset Password", and "Trade Alerts".
-*   **Vendor:** **Resend** (Modern, developer-friendly) or **SendGrid**.
-*   **Why:** High deliverability. Gmail/Outlook will block you if you try to send from your own server.
-*   **Cost:** **$0/mo** (Resend Free tier: 3,000 emails/mo).
+*   **Nginx Reverse Proxy:** Handles incoming traffic on ports 80 (HTTP) and 443 (HTTPS).
+*   **SSL/TLS:** Automated certificate management via Certbot (Let's Encrypt).
+*   **Restart Policies:** `restart: always` for all services to ensure high availability.
+*   **Optimization:** Production builds for the React frontend (served via Nginx, not `vite dev`).
 
-### B. Domain Name
-**Requirement:** `tradesignal.com` (or similar).
-*   **Vendor:** **Namecheap** or **Porkbun**.
-*   **Cost:** **~$12/year**.
+### Proposed `docker-compose.prod.yml` Structure
 
-### C. Monitoring & Logging
-**Requirement:** Knowing when the site crashes before users tell you.
-*   **Vendor:** **Sentry** (Error tracking) + **UptimeRobot** (Uptime).
-*   **Cost:** **$0/mo** (Both have generous free tiers).
+```yaml
+version: '3.8'
 
----
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    depends_on:
+      - frontend
+      - backend
 
-## 4. Business & Legal
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
 
-### A. Payment Processing
-**Requirement:** Accepting Credit Cards.
-*   **Vendor:** **Stripe**.
-*   **Cost:** **No fixed cost**. They take **2.9% + 30¢** per transaction.
+  backend:
+    # ... (Same as dev but with production command: gunicorn/uvicorn workers)
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 
-### B. Business Entity (LLC)
-**Requirement:** Protecting your personal assets. Stripe requires a business entity for many features.
-*   **Vendor:** **Stripe Atlas** or local state filing.
-*   **Cost:** **$300 - $500** (One-time fee). *Optional for Day 1 Alpha, mandatory for Scale.*
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    # Served internally to Nginx
+```
 
----
+## 5. Deployment Steps
 
-## 5. Cost Summary Tables
+1.  **Clone Repository:**
+    ```bash
+    git clone https://github.com/your-repo/TradeSignal.git
+    cd TradeSignal
+    ```
 
-### Option 1: "The Bootstrapper" (MVP Launch)
-*Best for validating the idea with first 100 users.*
+2.  **Set Secrets:**
+    Create the `.env` file as described above.
 
-| Service | Vendor | Plan | Monthly Cost |
-| :--- | :--- | :--- | :--- |
-| **Frontend** | Vercel | Hobby | $0 |
-| **Backend** | DigitalOcean | Basic Droplet | $12 |
-| **Database** | Supabase | Free Tier | $0 |
-| **Redis** | Self-hosted | Docker | $0 |
-| **Cong. Data** | Finnhub | Free/Trial | $0 (Risk of stale data) |
-| **AI** | Gemini | Free Tier | $0 |
-| **Email** | Resend | Free Tier | $0 |
-| **Domain** | Namecheap | .com | $1/mo ($12/yr) |
-| **TOTAL** | | | **~$13 / month** |
+3.  **Build & Run:**
+    ```bash
+    docker-compose -f docker-compose.prod.yml up -d --build
+    ```
 
-### Option 2: "Pro Production" (Recommended)
-*Best for reliability, uptime, and paying customers.*
-
-| Service | Vendor | Plan | Monthly Cost |
-| :--- | :--- | :--- | :--- |
-| **Frontend** | Vercel | Pro (Optional) | $20 (Or $0) |
-| **Backend** | DigitalOcean | 4GB RAM Droplet | $24 |
-| **Database** | DigitalOcean | Managed PG | $15 |
-| **Redis** | Upstash/DO | Managed | $10 |
-| **Cong. Data** | Finnhub | Basic API | ~$50 |
-| **AI** | Gemini/OpenAI | Usage Based | ~$10 |
-| **Email** | Resend | Pro | $20 |
-| **Domain** | Namecheap | .com | $1/mo |
-| **TOTAL** | | | **~$130 - $150 / month** |
-
----
-
-## 6. Production Checklist (The "Go-Live" List)
-
-1.  **[ ] Purchase Domain:** Buy the `.com` domain name.
-2.  **[ ] Set up Cloudflare:** Point domain DNS to Cloudflare (Free SSL & Security).
-3.  **[ ] Backend VPS:** Provision DigitalOcean Droplet.
-    *   Install Docker & Docker Compose.
-    *   Set up Nginx as Reverse Proxy (HTTPS).
-4.  **[ ] External Keys (The Wallet Opener):**
-    *   Upgrade **Finnhub** to paid (if bootstrapping allows).
-    *   Add Credit Card to **OpenAI/Gemini** (prevent rate limit blocks).
-    *   Verify **Stripe** production mode is active.
-5.  **[ ] Database Migration:**
-    *   Create production DB (Supabase/DO).
-    *   Run Alembic migrations.
-    *   Run the `seed_data.py` (or scraper) to populate initial data.
-6.  **[ ] CI/CD Pipeline:**
-    *   Connect GitHub to Vercel (Frontend auto-deploy).
-    *   Set up GitHub Action to SSH into VPS and `git pull && docker-compose up -d` (Backend auto-deploy).
-
----
-
-## Why pay for these?
-*   **Reliability:** Free tiers *will* rate limit you. If a user pays $29/mo and sees "API Limit Reached", they will chargeback immediately.
-*   **Speed:** Shared/Free databases are slow. Paid managed databases are fast and backed up.
-*   **Trust:** Sending emails from `@gmail.com` looks like a scam. Sending from `@tradesignal.com` looks like a business.
+4.  **Initialize SSL:**
+    ```bash
+    # Request certificate (replace email and domain)
+    docker-compose -f docker-compose.prod.yml run --rm certbot certonly --webroot --webroot-path /var/www/certbot -d yourdomain.com -d www.yourdomain.com --email your-email@example.com --agree-tos --no-eff-email
+    ```
