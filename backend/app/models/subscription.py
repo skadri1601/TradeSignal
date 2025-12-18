@@ -121,45 +121,56 @@ class Subscription(Base):
 # Tier limits configuration
 TIER_LIMITS = {
     SubscriptionTier.FREE.value: {
-        "ai_requests_per_day": 5,
-        "alerts_max": 3,
+        "ai_requests_limit": 1, # Approx 3 per week
+        "alerts_max": 2,
         "real_time_updates": False,
         "api_access": False,
         "companies_tracked": 10,
         "historical_data_days": 30,
+        "export_enabled": False,
+        "advanced_screening": False,
     },
-    SubscriptionTier.BASIC.value: {
-        "ai_requests_per_day": 50,
-        "alerts_max": 20,
+    SubscriptionTier.BASIC.value: { # Legacy/Starter
+        "ai_requests_limit": 5,
+        "alerts_max": 5,
+        "real_time_updates": False,
+        "api_access": False,
+        "companies_tracked": 20,
+        "historical_data_days": 90,
+        "export_enabled": False,
+        "advanced_screening": False,
+    },
+    SubscriptionTier.PLUS.value: { # Pro ($29/mo)
+        "ai_requests_limit": 20,
+        "alerts_max": 50,
         "real_time_updates": True,
         "api_access": False,
-        "companies_tracked": 50,
-        "historical_data_days": 365,
+        "companies_tracked": 100,
+        "historical_data_days": 730, # 2 Years
+        "export_enabled": True,
+        "advanced_screening": True,
     },
-    SubscriptionTier.PLUS.value: {
-        "ai_requests_per_day": 50,
-        "alerts_max": 20,
+    SubscriptionTier.PRO.value: { # Premium / Research Pro ($49-99/mo)
+        "ai_requests_limit": 100,
+        "alerts_max": 200,
         "real_time_updates": True,
-        "api_access": False,
-        "companies_tracked": 50,
-        "historical_data_days": 365,
-    },
-    SubscriptionTier.PRO.value: {
-        "ai_requests_per_day": 500,
-        "alerts_max": 100,
-        "real_time_updates": True,
-        "api_access": True,
-        "companies_tracked": -1,  # Unlimited
-        "historical_data_days": -1,  # Unlimited
+        "api_access": True, # Limited API access
+        "research_api": True, # Research API access (IVT, Risk Levels, TS Score)
+        "companies_tracked": -1, # Unlimited
+        "historical_data_days": -1, # Unlimited
+        "export_enabled": True,
+        "advanced_screening": True,
     },
     SubscriptionTier.ENTERPRISE.value: {
-        "ai_requests_per_day": -1,  # Unlimited
-        "alerts_max": -1,  # Unlimited
+        "ai_requests_limit": -1,
+        "alerts_max": -1,
         "real_time_updates": True,
         "api_access": True,
-        "companies_tracked": -1,  # Unlimited
-        "historical_data_days": -1,  # Unlimited
+        "research_api": True, # Full Research API access (all features)
+        "companies_tracked": -1,
+        "historical_data_days": -1,
+        "export_enabled": True,
+        "advanced_screening": True,
         "priority_support": True,
-        "custom_integrations": True,
     },
 }
