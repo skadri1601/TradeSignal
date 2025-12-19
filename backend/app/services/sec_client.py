@@ -29,6 +29,10 @@ class SECClient:
 
     BASE_URL = "https://www.sec.gov"
     EDGAR_SEARCH_URL = f"{BASE_URL}/cgi-bin/browse-edgar"
+    
+    # XML namespace URI for ATOM feeds (not an HTTP connection - this is an XML namespace identifier)
+    # Note: XML namespaces use http:// URIs by convention, but these are identifiers, not actual URLs
+    ATOM_NAMESPACE_URI = "http://www.w3.org/2005/Atom"
 
     # Rate limiting: 10 requests per second max
     MAX_REQUESTS_PER_SECOND = 10
@@ -82,6 +86,92 @@ class SECClient:
 
             self._last_request_time = asyncio.get_event_loop().time()
     
+    async def _make_http_request(
+        self,
+        client: httpx.AsyncClient,
+        method: str,
+        url: str,
+        **kwargs
+    ) -> httpx.Response:
+        """
+        Make a single HTTP request.
+        
+        Args:
+            client: httpx AsyncClient instance
+            method: HTTP method (GET, POST, etc.)
+            url: Request URL
+            **kwargs: Additional arguments to pass to httpx client
+            
+        Returns:
+            httpx.Response object
+            
+        Raises:
+            ValueError: If HTTP method is unsupported
+            httpx.HTTPError: If request fails
+        """
+        method_upper = method.upper()
+        if method_upper == "GET":
+            response = await client.get(url, headers=self.headers, **kwargs)
+        elif method_upper == "POST":
+            response = await client.post(url, headers=self.headers, **kwargs)
+        else:
+            raise ValueError(f"Unsupported HTTP method: {method}")
+        
+        response.raise_for_status()
+        return response
+
+    async def _handle_timeout_error(
+        self,
+        e: Exception,
+        attempt: int,
+        url: str
+    ) -> None:
+        """
+        Handle timeout errors with retry logic.
+        
+        Args:
+            e: The timeout exception
+            attempt: Current attempt number (0-indexed)
+            url: Request URL for logging
+            
+        Raises:
+            The timeout exception if max retries exceeded
+        """
+        timeout_type = type(e).__name__
+        
+        if attempt < self.max_retries - 1:
+            # Exponential backoff: 2^attempt seconds
+            wait_time = 2 ** attempt
+            logger.warning(
+                f"SEC API {timeout_type} (attempt {attempt + 1}/{self.max_retries}) "
+                f"for {url} (timeout: {self.timeout.read}s). "
+                f"Retrying in {wait_time}s..."
+            )
+            await asyncio.sleep(wait_time)
+        else:
+            logger.error(
+                f"SEC API request failed after {self.max_retries} attempts "
+                f"(last error: {timeout_type}) for {url}: {e}"
+            )
+            raise
+
+    def _handle_http_error(self, e: httpx.HTTPError, url: str) -> None:
+        """
+        Handle non-retryable HTTP errors.
+        
+        Args:
+            e: The HTTP error exception
+            url: Request URL for logging
+            
+        Raises:
+            The HTTP error exception
+        """
+        error_type = type(e).__name__
+        logger.error(
+            f"SEC API HTTP error (non-retryable, {error_type}) for {url}: {e}"
+        )
+        raise
+
     async def _request_with_retry(
         self, 
         method: str, 
@@ -102,9 +192,6 @@ class SECClient:
         Raises:
             httpx.HTTPError: If all retries fail
         """
-        last_exception = None
-        timeout_type = None
-        
         logger.debug(
             f"SEC API request: {method} {url} "
             f"(timeout: {self.timeout.read}s, max_retries: {self.max_retries})"
@@ -113,18 +200,11 @@ class SECClient:
         for attempt in range(self.max_retries):
             try:
                 await self._rate_limit()
-                
                 logger.debug(f"SEC API request attempt {attempt + 1}/{self.max_retries} for {url}")
                 
                 async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    if method.upper() == "GET":
-                        response = await client.get(url, headers=self.headers, **kwargs)
-                    elif method.upper() == "POST":
-                        response = await client.post(url, headers=self.headers, **kwargs)
-                    else:
-                        raise ValueError(f"Unsupported HTTP method: {method}")
+                    response = await self._make_http_request(client, method, url, **kwargs)
                     
-                    response.raise_for_status()
                     if attempt > 0:
                         logger.info(
                             f"SEC API request succeeded on attempt {attempt + 1}/{self.max_retries} for {url}"
@@ -132,31 +212,9 @@ class SECClient:
                     return response
                     
             except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.PoolTimeout) as e:
-                last_exception = e
-                timeout_type = type(e).__name__
-                
-                if attempt < self.max_retries - 1:
-                    # Exponential backoff: 2^attempt seconds
-                    wait_time = 2 ** attempt
-                    logger.warning(
-                        f"SEC API {timeout_type} (attempt {attempt + 1}/{self.max_retries}) "
-                        f"for {url} (timeout: {self.timeout.read}s). "
-                        f"Retrying in {wait_time}s..."
-                    )
-                    await asyncio.sleep(wait_time)
-                else:
-                    logger.error(
-                        f"SEC API request failed after {self.max_retries} attempts "
-                        f"(last error: {timeout_type}) for {url}: {e}"
-                    )
-                    raise
+                await self._handle_timeout_error(e, attempt, url)
             except httpx.HTTPError as e:
-                # Don't retry on non-timeout HTTP errors (4xx, 5xx)
-                error_type = type(e).__name__
-                logger.error(
-                    f"SEC API HTTP error (non-retryable, {error_type}) for {url}: {e}"
-                )
-                raise
+                self._handle_http_error(e, url)
             except Exception as e:
                 # Catch any other unexpected exceptions
                 error_type = type(e).__name__
@@ -167,12 +225,6 @@ class SECClient:
                 raise
         
         # Should never reach here, but just in case
-        if last_exception:
-            logger.error(
-                f"SEC API request failed after {self.max_retries} attempts "
-                f"(last error: {timeout_type}) for {url}"
-            )
-            raise last_exception
         raise httpx.HTTPError("Request failed after retries")
 
     async def lookup_cik_by_ticker(self, ticker: str) -> Optional[str]:
@@ -291,7 +343,7 @@ class SECClient:
             root = ET.fromstring(atom_xml)
 
             # ATOM namespace
-            ns = {"atom": "http://www.w3.org/2005/Atom"}
+            ns = {"atom": self.ATOM_NAMESPACE_URI}
 
             for entry in root.findall("atom:entry", ns):
                 title = entry.find("atom:title", ns)
@@ -406,7 +458,7 @@ class SECClient:
 
             root = ET.fromstring(response.text)
 
-            ns = {"atom": "http://www.w3.org/2005/Atom"}
+            ns = {"atom": self.ATOM_NAMESPACE_URI}
             entry = root.find("atom:entry", ns)
 
             if entry is None:

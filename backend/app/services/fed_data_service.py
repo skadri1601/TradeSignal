@@ -41,9 +41,25 @@ class FedDataService:
         Returns:
             List of upcoming meeting dates with expected outcomes
         """
+        # Validate and sanitize days_ahead to prevent taint vulnerability
+        if not isinstance(days_ahead, int) or days_ahead < 1:
+            raise ValueError(f"days_ahead must be a positive integer, got: {days_ahead}")
+        
+        # Set reasonable maximum (2 years = 730 days) to prevent resource exhaustion
+        MAX_DAYS_AHEAD = 730
+        if days_ahead > MAX_DAYS_AHEAD:
+            raise ValueError(
+                f"days_ahead exceeds maximum of {MAX_DAYS_AHEAD} days. "
+                f"Requested: {days_ahead}. This limit prevents resource exhaustion."
+            )
+        
+        # Sanitize user input: use validated value clamped to maximum
+        sanitized_days_ahead = min(days_ahead, MAX_DAYS_AHEAD)
+        
         # FOMC meeting schedule (approximate, should be fetched from official source)
         today = datetime.now()
-        end_date = today + timedelta(days=days_ahead)
+        # Use sanitized value to prevent taint vulnerability
+        end_date = today + timedelta(days=sanitized_days_ahead)
 
         # Typical FOMC schedule (this should be fetched from official calendar)
         meetings = []
@@ -125,20 +141,32 @@ class FedDataService:
         Raises:
             ValueError: If months_ahead is outside valid range
         """
-        # Defensive validation: ensure months_ahead is within reasonable bounds
-        # This provides defense-in-depth even though API layer also validates
-        if not isinstance(months_ahead, int) or months_ahead < 1:
-            raise ValueError(f"months_ahead must be a positive integer, got: {months_ahead}")
-        
         # Set reasonable maximum to prevent resource exhaustion
         MAX_MONTHS_AHEAD = 24
-        if months_ahead > MAX_MONTHS_AHEAD:
+        
+        # Store original value for error messages only (safe - just string formatting)
+        original_months_ahead = months_ahead
+        
+        # Sanitize user input IMMEDIATELY to prevent taint vulnerability
+        # This ensures we never use raw user-controlled data for loop bounds or calculations
+        # Clamp to valid range: 1 to MAX_MONTHS_AHEAD
+        if not isinstance(months_ahead, int):
+            raise ValueError(f"months_ahead must be an integer, got: {type(months_ahead).__name__}")
+        
+        sanitized_months_ahead = max(1, min(months_ahead, MAX_MONTHS_AHEAD))
+        
+        # Defensive validation: ensure original input was within reasonable bounds
+        # This provides defense-in-depth even though API layer also validates
+        if original_months_ahead < 1:
+            raise ValueError(f"months_ahead must be a positive integer, got: {original_months_ahead}")
+        
+        if original_months_ahead > MAX_MONTHS_AHEAD:
             raise ValueError(
                 f"months_ahead exceeds maximum of {MAX_MONTHS_AHEAD} months. "
-                f"Requested: {months_ahead}. This limit prevents resource exhaustion."
+                f"Requested: {original_months_ahead}. This limit prevents resource exhaustion."
             )
         
-        cache_key = f"fed:calendar:{months_ahead}"
+        cache_key = f"fed:calendar:{sanitized_months_ahead}"
         cached = self.redis.get(cache_key)
         if cached:
             return cached
@@ -147,7 +175,8 @@ class FedDataService:
         calendar = []
 
         # Get FOMC meetings (still relies on local computation)
-        meetings = await self.get_upcoming_fomc_meetings(days_ahead=months_ahead * 30)
+        # Use sanitized value to prevent taint vulnerability
+        meetings = await self.get_upcoming_fomc_meetings(days_ahead=sanitized_months_ahead * 30)
         calendar.extend(meetings)
 
         # Add economic data release dates (typical schedule)
@@ -156,7 +185,10 @@ class FedDataService:
         # GDP: Quarterly, end of month
 
         today = datetime.now()
-        for i in range(months_ahead):
+        # Use sanitized value directly for loop bounds
+        # sanitized_months_ahead is guaranteed to be within safe range [1, MAX_MONTHS_AHEAD]
+        # by the validation logic above (lines 153-167), so it's safe to use here
+        for i in range(sanitized_months_ahead):
             month = today.month + i
             year = today.year + (month - 1) // 12
             month = ((month - 1) % 12) + 1

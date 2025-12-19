@@ -6,7 +6,7 @@ services:
     container_name: tradesignal-db
     environment:
       POSTGRES_USER: "${POSTGRES_USER:-tradesignal}"
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-tradesignal_dev}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
       POSTGRES_DB: "${POSTGRES_DB:-tradesignal}"
       POSTGRES_HOST_AUTH_METHOD: "scram-sha-256"
     volumes:
@@ -40,7 +40,8 @@ services:
       - ./backend:/app
     ports:
       - "8000:8000"
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-tradesignal}:${POSTGRES_PASSWORD:-tradesignal_dev}@postgres:5432/${POSTGRES_DB:-tradesignal}
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-tradesignal}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-tradesignal}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - GEMINI_MODEL=gemini-2.0-flash
@@ -49,8 +50,8 @@ services:
       - AI_MAX_TOKENS=${AI_MAX_TOKENS:-1000}
       - AI_TEMPERATURE=${AI_TEMPERATURE:-0.7}
       - AI_CACHE_TTL_HOURS=${AI_CACHE_TTL_HOURS:-24}
-      - JWT_SECRET=${JWT_SECRET:-dev-secret-key}
-      - SEC_USER_AGENT=Saad Kadri er.saadk16@gmail.com
+      - JWT_SECRET=${JWT_SECRET}
+      - SEC_USER_AGENT=${SEC_USER_AGENT}
       - ENVIRONMENT=development
       - DEBUG=true
       - ENABLE_AI_INSIGHTS=true
