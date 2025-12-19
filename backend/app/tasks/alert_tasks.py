@@ -9,6 +9,8 @@ from app.database import db_manager # For NotificationStorageService if needed
 from datetime import datetime, date
 import os # For FRONTEND_URL in email templates
 
+logger = logging.getLogger(__name__)
+
 # For push notifications
 try:
     from pywebpush import webpush, WebPushException
@@ -18,9 +20,6 @@ except ImportError:
     WebPushException = None
     json = None
     logger.warning("pywebpush not installed. Push notifications will be disabled.")
-
-
-logger = logging.getLogger(__name__)
 
 # --- Tasks for MultiChannelAlertService ---
 
@@ -339,6 +338,10 @@ async def send_webhook_notification_task(
                     "is_significant": trade.get("is_significant"),
                 },
             }
+
+        # Detect webhook type from URL
+        is_slack = "slack.com" in webhook_url
+        is_discord = "discord.com" in webhook_url
 
         # Build appropriate payload
         if is_slack:

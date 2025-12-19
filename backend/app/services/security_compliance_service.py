@@ -7,7 +7,7 @@ MFA, OAuth 2.0, encryption, penetration testing preparation, SOC 2, GDPR complia
 import logging
 import secrets
 import hashlib
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
