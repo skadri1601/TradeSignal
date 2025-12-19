@@ -103,15 +103,56 @@ class DatabaseManager:
                 # Add SSL for Supabase connections
                 if is_supabase:
                     import ssl
-                    # Create SSL context that doesn't verify certificates
-                    # Supabase uses certificates that may not be in Python's trust store
+                    # Create SSL context with proper certificate verification
+                    # Supabase uses valid certificates that should be in Python's trust store
                     ssl_context = ssl.create_default_context()
-                    ssl_context.check_hostname = False
-                    ssl_context.verify_mode = ssl.CERT_NONE
+                    
+                    # Allow disabling SSL verification only for local development via environment variable
+                    # SECURITY WARNING: Never disable SSL verification in production
+                    # This can help with corporate proxies, self-signed certificates, or certificate chain issues
+                    disable_ssl_verification_env = os.getenv("DISABLE_SSL_VERIFICATION", "false").lower()
+                    disable_ssl_verification = disable_ssl_verification_env == "true"
+                    
+                    logger.debug(
+                        f"SSL configuration check: DISABLE_SSL_VERIFICATION={disable_ssl_verification_env}, "
+                        f"environment={settings.environment}, will_disable={disable_ssl_verification and settings.environment in ['development', 'testing']}"
+                    )
+                    
+                    if disable_ssl_verification and settings.environment in ["development", "testing"]:
+                        # Only allow disabling verification in development/testing environments
+                        ssl_context.check_hostname = False
+                        ssl_context.verify_mode = ssl.CERT_NONE
+                        logger.warning(
+                            "⚠️  SSL certificate verification DISABLED for development - NOT SECURE FOR PRODUCTION. "
+                            "This may be needed for corporate proxies or certificate chain issues."
+                        )
+                    else:
+                        # Enable proper SSL verification (default and required for production)
+                        ssl_context.check_hostname = True
+                        ssl_context.verify_mode = ssl.CERT_REQUIRED
+                        # Try to handle certificate chain issues more gracefully
+                        # Some environments may have incomplete certificate chains
+                        try:
+                            # Test if we can create the context successfully
+                            # This will raise an error if there are fundamental SSL issues
+                            pass  # Context creation already happened above
+                        except Exception as ssl_error:
+                            logger.error(
+                                f"SSL context creation failed: {ssl_error}. "
+                                "If you're behind a corporate proxy or have certificate chain issues, "
+                                "set DISABLE_SSL_VERIFICATION=true in your .env (development only)."
+                            )
+                            raise
+                        
+                        if settings.environment == "production":
+                            logger.info("SSL configured for Supabase with full certificate verification (production mode)")
+                        else:
+                            logger.info("SSL configured for Supabase with certificate verification enabled")
+                    
                     connect_args["ssl"] = ssl_context
                     # Disable prepared statements for Supabase transaction pooler compatibility
                     connect_args["statement_cache_size"] = 0
-                    logger.info("SSL configured for Supabase (certificate verification disabled, statement cache disabled)")
+                    logger.info("SSL configured for Supabase (statement cache disabled for pooler compatibility)")
                 
                 # Configure pool size based on database type
                 # Supabase Session/Transaction mode has connection limits
@@ -155,13 +196,24 @@ class DatabaseManager:
                     engine_args["pool_recycle"] = pool_recycle_time
                     engine_args["pool_timeout"] = 30
 
-                self._engine = create_async_engine(
-                    database_url,  # Use resolved URL instead of settings.database_url_async
-                    **engine_args
-                )
-                logger.info(
-                    f"Database engine created successfully (environment: {settings.environment})"
-                )
+                try:
+                    self._engine = create_async_engine(
+                        database_url,  # Use resolved URL instead of settings.database_url_async
+                        **engine_args
+                    )
+                    logger.info(
+                        f"Database engine created successfully (environment: {settings.environment})"
+                    )
+                except Exception as engine_error:
+                    # Check if it's an SSL-related error
+                    error_str = str(engine_error).lower()
+                    if any(ssl_term in error_str for ssl_term in ['ssl', 'certificate', 'cert', 'tls']):
+                        logger.error(
+                            f"Database engine creation failed with SSL error: {engine_error}\n"
+                            "If you're behind a corporate proxy or experiencing certificate chain issues, "
+                            "set DISABLE_SSL_VERIFICATION=true in your .env file (development/testing only)."
+                        )
+                    raise
                 self._database_available = True  # Mark as available on success
             except DNSResolutionError:
                 # DNS resolution failed - re-raise to prevent engine creation
@@ -212,12 +264,30 @@ class DatabaseManager:
         except SQLAlchemyError as e:
             if session:
                 await session.rollback()
-            logger.error(f"Database session error: {e}")
+            # Check if it's an SSL-related error
+            error_str = str(e).lower()
+            if any(ssl_term in error_str for ssl_term in ['ssl', 'certificate', 'cert', 'tls', 'certificate verify']):
+                logger.error(
+                    f"Database SSL error: {e}\n"
+                    "If you're behind a corporate proxy or experiencing certificate chain issues, "
+                    "set DISABLE_SSL_VERIFICATION=true in your .env file (development/testing only)."
+                )
+            else:
+                logger.error(f"Database session error: {e}")
             raise
         except Exception as e:
             if session:
                 await session.rollback()
-            logger.error(f"Unexpected error in database session: {e}")
+            # Check if it's an SSL-related error
+            error_str = str(e).lower()
+            if any(ssl_term in error_str for ssl_term in ['ssl', 'certificate', 'cert', 'tls', 'certificate verify']):
+                logger.error(
+                    f"Database SSL error: {e}\n"
+                    "If you're behind a corporate proxy or experiencing certificate chain issues, "
+                    "set DISABLE_SSL_VERIFICATION=true in your .env file (development/testing only)."
+                )
+            else:
+                logger.error(f"Unexpected error in database session: {e}")
             raise
         finally:
             # CRITICAL: Always close session to release connection back to pool (or close for NullPool)
@@ -288,9 +358,11 @@ class DatabaseManager:
             return False
         except SQLAlchemyError as e:
             error_str = str(e)
+            error_lower = error_str.lower()
+            
             # Handle DuplicatePreparedStatementError gracefully
             # This can occur with pgbouncer even with statement_cache_size=0
-            if "DuplicatePreparedStatementError" in error_str or "prepared statement" in error_str.lower():
+            if "DuplicatePreparedStatementError" in error_str or "prepared statement" in error_lower:
                 logger.warning(
                     f"Database connection check: Prepared statement conflict detected. "
                     f"This is expected with pgbouncer in transaction mode. "
@@ -300,20 +372,38 @@ class DatabaseManager:
                 # The connection check itself may fail, but real connections will work
                 self._database_available = True
                 return True
+            
+            # Check for SSL-related errors
+            if any(ssl_term in error_lower for ssl_term in ['ssl', 'certificate', 'cert', 'tls', 'certificate verify', 'sslcertverificationerror']):
+                logger.error(f"Database connection check failed (SSL): {error_str}")
+                logger.error(
+                    "  -> SSL certificate verification failed. This often happens when:\n"
+                    "     - Behind a corporate proxy that intercepts SSL connections\n"
+                    "     - Using a VPN with SSL inspection\n"
+                    "     - Certificate chain issues with the database provider\n"
+                    "  -> For development/testing, you can disable SSL verification by setting:\n"
+                    "     DISABLE_SSL_VERIFICATION=true in your .env file\n"
+                    "  -> WARNING: This is NOT secure for production environments!"
+                )
+                self._database_available = False
+                return False
+            
             logger.error(f"Database connection check failed (SQLAlchemyError): {error_str}")
             # Provide more specific error context
-            if "authentication" in error_str.lower() or "password" in error_str.lower():
+            if "authentication" in error_lower or "password" in error_lower:
                 logger.error("  -> Authentication failed: Check username/password in DATABASE_URL")
-            elif "does not exist" in error_str.lower():
+            elif "does not exist" in error_lower:
                 logger.error("  -> Database does not exist: Check database name in DATABASE_URL")
-            elif "could not connect" in error_str.lower() or "connection refused" in error_str.lower():
+            elif "could not connect" in error_lower or "connection refused" in error_lower:
                 logger.error("  -> Connection refused: Check if database server is running and host/port are correct")
-            elif "gaierror" in error_str.lower() or "getaddrinfo" in error_str.lower():
+            elif "gaierror" in error_lower or "getaddrinfo" in error_lower:
                 logger.error("  -> DNS resolution failed: Check network connectivity and DNS settings")
             self._database_available = False
             return False
         except Exception as e:
             error_str = str(e)
+            error_type_name = type(e).__name__
+            
             # Handle DuplicatePreparedStatementError at the Exception level too
             if "DuplicatePreparedStatementError" in error_str or "prepared statement" in error_str.lower():
                 logger.warning(
@@ -323,14 +413,33 @@ class DatabaseManager:
                 )
                 self._database_available = True
                 return True
+            
+            # Check for SSL-related errors
+            error_lower = error_str.lower()
+            if any(ssl_term in error_lower for ssl_term in ['ssl', 'certificate', 'cert', 'tls', 'certificate verify', 'sslcertverificationerror']):
+                logger.error(f"Database connection check failed (SSL): {error_str}")
+                logger.error(f"Error type: {error_type_name}")
+                logger.error(
+                    "  -> SSL certificate verification failed. This often happens when:\n"
+                    "     - Behind a corporate proxy that intercepts SSL connections\n"
+                    "     - Using a VPN with SSL inspection\n"
+                    "     - Certificate chain issues with the database provider\n"
+                    "  -> For development/testing, you can disable SSL verification by setting:\n"
+                    "     DISABLE_SSL_VERIFICATION=true in your .env file\n"
+                    "  -> WARNING: This is NOT secure for production environments!"
+                )
+                self._database_available = False
+                return False
+            
             # Check for DNS-related errors
-            if "gaierror" in error_str.lower() or "getaddrinfo" in error_str.lower():
+            if "gaierror" in error_lower or "getaddrinfo" in error_lower:
                 logger.error(f"Database connection check failed (DNS): {error_str}")
                 logger.error("  -> DNS resolution failed. Check network connectivity and DNS settings.")
                 self._database_available = False
                 return False
+            
             logger.error(f"Unexpected error during connection check: {error_str}")
-            logger.error(f"Error type: {type(e).__name__}")
+            logger.error(f"Error type: {error_type_name}")
             self._database_available = False
             return False
 

@@ -5,9 +5,9 @@ services:
     image: postgres:15-alpine
     container_name: tradesignal-db
     environment:
-      POSTGRES_USER: "tradesignal"
-      POSTGRES_PASSWORD: "tradesignal_dev"
-      POSTGRES_DB: "tradesignal"
+      POSTGRES_USER: "${POSTGRES_USER:-tradesignal}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-tradesignal_dev}"
+      POSTGRES_DB: "${POSTGRES_DB:-tradesignal}"
       POSTGRES_HOST_AUTH_METHOD: "scram-sha-256"
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -40,8 +40,7 @@ services:
       - ./backend:/app
     ports:
       - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://tradesignal:tradesignal_dev@postgres:5432/tradesignal
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-tradesignal}:${POSTGRES_PASSWORD:-tradesignal_dev}@postgres:5432/${POSTGRES_DB:-tradesignal}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - GEMINI_MODEL=gemini-2.0-flash

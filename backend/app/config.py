@@ -150,6 +150,23 @@ class Settings(BaseSettings):
         description="SEC EDGAR API user agent (format: 'Name email@example.com')",
         alias="SEC_USER_AGENT",
     )
+    sec_api_timeout_seconds: int = Field(
+        default=60,
+        description="SEC API request timeout in seconds (default: 60)",
+        alias="SEC_API_TIMEOUT_SECONDS",
+    )
+    sec_api_max_retries: int = Field(
+        default=3,
+        description="Maximum number of retries for SEC API requests on timeout (default: 3)",
+        alias="SEC_API_MAX_RETRIES",
+    )
+
+    # AI Insights Configuration
+    ai_insights_days_back: int = Field(
+        default=7,
+        description="Number of days to look back for AI insights (Daily Summary, Trading Signals)",
+        alias="AI_INSIGHTS_DAYS_BACK",
+    )
 
     significant_trade_threshold: int = Field(
         default=100000,
