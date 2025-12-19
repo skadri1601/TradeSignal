@@ -16,11 +16,11 @@ jobs:
     
     services:
       postgres:
-        image: postgres:${{ env.POSTGRES_VERSION }}
+        image: postgres:15
         env:
-          POSTGRES_USER: ${{ secrets.TEST_DB_USER || 'test_user' }}
-          POSTGRES_PASSWORD: ${{ secrets.TEST_DB_PASSWORD || 'test_password' }}
-          POSTGRES_DB: ${{ secrets.TEST_DB_NAME || 'test_db' }}
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -40,15 +40,15 @@ jobs:
           - 6379:6379
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Cache dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@6f8efc29b200d32929f49075959781ed54ec270c
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
@@ -73,14 +73,16 @@ jobs:
     - name: Run tests
       working-directory: ./backend
       env:
-        DATABASE_URL: postgresql://${{ secrets.TEST_DB_USER || 'test_user' }}:${{ secrets.TEST_DB_PASSWORD || 'test_password' }}@localhost:5432/${{ secrets.TEST_DB_NAME || 'test_db' }}
+        DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
         REDIS_URL: redis://localhost:6379/0
-        SECRET_KEY: ${{ secrets.TEST_SECRET_KEY || 'test-secret-key-for-ci' }}
+        SECRET_KEY: test-secret-key-for-ci-only-not-production
+        JWT_SECRET: test-jwt-secret-for-ci-only-32-characters-minimum
+        SEC_USER_AGENT: GitHub Actions CI ci@tradesignal.com
       run: |
         pytest tests/ -v --cov=app --cov-report=xml --cov-report=html
 
     - name: Upload coverage
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@ab904c41d6ece82784817410c45d8b8c02684457
       with:
         file: ./backend/coverage.xml
         flags: unittests
@@ -92,53 +94,55 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435
 
-    - name: Login to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+    # Disabled until Docker Hub credentials are configured
+    # - name: Login to Docker Hub
+    #   uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef
+    #   with:
+    #     username: ${{ secrets.DOCKER_USERNAME }}
+    #     password: ${{ secrets.DOCKER_PASSWORD }}
 
     - name: Build and push Docker image
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25
       with:
         context: ./backend
-        push: true
+        push: false
         tags: |
           tradesignal/backend:latest
           tradesignal/backend:${{ github.sha }}
         cache-from: type=registry,ref=tradesignal/backend:buildcache
         cache-to: type=registry,ref=tradesignal/backend:buildcache,mode=max
 
-  deploy-staging:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop'
-    environment:
-      name: staging
-      url: https://staging-api.tradesignal.com
-
-    steps:
-    - name: Deploy to staging
-      run: |
-        echo "Deploying to staging environment"
-        # Would use Terraform, Kubernetes, or deployment script here
-
-  deploy-production:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    environment:
-      name: production
-      url: https://api.tradesignal.com
-
-    steps:
-    - name: Deploy to production (blue-green)
-      run: |
-        echo "Deploying to production with blue-green deployment"
-        # Would use Terraform, Kubernetes, or deployment script here
+  # Disabled until deployment environments are configured in GitHub
+  # deploy-staging:
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/develop'
+  #   environment:
+  #     name: staging
+  #     url: https://staging-api.tradesignal.com
+  #
+  #   steps:
+  #   - name: Deploy to staging
+  #     run: |
+  #       echo "Deploying to staging environment"
+  #       # Would use Terraform, Kubernetes, or deployment script here
+  #
+  # deploy-production:
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/main'
+  #   environment:
+  #     name: production
+  #     url: https://api.tradesignal.com
+  #
+  #   steps:
+  #   - name: Deploy to production (blue-green)
+  #     run: |
+  #       echo "Deploying to production with blue-green deployment"
+  #       # Would use Terraform, Kubernetes, or deployment script here
 
