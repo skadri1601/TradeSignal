@@ -3,7 +3,7 @@ Pydantic schemas for AI endpoints.
 """
 
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 
 class CompanyAnalysisResponse(BaseModel):
@@ -72,6 +72,10 @@ class ChatResponse(BaseModel):
     answer: str
     timestamp: str
     error: Optional[str] = None
+    response_metadata: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Metadata about response quality (truncation, safety filters, etc.)"
+    )
 
 
 class TradingSignal(BaseModel):

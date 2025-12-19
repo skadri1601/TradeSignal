@@ -70,6 +70,18 @@ export interface ChatResponse {
   question: string;
   answer: string;
   timestamp: string;
+  response_metadata?: {
+    provider?: string;
+    response_length?: number;
+    tokens_used?: number;
+    max_tokens?: number;
+    truncated?: boolean;
+    safety_blocked?: boolean;
+    finish_reason?: string;
+    block_reason?: string;
+    error?: boolean;
+    errors?: string[];
+  };
 }
 
 export interface TradingSignal {

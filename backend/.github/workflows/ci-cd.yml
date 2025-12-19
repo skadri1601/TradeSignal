@@ -18,9 +18,9 @@ jobs:
       postgres:
         image: postgres:${{ env.POSTGRES_VERSION }}
         env:
-          POSTGRES_USER: tradesignal
-          POSTGRES_PASSWORD: tradesignal
-          POSTGRES_DB: tradesignal_test
+          POSTGRES_USER: ${{ secrets.TEST_DB_USER || 'test_user' }}
+          POSTGRES_PASSWORD: ${{ secrets.TEST_DB_PASSWORD || 'test_password' }}
+          POSTGRES_DB: ${{ secrets.TEST_DB_NAME || 'test_db' }}
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -73,9 +73,9 @@ jobs:
     - name: Run tests
       working-directory: ./backend
       env:
-        DATABASE_URL: postgresql://tradesignal:tradesignal@localhost:5432/tradesignal_test
+        DATABASE_URL: postgresql://${{ secrets.TEST_DB_USER || 'test_user' }}:${{ secrets.TEST_DB_PASSWORD || 'test_password' }}@localhost:5432/${{ secrets.TEST_DB_NAME || 'test_db' }}
         REDIS_URL: redis://localhost:6379/0
-        SECRET_KEY: test-secret-key
+        SECRET_KEY: ${{ secrets.TEST_SECRET_KEY || 'test-secret-key-for-ci' }}
       run: |
         pytest tests/ -v --cov=app --cov-report=xml --cov-report=html
 

@@ -10,6 +10,13 @@ import logging
 import celery.schedules
 import shutil
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env file for Celery workers
+# This ensures environment variables are available when Celery workers start
+_env_file = Path(__file__).parent.parent.parent / ".env"
+if _env_file.exists():
+    load_dotenv(_env_file, override=True)
 
 # Configure SQLAlchemy loggers early to reduce verbosity in Celery workers
 # This prevents verbose SQL query logs from cluttering Celery output
@@ -22,6 +29,10 @@ for logger_name in ["sqlalchemy.engine", "sqlalchemy.pool", "sqlalchemy.dialects
     sqlalchemy_logger.setLevel(sqlalchemy_log_level_value)
 
 logger = logging.getLogger(__name__)
+
+# Log .env file loading status
+if _env_file.exists():
+    logger.debug(f"Loaded .env file from {_env_file} for Celery worker")
 
 
 class ResilientPersistentScheduler(PersistentScheduler):

@@ -118,7 +118,26 @@ class FedDataService:
     async def get_fed_calendar(self, months_ahead: int = 6) -> List[Dict[str, Any]]:
         """
         Get comprehensive FED calendar with meetings and data releases from cache.
+        
+        Args:
+            months_ahead: Number of months to look ahead (validated: 1-24)
+        
+        Raises:
+            ValueError: If months_ahead is outside valid range
         """
+        # Defensive validation: ensure months_ahead is within reasonable bounds
+        # This provides defense-in-depth even though API layer also validates
+        if not isinstance(months_ahead, int) or months_ahead < 1:
+            raise ValueError(f"months_ahead must be a positive integer, got: {months_ahead}")
+        
+        # Set reasonable maximum to prevent resource exhaustion
+        MAX_MONTHS_AHEAD = 24
+        if months_ahead > MAX_MONTHS_AHEAD:
+            raise ValueError(
+                f"months_ahead exceeds maximum of {MAX_MONTHS_AHEAD} months. "
+                f"Requested: {months_ahead}. This limit prevents resource exhaustion."
+            )
+        
         cache_key = f"fed:calendar:{months_ahead}"
         cached = self.redis.get(cache_key)
         if cached:
