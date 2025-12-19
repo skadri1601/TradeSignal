@@ -202,8 +202,15 @@ class AIService:
             return None
 
         try:
-            # Get trades from last 7 days
-            cutoff_date = datetime.utcnow() - timedelta(days=7)
+            # Diagnostic: Get total trades count
+            total_trades_result = await self.db.execute(select(func.count(Trade.id)))
+            total_trades_count = total_trades_result.scalar() or 0
+            logger.info(f"[Daily Summary] Total trades in database: {total_trades_count}")
+
+            # Get trades from configured days back
+            days_back = getattr(settings, 'ai_insights_days_back', 7)
+            cutoff_date = datetime.utcnow() - timedelta(days=days_back)
+            logger.info(f"[Daily Summary] Querying trades from last {days_back} days (cutoff: {cutoff_date.isoformat()})")
 
             result = await self.db.execute(
                 select(Trade, Company, Insider)
@@ -214,12 +221,30 @@ class AIService:
             )
             trades_data = result.all()
 
+            # Diagnostic: Get trades in last 30 days for comparison
+            cutoff_30d = datetime.utcnow() - timedelta(days=30)
+            result_30d = await self.db.execute(
+                select(func.count(Trade.id)).where(Trade.filing_date >= cutoff_30d)
+            )
+            trades_30d_count = result_30d.scalar() or 0
+            logger.info(f"[Daily Summary] Trades in last 7 days: {len(trades_data)}, last 30 days: {trades_30d_count}")
+
             if not trades_data:
+                logger.warning(
+                    f"[Daily Summary] No trades found in last 7 days. "
+                    f"Total DB trades: {total_trades_count}, Last 30 days: {trades_30d_count}"
+                )
                 return {
                     "company_summaries": [],
                     "total_trades": 0,
                     "generated_at": datetime.utcnow().isoformat(),
-                    "period": "last 7 days",
+                    "period": f"last {days_back} days",
+                    "diagnostics": {
+                        "total_trades_in_db": total_trades_count,
+                        "trades_in_last_7_days": 0,
+                        "trades_in_last_30_days": trades_30d_count,
+                        "days_back_configured": days_back,
+                    },
                 }
 
             # Group trades by company
@@ -270,6 +295,11 @@ class AIService:
                 company_data["insiders"] = list(company_data["insiders"])
                 top_company_data.append(company_data)
 
+            logger.info(
+                f"[Daily Summary] Found {len(companies_map)} companies with trades. "
+                f"Top {len(sorted_companies)} companies selected for summary."
+            )
+
             # Generate one comprehensive summary using AI
             ai_daily_overview = await self._generate_daily_overview(top_company_data, len(trades_data))
 
@@ -306,7 +336,13 @@ class AIService:
                 "company_summaries": company_summaries,
                 "total_trades": len(trades_data),
                 "generated_at": datetime.utcnow().isoformat(),
-                "period": "last 7 days",
+                "period": f"last {days_back} days",
+                "diagnostics": {
+                    "total_trades_in_db": total_trades_count,
+                    "trades_in_last_7_days": len(trades_data),
+                    "trades_in_last_30_days": trades_30d_count,
+                    "days_back_configured": days_back,
+                },
             }
 
         except Exception as e:
@@ -572,12 +608,13 @@ class AIService:
             stats = await self._get_trade_statistics()
 
             # Generate AI response
-            answer = await self._generate_chatbot_response(question, stats)
+            answer, response_metadata = await self._generate_chatbot_response(question, stats)
 
             return {
                 "question": question,
                 "answer": answer,
                 "timestamp": datetime.utcnow().isoformat(),
+                "response_metadata": response_metadata,
             }
 
         except Exception as e:
@@ -596,7 +633,9 @@ class AIService:
 
         try:
             # Get companies with significant recent activity
-            cutoff_date = datetime.utcnow() - timedelta(days=7)
+            days_back = getattr(settings, 'ai_insights_days_back', 7)
+            cutoff_date = datetime.utcnow() - timedelta(days=days_back)
+            logger.info(f"[Trading Signals] Querying trades from last {days_back} days (cutoff: {cutoff_date.isoformat()})")
 
             # Group trades by company
             result = await self.db.execute(
@@ -635,13 +674,23 @@ class AIService:
                     "period": "7 days",
                 }
 
+            logger.info(f"[Trading Signals] Generating signals for {len(companies)} companies")
+
             # Generate signals
             signals = await self._generate_signals(companies)
 
             return {
                 "signals": signals,
                 "generated_at": datetime.utcnow().isoformat(),
-                "period": "7 days",
+                "period": f"{days_back} days",
+                "diagnostics": {
+                    "total_trades_in_db": total_trades_count,
+                    "trades_in_last_7_days": len(all_companies),
+                    "trades_in_last_30_days": trades_30d_count,
+                    "companies_with_trades": len(all_companies),
+                    "companies_meeting_criteria": len(companies),
+                    "days_back_configured": days_back,
+                },
             }
 
         except Exception as e:
@@ -1026,7 +1075,7 @@ trades, and provides actionable insights for investors."""
 
     async def _generate_chatbot_response(
         self, question: str, stats: Dict[str, Any]
-    ) -> str:
+    ) -> tuple[str, Dict[str, Any]]:
         """Generate intelligent, context-aware chatbot responses with real data."""
         buy_sell_ratio = (stats["buy_trades"] / max(stats["sell_trades"], 1)) * 100
         market_sentiment = (
@@ -1334,22 +1383,164 @@ Be specific, cite numbers, and reference actual insiders and companies."""
             try:
                 if provider == "gemini" and self.gemini_client:
                     full_prompt = f"{system_prompt}\n\nUser question: {question}"
-                    # Add 30 second timeout for chat responses
+                    # Extended timeout (90s) for chat responses to allow longer response generation
                     response = await asyncio.wait_for(
                         self.gemini_client.generate_content_async(
                             full_prompt,
                             generation_config={
                                 "temperature": 0.2,  # Very low temperature for maximum precision
-                                "max_output_tokens": 8000,  # Increased for comprehensive chat responses
+                                "max_output_tokens": 8192,  # Maximum for Gemini 2.0 - allows longer responses
                             },
                         ),
-                        timeout=30.0,
+                        timeout=90.0,
                     )
                     self.provider = provider
-                    return response.text.strip()
+                    
+                    # Extract response text - handle both response.text and candidates/parts for complete extraction
+                    response_text = ""
+                    extraction_method = "unknown"
+                    
+                    # Try primary method: response.text (works for most cases)
+                    if hasattr(response, 'text') and response.text:
+                        response_text = response.text.strip()
+                        extraction_method = "response.text"
+                    
+                    # Fallback: extract from candidates/parts (for long responses that might be split or incomplete)
+                    # This is especially important for very long responses that might not be fully captured in response.text
+                    if hasattr(response, 'candidates') and response.candidates:
+                        try:
+                            candidate = response.candidates[0]
+                            if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+                                # Concatenate all parts to ensure complete response
+                                parts_text = []
+                                for part in candidate.content.parts:
+                                    if hasattr(part, 'text') and part.text:
+                                        parts_text.append(part.text)
+                                if parts_text:
+                                    candidates_text = " ".join(parts_text).strip()
+                                    # Use candidates/parts if it's longer (more complete) or if response.text was empty
+                                    if len(candidates_text) > len(response_text):
+                                        response_text = candidates_text
+                                        extraction_method = "candidates/parts"
+                                        logger.debug(
+                                            f"[LUNA Response] Extracted response from {len(parts_text)} parts "
+                                            f"(total length: {len(response_text)} chars) - "
+                                            f"longer than response.text ({len(response.text.strip()) if hasattr(response, 'text') and response.text else 0} chars)"
+                                        )
+                                    elif not response_text and len(candidates_text) > 0:
+                                        # Use candidates if response.text was empty
+                                        response_text = candidates_text
+                                        extraction_method = "candidates/parts"
+                                        logger.debug(
+                                            f"[LUNA Response] Extracted response from {len(parts_text)} parts "
+                                            f"(total length: {len(response_text)} chars) - "
+                                            f"response.text was empty"
+                                        )
+                        except (AttributeError, IndexError) as e:
+                            logger.warning(
+                                f"[LUNA Response] Error extracting from candidates/parts: {e}. "
+                                f"Using response.text if available."
+                            )
+                    
+                    response_length = len(response_text)
+                    
+                    # Log extraction method for debugging
+                    if response_length > 0:
+                        logger.debug(
+                            f"[LUNA Response] Extracted using {extraction_method}, "
+                            f"length: {response_length} chars"
+                        )
+                    
+                    # Log response details with extraction info
+                    if response_length == 0:
+                        logger.warning(
+                            f"[LUNA Response] Provider: {provider}, Empty response received. "
+                            f"Question length: {len(question)} chars"
+                        )
+                    else:
+                        logger.info(
+                            f"[LUNA Response] Provider: {provider}, Length: {response_length} chars, "
+                            f"Max tokens: 8192, Question length: {len(question)} chars"
+                        )
+                    
+                    # Build metadata
+                    metadata = {
+                        "provider": provider,
+                        "response_length": response_length,
+                        "max_tokens": 8192,  # Maximum for Gemini 2.0 - allows longer responses
+                        "truncated": False,
+                        "safety_blocked": False,
+                        "finish_reason": None,
+                    }
+                    
+                    # Check for safety blocks (keep safety detection, remove length-based truncation checks)
+                    safety_blocked = False
+                    block_reason = None
+                    if hasattr(response, 'prompt_feedback'):
+                        feedback = response.prompt_feedback
+                        if hasattr(feedback, 'block_reason') and feedback.block_reason:
+                            safety_blocked = True
+                            block_reason = str(feedback.block_reason)
+                            logger.warning(
+                                f"[LUNA Response] Safety filter blocked: {feedback.block_reason}"
+                            )
+                        if hasattr(feedback, 'safety_ratings'):
+                            for rating in feedback.safety_ratings:
+                                if hasattr(rating, 'blocked') and rating.blocked:
+                                    safety_blocked = True
+                                    block_reason = f"{rating.category} blocked"
+                                    logger.warning(
+                                        f"[LUNA Response] Safety rating blocked: {rating.category} - {rating.probability}"
+                                    )
+                    
+                    metadata["safety_blocked"] = safety_blocked
+                    if block_reason:
+                        metadata["block_reason"] = block_reason
+                    
+                    # Verify response completeness
+                    # Check if response appears complete (ends with punctuation or is very short)
+                    appears_complete = (
+                        response_length == 0 or
+                        response_text.endswith('.') or
+                        response_text.endswith('!') or
+                        response_text.endswith('?') or
+                        response_text.endswith('\n') or
+                        response_length < 100  # Very short responses are likely complete
+                    )
+                    
+                    # Log completion status with verification
+                    if safety_blocked:
+                        logger.warning(
+                            f"[LUNA Response] Response blocked by safety filter. "
+                            f"Length: {response_length} chars, Reason: {block_reason}"
+                        )
+                    elif response_length == 0:
+                        logger.warning(
+                            f"[LUNA Response] Empty response received from Gemini. "
+                            f"Check if prompt was blocked or model returned no content."
+                        )
+                    elif not appears_complete:
+                        logger.warning(
+                            f"[LUNA Response] Response may be incomplete - doesn't end with punctuation. "
+                            f"Length: {response_length} chars, Last 50 chars: '{response_text[-50:]}'"
+                        )
+                    else:
+                        logger.info(
+                            f"[LUNA Response] Response completed successfully. "
+                            f"Length: {response_length} chars, Appears complete: {appears_complete}"
+                        )
+                    
+                    # Log first and last 100 chars for debugging (only if very long)
+                    if response_length > 1000:
+                        logger.debug(
+                            f"[LUNA Response] First 100 chars: {response_text[:100]}... "
+                            f"Last 100 chars: ...{response_text[-100:]}"
+                        )
+                    
+                    return response_text, metadata
 
                 if provider == "openai" and self.openai_client:
-                    # Add 30 second timeout for chat responses
+                    # Extended timeout (90s) for chat responses to allow longer response generation
                     response = await asyncio.wait_for(
                         self.openai_client.chat.completions.create(
                             model=settings.openai_model,
@@ -1358,12 +1549,81 @@ Be specific, cite numbers, and reference actual insiders and companies."""
                                 {"role": "user", "content": question},
                             ],
                             temperature=0.2,  # Very low temperature for maximum precision
-                            max_tokens=8000,  # Increased for comprehensive chat responses
+                            max_tokens=16384,  # Maximum for GPT-4o/GPT-4o-mini - allows longer responses without truncation
                         ),
-                        timeout=30.0,
+                        timeout=90.0,
                     )
                     self.provider = provider
-                    return response.choices[0].message.content.strip()
+                    
+                    # Extract response content
+                    response_text = response.choices[0].message.content.strip() if response.choices else ""
+                    response_length = len(response_text)
+                    
+                    # Get token usage info
+                    usage = getattr(response, 'usage', None)
+                    tokens_used = None
+                    if usage:
+                        tokens_used = getattr(usage, 'completion_tokens', None)
+                    
+                    # Check for truncation (OpenAI sets finish_reason to 'length' if truncated)
+                    finish_reason = response.choices[0].finish_reason if response.choices else None
+                    
+                    # Log response details with completion status
+                    completion_status = "truncated" if finish_reason == 'length' else "completed successfully"
+                    logger.info(
+                        f"[LUNA Response] Provider: {provider}, Length: {response_length} chars, "
+                        f"Tokens used: {tokens_used}, Max tokens: 16384, Question length: {len(question)} chars, "
+                        f"Status: {completion_status}, Finish reason: {finish_reason or 'stop'}"
+                    )
+                    
+                    # Build metadata
+                    metadata = {
+                        "provider": provider,
+                        "response_length": response_length,
+                        "tokens_used": tokens_used,
+                        "max_tokens": 16384,  # Maximum for GPT-4o/GPT-4o-mini - allows longer responses
+                        "truncated": False,
+                        "safety_blocked": False,
+                        "finish_reason": finish_reason,
+                    }
+                    
+                    # Check for truncation and safety blocks (only use actual provider signals)
+                    is_truncated = finish_reason == 'length'
+                    is_blocked = finish_reason == 'content_filter'
+                    
+                    metadata["truncated"] = is_truncated
+                    metadata["safety_blocked"] = is_blocked
+                    
+                    if is_truncated:
+                        logger.warning(
+                            f"[LUNA Response] Response truncated by token limit (actual provider truncation). "
+                            f"Length: {response_length} chars, Tokens: {tokens_used}/16384. "
+                            f"Consider asking a more specific question or breaking it into parts."
+                        )
+                    elif is_blocked:
+                        logger.warning(
+                            f"[LUNA Response] Response blocked by content filter. "
+                            f"Length: {response_length} chars"
+                        )
+                        metadata["block_reason"] = "Content filter blocked response"
+                    elif finish_reason:
+                        logger.debug(f"[LUNA Response] Finish reason: {finish_reason}")
+                    else:
+                        # Response completed successfully
+                        logger.info(
+                            f"[LUNA Response] Response completed successfully. "
+                            f"Length: {response_length} chars, Tokens: {tokens_used}, "
+                            f"No truncation detected."
+                        )
+                    
+                    # Log first and last 100 chars for debugging (only if very long)
+                    if response_length > 1000:
+                        logger.debug(
+                            f"[LUNA Response] First 100 chars: {response_text[:100]}... "
+                            f"Last 100 chars: ...{response_text[-100:]}"
+                        )
+                    
+                    return response_text, metadata
             except asyncio.TimeoutError:
                 logger.warning(f"AI timeout for {provider} answering question")
                 errors.append(f"{provider}: timeout")
@@ -1373,10 +1633,17 @@ Be specific, cite numbers, and reference actual insiders and companies."""
                 errors.append(f"{provider}: {e}")
                 continue
 
-        return (
+        # All providers failed
+        error_message = (
             "I'm unable to answer that question at the moment. Please try again later."
             + (f" (Details: { '; '.join(errors) })" if errors else "")
         )
+        metadata = {
+            "provider": None,
+            "error": True,
+            "errors": errors,
+        }
+        return error_message, metadata
 
     async def _generate_signals(self, companies: List[tuple]) -> List[Dict[str, Any]]:
         """Generate AI-powered trading signals for companies with high activity."""
