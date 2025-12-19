@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { aiApi } from '../../api/ai';
 import { ThinkingDots } from '../common/AISkeleton';
@@ -19,6 +19,45 @@ export default function AIChat() {
     },
   ]);
   const [input, setInput] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [showScrollIndicator, setShowScrollIndicator] = useState(false);
+  const [isNearBottom, setIsNearBottom] = useState(true);
+
+  // Auto-scroll to bottom when new messages arrive (only if user is near bottom)
+  useEffect(() => {
+    if (isNearBottom && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  }, [messages, isNearBottom]);
+
+  // Detect scroll position and show/hide fade indicator
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+      setIsNearBottom(distanceFromBottom < 100);
+      setShowScrollIndicator(distanceFromBottom > 20);
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    handleScroll();
+
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Check if content is scrollable
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const isScrollable = container.scrollHeight > container.clientHeight;
+    setShowScrollIndicator(isScrollable && !isNearBottom);
+  }, [messages, isNearBottom]);
 
   const askMutation = useMutation({
     mutationFn: (question: string) => aiApi.askQuestion(question),
@@ -73,7 +112,7 @@ export default function AIChat() {
 
   return (
     <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10 max-w-4xl mx-auto overflow-hidden">
-      <div className="flex flex-col h-[600px]">
+      <div className="flex flex-col min-h-[400px] max-h-[80vh] h-[600px]">
         {/* Header */}
         <div className="p-6 border-b border-white/10 bg-black/20">
           <div className="flex items-center space-x-2 mb-1">
@@ -86,7 +125,10 @@ export default function AIChat() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto space-y-6 p-6">
+        <div
+          ref={messagesContainerRef}
+          className="flex-1 overflow-y-auto space-y-6 p-6 relative"
+        >
           {messages.map((message, index) => (
             <div
               key={index}
@@ -121,7 +163,13 @@ export default function AIChat() {
               </div>
             </div>
           )}
+          <div ref={messagesEndRef} />
         </div>
+
+        {/* Fade gradient overlay when scrollable */}
+        {showScrollIndicator && (
+          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-gray-900 to-transparent pointer-events-none" />
+        )}
 
         {/* Suggested Questions */}
         {messages.length === 1 && (
