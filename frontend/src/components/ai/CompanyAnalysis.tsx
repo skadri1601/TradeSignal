@@ -9,18 +9,37 @@ export default function CompanyAnalysis() {
   const [ticker, setTicker] = useState('');
   const [daysBack, setDaysBack] = useState(30);
   const [analysis, setAnalysis] = useState<PatternAnalysis | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingMessage, setProcessingMessage] = useState<string | null>(null);
 
   const analyzeMutation = useMutation({
     mutationFn: ({ ticker, daysBack }: { ticker: string; daysBack: number }) =>
       patternsApi.analyzeCompany(ticker, daysBack),
-    onSuccess: (data) => {
-      setAnalysis(data);
+    onSuccess: (data: any) => {
+      // Check if API returned processing status
+      if (data && data.status === 'processing') {
+        setIsProcessing(true);
+        setProcessingMessage(data.message || `Analysis for ${data.ticker || ticker} has been queued. Please check back shortly.`);
+        setAnalysis(null); // Clear any previous analysis
+      } else {
+        // Valid analysis data
+        setIsProcessing(false);
+        setProcessingMessage(null);
+        setAnalysis(data as PatternAnalysis);
+      }
+    },
+    onError: () => {
+      setIsProcessing(false);
+      setProcessingMessage(null);
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!ticker.trim()) return;
+    setIsProcessing(false);
+    setProcessingMessage(null);
+    setAnalysis(null); // Clear previous analysis
     analyzeMutation.mutate({ ticker: ticker.toUpperCase(), daysBack });
   };
 
@@ -39,7 +58,7 @@ export default function CompanyAnalysis() {
   return (
     <div className="space-y-6">
       {/* Search Form */}
-      <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10 p-6">
+      <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10 p-6 relative z-20">
         <div className="flex items-center space-x-2 mb-4">
           <BarChart2 className="w-5 h-5 text-purple-400" />
           <h3 className="text-lg font-bold text-white">
@@ -92,7 +111,7 @@ export default function CompanyAnalysis() {
 
       {/* Loading State */}
       {analyzeMutation.isPending && (
-        <div className="space-y-6">
+        <div className="space-y-6 mt-6 relative z-0">
           <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
             <AISkeleton message={`AI is analyzing ${ticker} insider trading patterns...`} />
           </div>
@@ -107,9 +126,25 @@ export default function CompanyAnalysis() {
         </div>
       )}
 
+      {/* Processing State */}
+      {isProcessing && !analyzeMutation.isPending && (
+        <div className="bg-blue-900/20 border border-blue-500/30 rounded-xl p-6 flex items-start mt-6 relative z-0">
+          <BarChart2 className="h-5 w-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0 animate-pulse" />
+          <div>
+            <h3 className="text-sm font-medium text-blue-300">Analysis Queued</h3>
+            <p className="text-sm text-blue-400/80 mt-1">
+              {processingMessage || 'Analysis is being processed. Please check back shortly.'}
+            </p>
+            <p className="text-xs text-blue-500/60 mt-2">
+              The analysis will be available once processing completes. You can refresh the page or try again in a few moments.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Error State */}
       {analyzeMutation.isError && (
-        <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-6 flex items-start">
+        <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-6 flex items-start mt-6 relative z-0">
           <AlertCircle className="h-5 w-5 text-red-400 mt-0.5 mr-3 flex-shrink-0" />
           <div>
             <h3 className="text-sm font-medium text-red-300">Analysis Failed</h3>
@@ -123,8 +158,8 @@ export default function CompanyAnalysis() {
       )}
 
       {/* Analysis Results */}
-      {analysis && !analyzeMutation.isPending && (
-        <div className="space-y-6">
+      {analysis && !analyzeMutation.isPending && !isProcessing && (
+        <div className="space-y-6 mt-6 relative z-0">
           {/* Header Card */}
           <div className="bg-gradient-to-r from-purple-900/40 to-blue-900/40 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -133,7 +168,7 @@ export default function CompanyAnalysis() {
                   {analysis.ticker} - {analysis.company_name}
                 </h2>
                 <p className="text-sm text-gray-300 mt-1">
-                  Analysis over {analysis.days_analyzed} days • {analysis.total_trades} trades analyzed
+                  Analysis over {analysis.days_analyzed ?? 0} days • {analysis.total_trades ?? 0} trades analyzed
                 </p>
               </div>
               <div className="flex items-center gap-3 bg-black/20 p-3 rounded-xl border border-white/5">
@@ -147,25 +182,25 @@ export default function CompanyAnalysis() {
           </div>
 
           {/* Metrics Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
              <div className="bg-gray-900/50 backdrop-blur-sm p-4 rounded-xl border border-white/10">
                <p className="text-xs text-gray-500 uppercase font-bold mb-1">Confidence</p>
-               <p className="text-xl font-mono text-white">{(analysis.confidence * 100).toFixed(0)}%</p>
+               <p className="text-xl font-mono text-white">{((analysis.confidence ?? 0) * 100).toFixed(0)}%</p>
                <div className="w-full bg-gray-700 h-1.5 rounded-full mt-2 overflow-hidden">
-                 <div className="h-full bg-purple-500" style={{ width: `${analysis.confidence * 100}%` }} />
+                 <div className="h-full bg-purple-500" style={{ width: `${(analysis.confidence ?? 0) * 100}%` }} />
                </div>
              </div>
              <div className="bg-gray-900/50 backdrop-blur-sm p-4 rounded-xl border border-white/10">
                <p className="text-xs text-gray-500 uppercase font-bold mb-1">Buy Ratio</p>
-               <p className="text-xl font-mono text-green-400">{(analysis.buy_ratio * 100).toFixed(1)}%</p>
+               <p className="text-xl font-mono text-green-400">{((analysis.buy_ratio ?? 0) * 100).toFixed(1)}%</p>
              </div>
              <div className="bg-gray-900/50 backdrop-blur-sm p-4 rounded-xl border border-white/10">
                <p className="text-xs text-gray-500 uppercase font-bold mb-1">Sell Ratio</p>
-               <p className="text-xl font-mono text-red-400">{(analysis.sell_ratio * 100).toFixed(1)}%</p>
+               <p className="text-xl font-mono text-red-400">{((analysis.sell_ratio ?? 0) * 100).toFixed(1)}%</p>
              </div>
              <div className="bg-gray-900/50 backdrop-blur-sm p-4 rounded-xl border border-white/10">
                <p className="text-xs text-gray-500 uppercase font-bold mb-1">Insiders</p>
-               <p className="text-xl font-mono text-white">{analysis.active_insiders}</p>
+               <p className="text-xl font-mono text-white">{analysis.active_insiders ?? 0}</p>
              </div>
           </div>
 
@@ -177,7 +212,7 @@ export default function CompanyAnalysis() {
               <div className="bg-white/5 rounded-xl p-4 border border-white/5">
                 <div className="flex items-center gap-2 mb-2">
                    <BarChart2 className="w-5 h-5 text-purple-400" />
-                   <h4 className="font-bold text-white text-lg">{analysis.pattern.replace('_', ' ')}</h4>
+                   <h4 className="font-bold text-white text-lg">{analysis.pattern?.replace('_', ' ') ?? 'Unknown Pattern'}</h4>
                 </div>
                 <div className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border ${
                   analysis.risk_level === 'HIGH' ? 'bg-red-500/20 text-red-300 border-red-500/30' :
@@ -190,10 +225,10 @@ export default function CompanyAnalysis() {
               <div className="mt-4 bg-white/5 rounded-xl p-4 border border-white/5">
                  <p className="text-xs text-gray-500 uppercase font-bold mb-1">Recommendation</p>
                  <p className={`text-xl font-bold ${
-                   analysis.recommendation.includes('BUY') ? 'text-green-400' : 
-                   analysis.recommendation.includes('SELL') ? 'text-red-400' : 'text-gray-300'
+                   analysis.recommendation?.includes('BUY') ? 'text-green-400' : 
+                   analysis.recommendation?.includes('SELL') ? 'text-red-400' : 'text-gray-300'
                  }`}>
-                   {analysis.recommendation.replace('_', ' ')}
+                   {analysis.recommendation?.replace('_', ' ') ?? 'No Recommendation'}
                  </p>
               </div>
             </div>
@@ -216,14 +251,14 @@ export default function CompanyAnalysis() {
           {/* Info Footer */}
           <div className="text-center pb-6">
             <p className="text-xs text-gray-600">
-              Pattern analysis based on SEC Form 4 data from the last {analysis.days_analyzed} days
+              Pattern analysis based on SEC Form 4 data from the last {analysis.days_analyzed ?? 0} days
             </p>
           </div>
         </div>
       )}
 
       {/* Empty State */}
-      {!analysis && !analyzeMutation.isPending && !analyzeMutation.isError && (
+      {!analysis && !analyzeMutation.isPending && !analyzeMutation.isError && !isProcessing && (
         <div className="bg-gray-900/30 border border-white/10 rounded-2xl p-12 text-center">
           <BarChart2 className="mx-auto h-12 w-12 text-gray-600 mb-4" />
           <h3 className="text-lg font-medium text-white">No Analysis Yet</h3>

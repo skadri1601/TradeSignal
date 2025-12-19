@@ -130,7 +130,7 @@ export default function CompanyAutocomplete({
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
           {isLoading ? (
             <div className="px-4 py-3 text-sm text-gray-500">Loading companies...</div>
           ) : filteredCompanies.length > 0 ? (

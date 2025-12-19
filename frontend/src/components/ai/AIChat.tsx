@@ -8,6 +8,18 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  metadata?: {
+    provider?: string;
+    response_length?: number;
+    tokens_used?: number;
+    max_tokens?: number;
+    truncated?: boolean;
+    safety_blocked?: boolean;
+    finish_reason?: string;
+    block_reason?: string;
+    error?: boolean;
+    errors?: string[];
+  };
 }
 
 export default function AIChat() {
@@ -68,6 +80,7 @@ export default function AIChat() {
           role: 'assistant',
           content: data.answer,
           timestamp: new Date(data.timestamp),
+          metadata: data.response_metadata,
         },
       ]);
     },
@@ -142,6 +155,42 @@ export default function AIChat() {
                 }`}
               >
                 <p className="whitespace-pre-wrap leading-relaxed text-sm md:text-base">{message.content}</p>
+                
+                {/* Response Quality Warnings */}
+                {message.role === 'assistant' && message.metadata && (
+                  <div className="mt-3 space-y-1">
+                    {message.metadata.truncated && (
+                      <div className="flex items-start space-x-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                        <span className="text-yellow-400 text-xs">⚠️</span>
+                        <p className="text-xs text-yellow-300">
+                          Response may be incomplete. LUNA's answer was cut off due to length limits.
+                          {message.metadata.tokens_used && ` (${message.metadata.tokens_used}/${message.metadata.max_tokens} tokens used)`}
+                        </p>
+                      </div>
+                    )}
+                    {message.metadata.safety_blocked && (
+                      <div className="flex items-start space-x-2 p-2 bg-red-500/10 border border-red-500/20 rounded-lg">
+                        <span className="text-red-400 text-xs">🚫</span>
+                        <p className="text-xs text-red-300">
+                          Response was restricted by safety filters.
+                          {message.metadata.block_reason && ` Reason: ${message.metadata.block_reason}`}
+                        </p>
+                      </div>
+                    )}
+                    {message.metadata.error && (
+                      <div className="flex items-start space-x-2 p-2 bg-red-500/10 border border-red-500/20 rounded-lg">
+                        <span className="text-red-400 text-xs">❌</span>
+                        <p className="text-xs text-red-300">
+                          Error generating response.
+                          {message.metadata.errors && message.metadata.errors.length > 0 && (
+                            <span> Details: {message.metadata.errors.join(', ')}</span>
+                          )}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
                 <p className={`text-[10px] mt-2 opacity-70 ${message.role === 'user' ? 'text-purple-200' : 'text-gray-400'}`}>
                   {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </p>

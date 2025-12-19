@@ -49,13 +49,43 @@ export default function DailySummaryCard() {
   }
 
   if (!data || !data.company_summaries || data.company_summaries.length === 0) {
+    const diagnostics = data?.diagnostics;
+    const daysBack = data?.period || '7 days';
+    const totalTrades = diagnostics?.total_trades_in_db ?? 0;
+    const trades30d = diagnostics?.trades_in_last_30_days ?? 0;
+    
     return (
       <div className="bg-gray-900/30 border border-white/10 rounded-2xl p-12 text-center">
         <Newspaper className="mx-auto h-12 w-12 text-gray-600 mb-4" />
         <h3 className="mt-2 text-lg font-medium text-white">No Recent Activity</h3>
         <p className="mt-1 text-sm text-gray-400">
-          No significant insider trades detected in the last 7 days.
+          No significant insider trades detected in the last {daysBack}.
         </p>
+        {diagnostics && (
+          <div className="mt-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700/50 text-left max-w-md mx-auto">
+            <p className="text-xs text-gray-500 mb-2">Diagnostic Information:</p>
+            <ul className="text-xs text-gray-400 space-y-1">
+              <li>• Total trades in database: {totalTrades.toLocaleString()}</li>
+              <li>• Trades in last 30 days: {trades30d.toLocaleString()}</li>
+              {trades30d > 0 && (
+                <li className="text-blue-400 mt-2">
+                  💡 Try checking trades from the last 30 days instead
+                </li>
+              )}
+              {totalTrades === 0 && (
+                <li className="text-yellow-400 mt-2">
+                  ⚠️ No trades found in database. The scraper may need to run.
+                </li>
+              )}
+            </ul>
+          </div>
+        )}
+        <button
+          onClick={() => refetch()}
+          className="mt-6 px-6 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-colors border border-white/10"
+        >
+          Refresh
+        </button>
       </div>
     );
   }
