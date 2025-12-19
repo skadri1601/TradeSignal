@@ -10,6 +10,7 @@ Provides endpoints for accessing research features:
 """
 
 import logging
+from datetime import datetime
 from typing import Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +28,8 @@ from app.models.management_score import ManagementScore
 from app.services.ts_score_service import TSScoreService
 from app.services.risk_level_service import RiskLevelService
 from app.services.dcf_service import DCFService
+from app.services.cache_service import cache_service
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -89,12 +92,30 @@ async def get_intrinsic_value(
                 "cached": True
             }
 
-        # If not cached, calculate on-demand (for now, return not found)
-        # TODO: Implement on-demand calculation via DCFService
-        raise HTTPException(
-            status_code=404,
-            detail=f"Intrinsic Value Target not yet calculated for {ticker}. Coverage coming soon."
-        )
+        # If not cached, calculate on-demand
+        from app.services.ivt_data_service import IVTDataService
+
+        ivt_service = IVTDataService(db)
+        ivt_data = await ivt_service.calculate_ivt_for_company(ticker)
+
+        if not ivt_data:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Unable to calculate IVT for {ticker}. Company data may not be available."
+            )
+
+        # Return freshly calculated IVT
+        return {
+            "ticker": ticker,
+            "intrinsic_value": ivt_data["intrinsic_value"],
+            "current_price": ivt_data["current_price"],
+            "discount_pct": ivt_data["discount_premium_pct"],
+            "calculation_date": datetime.utcnow().isoformat(),
+            "confidence_score": None,
+            "wacc": ivt_data.get("wacc"),
+            "terminal_growth_rate": ivt_data.get("terminal_growth_rate"),
+            "cached": False
+        }
 
     except HTTPException:
         raise
@@ -224,25 +245,38 @@ async def get_competitive_strength(
     Get Competitive Strength Rating for a stock.
 
     Returns moat analysis and competitive advantage assessment.
+    Calculates on-the-fly if data doesn't exist.
     """
     ticker = ticker.upper()
 
     try:
-        # Check if competitive strength rating exists
+        from app.services.competitive_strength_service import CompetitiveStrengthService
+        from app.models.competitive_strength import CompetitiveStrengthRating
+        from datetime import datetime
+
+        # Check Redis cache first
+        cache_key = f"competitive_strength:{ticker}:latest"
+        cached_result = await cache_service.get(cache_key)
+        if cached_result:
+            logger.debug(f"Cache hit for competitive strength: {ticker}")
+            cached_result["cached"] = True
+            cached_result["cache_source"] = "redis"
+            return cached_result
+
+        # Check database
         result = await db.execute(
             select(CompetitiveStrengthRating)
-            .join(Company)
-            .where(Company.ticker == ticker)
-            .order_by(CompetitiveStrengthRating.rating_date.desc())
+            .where(CompetitiveStrengthRating.ticker == ticker)
+            .order_by(CompetitiveStrengthRating.calculated_at.desc())
             .limit(1)
         )
         comp = result.scalar_one_or_none()
 
         if comp:
-            return {
+            response_data = {
                 "ticker": ticker,
                 "rating": comp.rating,
-                "trajectory": comp.competitive_trajectory,
+                "trajectory": comp.trajectory,
                 "composite_score": float(comp.composite_score) if comp.composite_score else None,
                 "moat_sources": {
                     "network_effects": float(comp.network_effects_score) if comp.network_effects_score else None,
@@ -251,19 +285,72 @@ async def get_competitive_strength(
                     "switching_costs": float(comp.switching_costs_score) if comp.switching_costs_score else None,
                     "efficient_scale": float(comp.efficient_scale_score) if comp.efficient_scale_score else None
                 },
-                "rating_date": comp.rating_date.isoformat() if comp.rating_date else None,
-                "cached": True
+                "rating_date": comp.calculated_at.isoformat() if comp.calculated_at else None,
+                "cached": True,
+                "cache_source": "database"
             }
+            # Cache the result
+            await cache_service.set(cache_key, response_data, ttl=settings.cache_competitive_strength_ttl)
+            return response_data
 
-        raise HTTPException(
-            status_code=404,
-            detail=f"Competitive Strength Rating not yet available for {ticker}. Coverage coming soon."
+        # Calculate on-the-fly if not cached
+        logger.info(f"Calculating competitive strength for {ticker} on-the-fly")
+        strength_service = CompetitiveStrengthService(db)
+        
+        try:
+            # Calculate with real financial data (will fetch automatically if not provided)
+            calculation_result = await strength_service.calculate_competitive_strength(ticker=ticker)
+        except ValueError as e:
+            # Financial data unavailable - return error instead of dummy data
+            logger.error(f"Cannot calculate competitive strength for {ticker}: {e}")
+            raise HTTPException(
+                status_code=503,
+                detail=f"Financial data unavailable for {ticker}. Please ensure Financial Modeling Prep API is configured and try again later."
+            )
+
+        # Save to database
+        comp_rating = CompetitiveStrengthRating(
+            ticker=ticker,
+            rating=calculation_result["rating"],
+            composite_score=calculation_result["composite_score"],
+            network_effects_score=calculation_result["component_scores"]["network_effects"],
+            intangible_assets_score=calculation_result["component_scores"]["intangible_assets"],
+            cost_advantages_score=calculation_result["component_scores"]["cost_advantages"],
+            switching_costs_score=calculation_result["component_scores"]["switching_costs"],
+            efficient_scale_score=calculation_result["component_scores"]["efficient_scale"],
+            trajectory=calculation_result["trajectory"],
+            calculated_at=datetime.utcnow(),
         )
+        db.add(comp_rating)
+        await db.commit()
+        await db.refresh(comp_rating)
+
+        response_data = {
+            "ticker": ticker,
+            "rating": comp_rating.rating,
+            "trajectory": comp_rating.trajectory,
+            "composite_score": float(comp_rating.composite_score),
+            "moat_sources": {
+                "network_effects": float(comp_rating.network_effects_score),
+                "intangible_assets": float(comp_rating.intangible_assets_score),
+                "cost_advantages": float(comp_rating.cost_advantages_score),
+                "switching_costs": float(comp_rating.switching_costs_score),
+                "efficient_scale": float(comp_rating.efficient_scale_score)
+            },
+            "rating_date": comp_rating.calculated_at.isoformat(),
+            "cached": False,
+            "cache_source": "calculated"
+        }
+        
+        # Cache the newly calculated result
+        await cache_service.set(cache_key, response_data, ttl=settings.cache_competitive_strength_ttl)
+        
+        return response_data
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching Competitive Strength for {ticker}: {e}")
+        logger.error(f"Error fetching Competitive Strength for {ticker}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -277,45 +364,109 @@ async def get_management_score(
     Get Management Excellence Score for a stock.
 
     Returns capital allocation and stewardship assessment.
+    Calculates on-the-fly if data doesn't exist.
     """
     ticker = ticker.upper()
 
     try:
-        # Check if management score exists
+        from app.services.management_score_service import ManagementScoreService
+        from app.models.management_score import ManagementScore
+        from datetime import datetime
+
+        # Check Redis cache first
+        cache_key = f"management_score:{ticker}:latest"
+        cached_result = await cache_service.get(cache_key)
+        if cached_result:
+            logger.debug(f"Cache hit for management score: {ticker}")
+            cached_result["cached"] = True
+            cached_result["cache_source"] = "redis"
+            return cached_result
+
+        # Check database
         result = await db.execute(
             select(ManagementScore)
-            .join(Company)
-            .where(Company.ticker == ticker)
-            .order_by(ManagementScore.scoring_date.desc())
+            .where(ManagementScore.ticker == ticker)
+            .order_by(ManagementScore.calculated_at.desc())
             .limit(1)
         )
         mgmt = result.scalar_one_or_none()
 
         if mgmt:
-            return {
+            response_data = {
                 "ticker": ticker,
-                "grade": mgmt.overall_grade,
+                "grade": mgmt.grade,
                 "composite_score": float(mgmt.composite_score) if mgmt.composite_score else None,
                 "components": {
-                    "ma_track_record": float(mgmt.ma_track_record_score) if mgmt.ma_track_record_score else None,
+                    "ma_track_record": float(mgmt.m_and_a_score) if mgmt.m_and_a_score else None,
                     "capital_discipline": float(mgmt.capital_discipline_score) if mgmt.capital_discipline_score else None,
                     "shareholder_returns": float(mgmt.shareholder_returns_score) if mgmt.shareholder_returns_score else None,
-                    "financial_leverage": float(mgmt.financial_leverage_score) if mgmt.financial_leverage_score else None,
+                    "financial_leverage": float(mgmt.leverage_management_score) if mgmt.leverage_management_score else None,
                     "governance": float(mgmt.governance_score) if mgmt.governance_score else None
                 },
-                "scoring_date": mgmt.scoring_date.isoformat() if mgmt.scoring_date else None,
-                "cached": True
+                "scoring_date": mgmt.calculated_at.isoformat() if mgmt.calculated_at else None,
+                "cached": True,
+                "cache_source": "database"
             }
+            # Cache the result
+            await cache_service.set(cache_key, response_data, ttl=settings.cache_management_score_ttl)
+            return response_data
 
-        raise HTTPException(
-            status_code=404,
-            detail=f"Management Excellence Score not yet available for {ticker}. Coverage coming soon."
+        # Calculate on-the-fly if not cached
+        logger.info(f"Calculating management score for {ticker} on-the-fly")
+        management_service = ManagementScoreService(db)
+        
+        try:
+            # Calculate with real financial data, M&A history, and insider patterns
+            calculation_result = await management_service.calculate_management_score(ticker=ticker)
+        except ValueError as e:
+            # Financial data or M&A data unavailable - return error instead of dummy data
+            logger.error(f"Cannot calculate management score for {ticker}: {e}")
+            raise HTTPException(
+                status_code=503,
+                detail=f"Financial data or M&A data unavailable for {ticker}. Please ensure Financial Modeling Prep API is configured and try again later."
+            )
+
+        # Save to database
+        mgmt_score = ManagementScore(
+            ticker=ticker,
+            grade=calculation_result["grade"],
+            composite_score=calculation_result["composite_score"],
+            m_and_a_score=calculation_result["component_scores"]["m_and_a"],
+            capital_discipline_score=calculation_result["component_scores"]["capital_discipline"],
+            shareholder_returns_score=calculation_result["component_scores"]["shareholder_returns"],
+            leverage_management_score=calculation_result["component_scores"]["leverage_management"],
+            governance_score=calculation_result["component_scores"]["governance"],
+            calculated_at=datetime.utcnow(),
         )
+        db.add(mgmt_score)
+        await db.commit()
+        await db.refresh(mgmt_score)
+
+        response_data = {
+            "ticker": ticker,
+            "grade": mgmt_score.grade,
+            "composite_score": float(mgmt_score.composite_score),
+            "components": {
+                "ma_track_record": float(mgmt_score.m_and_a_score),
+                "capital_discipline": float(mgmt_score.capital_discipline_score),
+                "shareholder_returns": float(mgmt_score.shareholder_returns_score),
+                "financial_leverage": float(mgmt_score.leverage_management_score),
+                "governance": float(mgmt_score.governance_score)
+            },
+            "scoring_date": mgmt_score.calculated_at.isoformat(),
+            "cached": False,
+            "cache_source": "calculated"
+        }
+        
+        # Cache the newly calculated result
+        await cache_service.set(cache_key, response_data, ttl=settings.cache_management_score_ttl)
+        
+        return response_data
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching Management Score for {ticker}: {e}")
+        logger.error(f"Error fetching Management Score for {ticker}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
 
 

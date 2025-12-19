@@ -1340,7 +1340,7 @@ Be specific, cite numbers, and reference actual insiders and companies."""
                             full_prompt,
                             generation_config={
                                 "temperature": 0.2,  # Very low temperature for maximum precision
-                                "max_output_tokens": 2000,  # Increased from 1000 for complete responses
+                                "max_output_tokens": 8000,  # Increased for comprehensive chat responses
                             },
                         ),
                         timeout=30.0,
@@ -1358,7 +1358,7 @@ Be specific, cite numbers, and reference actual insiders and companies."""
                                 {"role": "user", "content": question},
                             ],
                             temperature=0.2,  # Very low temperature for maximum precision
-                            max_tokens=2000,  # Increased from 500 to prevent truncation
+                            max_tokens=8000,  # Increased for comprehensive chat responses
                         ),
                         timeout=30.0,
                     )
@@ -1467,7 +1467,7 @@ Provide signals in JSON format."""
                         full_prompt,
                         generation_config={
                             "temperature": 0.3,
-                            "max_output_tokens": 2000,
+                            "max_output_tokens": 8000,  # Increased for detailed signal analysis
                         },
                     )
                     ai_signals = self._parse_json_response(response.text)
@@ -1483,7 +1483,7 @@ Provide signals in JSON format."""
                             {"role": "user", "content": user_prompt},
                         ],
                         temperature=0.3,
-                        max_tokens=2000,
+                        max_tokens=8000,  # Increased for detailed signal analysis
                         response_format={"type": "json_object"},
                     )
                     ai_signals = self._parse_json_response(
