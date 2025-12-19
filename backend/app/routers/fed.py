@@ -5,7 +5,7 @@ Endpoints for FED meetings, rate decisions, and economic indicators.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, Query, Request, HTTPException
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -139,7 +139,7 @@ async def get_economic_indicators(
                 status_code=503,
                 detail="Economic indicators data unavailable. Cache empty or FRED_API_KEY not configured for background tasks.",
             )
-        return {"indicators": indicators, "last_updated": datetime.utcnow().isoformat()}
+        return {"indicators": indicators, "last_updated": datetime.now(timezone.utc).isoformat()}
     except HTTPException:
         raise
     except Exception as e:
