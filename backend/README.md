@@ -261,8 +261,13 @@ backend/
 ## Background Tasks (Celery)
 
 ### SEC Tasks (`tasks/sec_tasks.py`)
-- `scrape_form4_filings` - Scrape SEC Form 4 filings
-- `process_form4_document` - Parse individual Form 4
+- `scrape_all_active_companies_form4_filings` - Automated scraping (every 2 hours at 0,4,8,12,16,20)
+- `scrape_recent_form4_filings` - Scrape SEC Form 4 filings for specific company
+- `process_form4_document` - Parse individual Form 4 with priority routing
+- **Priority System**: Recent filings (≤7 days) get priority 9, medium (8-30 days) priority 5, historical priority 0
+- **Race Condition Protection**: PostgreSQL INSERT ON CONFLICT prevents duplicates
+- **Date Filtering**: Fetches last 30 days of filings
+- **Cooldown**: 1-hour cooldown between company scrapes
 - Robust XML parsing with null checks
 - Correct Form 4 XML file detection
 
@@ -328,6 +333,14 @@ STRIPE_PRICE_ID_ENTERPRISE=price_...
 
 # SEC API
 SEC_USER_AGENT=TradeSignal/1.0 (your@email.com)
+
+# SEC Scraper Configuration
+SCRAPER_SCHEDULE_HOURS=0,4,8,12,16,20  # Run every 2-4 hours
+SCRAPER_DAYS_BACK=30                    # Fetch last 30 days
+SCRAPER_MAX_FILINGS=50                  # Max filings per company
+SCRAPER_COOLDOWN_HOURS=1                # Hours between re-scraping same company
+SCRAPER_PRIORITY_RECENT_DAYS=7          # Days for highest priority
+SCRAPER_PRIORITY_MEDIUM_DAYS=30         # Days for medium priority
 ```
 
 ### Optional
@@ -373,10 +386,11 @@ cp .env.example .env
 # Run FastAPI server
 uvicorn app.main:app --reload --port 8000
 
-# Run Celery worker (separate terminal)
-celery -A app.core.celery_app worker --loglevel=info --pool=solo
+# Run Celery worker (REQUIRED - separate terminal)
+celery -A app.core.celery_app worker --pool=solo --loglevel=info
 
-# Run Celery beat scheduler (separate terminal)
+# Run Celery beat scheduler (REQUIRED - separate terminal)
+# NOTE: Beat is required for automated scraping every 2 hours
 celery -A app.core.celery_app beat --loglevel=info
 ```
 
@@ -501,10 +515,56 @@ celery -A app.core.celery_app inspect active
 celery -A app.core.celery_app worker --loglevel=debug
 ```
 
+### Celery Beat Corruption (EOFError)
+If Celery Beat fails to start with `EOFError: Ran out of input`, the schedule database is corrupted. This commonly happens on Windows when the process terminates unexpectedly.
+
+**Automatic Recovery:**
+The scheduler now automatically detects and recovers from corruption. If it still fails, use manual cleanup:
+
+**Manual Cleanup:**
+```bash
+# Option 1: Use the cleanup script
+python scripts/cleanup_celery_beat.py
+
+# Option 2: Manually delete schedule files
+# Windows PowerShell:
+Remove-Item celerybeat-schedule* -Force
+
+# Linux/Mac:
+rm -f celerybeat-schedule*
+```
+
+After cleanup, restart Celery Beat - it will recreate the schedule files automatically.
+
 ### SEC Scraper Issues
 - Ensure `SEC_USER_AGENT` is set with valid email
 - Check rate limiting (10 requests/second max)
 - Verify Form 4 XML parsing handles null elements
+
+## Recent Improvements (Dec 2025)
+
+### Priority Queue System
+- **Smart Filing Processing**: Recent filings (last 7 days) processed before historical data
+- **Priority Levels**: 9 (recent), 5 (medium 8-30 days), 0 (historical)
+- **Race Condition Fix**: Atomic INSERT ON CONFLICT prevents duplicate processing
+- **Configurable**: Adjust priority thresholds via environment variables
+
+### IVT (Intrinsic Value Target) Integration
+- **Real Stock Prices**: Uses Yahoo Finance data via StockPriceService
+- **On-Demand Calculation**: Calculates IVT for any ticker on request
+- **Accurate Metrics**: Discount/premium percentages reflect real market data
+- **PRO Tier Feature**: Fully functional for PRO and Enterprise users
+
+### Automated SEC Scraping
+- **Schedule**: Every 2 hours at 0, 4, 8, 12, 16, 20 (configurable)
+- **Smart Cooldown**: 1-hour cooldown prevents API rate limiting
+- **Date Filtering**: Fetches only last 30 days to reduce load
+- **Monitoring**: Flower support for real-time task monitoring
+
+### Performance Optimizations
+- **32,000+ Trades**: Successfully processing large-scale historical data
+- **151 Companies**: Active monitoring across major tickers
+- **Robust Parsing**: Handles malformed XML and null values gracefully
 
 ## License
 
