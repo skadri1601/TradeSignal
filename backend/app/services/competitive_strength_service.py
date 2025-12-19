@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.models.competitive_strength import CompetitiveStrengthRating, CompetitiveStrength
+from app.services.financial_data_service import FinancialDataService
 
 logger = logging.getLogger(__name__)
 
@@ -37,30 +38,53 @@ class CompetitiveStrengthService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+        self.financial_data_service = FinancialDataService()
 
-    def calculate_competitive_strength(
+    async def calculate_competitive_strength(
         self,
         ticker: str,
-        network_effects: float = 0.0,  # 0-2 points
-        intangible_assets: float = 0.0,  # 0-2 points
-        cost_advantages: float = 0.0,  # 0-2 points
-        switching_costs: float = 0.0,  # 0-2 points
-        efficient_scale: float = 0.0,  # 0-2 points
+        network_effects: Optional[float] = None,  # 0-2 points
+        intangible_assets: Optional[float] = None,  # 0-2 points
+        cost_advantages: Optional[float] = None,  # 0-2 points
+        switching_costs: Optional[float] = None,  # 0-2 points
+        efficient_scale: Optional[float] = None,  # 0-2 points
     ) -> Dict[str, Any]:
         """
         Calculate competitive strength rating.
 
         Args:
             ticker: Stock ticker symbol
-            network_effects: Network effects score (0-2)
-            intangible_assets: Intangible assets score (0-2)
-            cost_advantages: Cost advantages score (0-2)
-            switching_costs: Switching costs score (0-2)
-            efficient_scale: Efficient scale score (0-2)
+            network_effects: Network effects score (0-2) - if None, will fetch from financial data
+            intangible_assets: Intangible assets score (0-2) - if None, will fetch from financial data
+            cost_advantages: Cost advantages score (0-2) - if None, will fetch from financial data
+            switching_costs: Switching costs score (0-2) - if None, will fetch from financial data
+            efficient_scale: Efficient scale score (0-2) - if None, will fetch from financial data
 
         Returns:
             Dictionary with competitive strength assessment
         """
+        # Fetch real financial data if components not provided
+        if any(score is None for score in [network_effects, intangible_assets, cost_advantages, switching_costs, efficient_scale]):
+            logger.info(f"Fetching financial data for competitive strength calculation: {ticker}")
+            components = await self.financial_data_service.calculate_competitive_strength_components(ticker)
+            network_effects = network_effects if network_effects is not None else components["network_effects"]
+            intangible_assets = intangible_assets if intangible_assets is not None else components["intangible_assets"]
+            cost_advantages = cost_advantages if cost_advantages is not None else components["cost_advantages"]
+            switching_costs = switching_costs if switching_costs is not None else components["switching_costs"]
+            efficient_scale = efficient_scale if efficient_scale is not None else components["efficient_scale"]
+        
+        # Validate all components are available (no hardcoded defaults)
+        if network_effects is None:
+            raise ValueError(f"Network effects score not available for {ticker}")
+        if intangible_assets is None:
+            raise ValueError(f"Intangible assets score not available for {ticker}")
+        if cost_advantages is None:
+            raise ValueError(f"Cost advantages score not available for {ticker}")
+        if switching_costs is None:
+            raise ValueError(f"Switching costs score not available for {ticker}")
+        if efficient_scale is None:
+            raise ValueError(f"Efficient scale score not available for {ticker}")
+        
         # Clamp scores to 0-2 range
         network_effects = max(0.0, min(2.0, network_effects))
         intangible_assets = max(0.0, min(2.0, intangible_assets))

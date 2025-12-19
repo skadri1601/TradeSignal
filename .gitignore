@@ -250,3 +250,4 @@ backend/celerybeat-schedule.dat
 backend/celerybeat-schedule.*
 backend/scripts/manual_scrape_test.py
 TradeSignal_deploy.md
+TradeSignal_deploy.md

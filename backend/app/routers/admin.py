@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 from app.core.security import get_current_support_or_superuser, get_current_super_admin
 from app.models.user import User
 from app.models.payment import Payment
-from app.models.subscription import Subscription
+from app.models.subscription import Subscription, SubscriptionStatus
 from app.models.contact_submission import ContactSubmission
 
 router = APIRouter()

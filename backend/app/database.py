@@ -6,6 +6,7 @@ Provides async engine, session factory, and FastAPI dependency.
 """
 
 import logging
+import os
 import socket
 import time
 from typing import AsyncGenerator
@@ -28,6 +29,22 @@ from app.utils.dns_resolver import resolve_database_url, DNSResolutionError
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+# Configure SQLAlchemy loggers to reduce verbosity
+# Only show warnings/errors, not all SQL queries
+# This prevents duplicate/verbose SQL query logs in production
+# Set SQLALCHEMY_LOG_LEVEL=DEBUG in .env if you need to see all SQL queries
+# Set SQLALCHEMY_ECHO=true in .env if you need SQL query logging (requires DEBUG log level)
+sqlalchemy_log_level = os.getenv("SQLALCHEMY_LOG_LEVEL", "WARNING").upper()
+sqlalchemy_log_level_value = getattr(logging, sqlalchemy_log_level, logging.WARNING)
+
+# Configure all SQLAlchemy loggers to reduce noise
+# This must be done before any SQLAlchemy engine is created
+for logger_name in ["sqlalchemy.engine", "sqlalchemy.pool", "sqlalchemy.dialects", "sqlalchemy.orm"]:
+    sqlalchemy_logger = logging.getLogger(logger_name)
+    sqlalchemy_logger.setLevel(sqlalchemy_log_level_value)
+    # Prevent propagation to root logger to avoid duplicate logs
+    sqlalchemy_logger.propagate = True  # Keep propagation but control level
 
 # Declarative Base for SQLAlchemy models
 Base = declarative_base()
@@ -119,8 +136,11 @@ class DatabaseManager:
                 pool_recycle_time = 60 if is_supabase else 3600  # 60 seconds for Supabase, 1 hour for direct
 
                 # Build engine arguments
+                # Disable echo to prevent verbose SQL logging (use SQLALCHEMY_LOG_LEVEL=DEBUG if needed)
+                # echo=True logs all SQL queries at INFO level, which is too verbose for production
+                echo_enabled = os.getenv("SQLALCHEMY_ECHO", "false").lower() == "true"
                 engine_args = {
-                    "echo": settings.debug,
+                    "echo": echo_enabled,  # Only enable if explicitly requested via SQLALCHEMY_ECHO=true
                     # Disable pre-ping for Supabase to reduce latency (PgBouncer handles liveness)
                     # Enable for others for safety
                     "pool_pre_ping": False if is_supabase else True,

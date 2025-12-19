@@ -94,5 +94,12 @@ class User(Base):
             return self.subscription.tier
         return None
 
+    @property
+    def subscription_tier(self) -> str:
+        """Get user's subscription tier, defaulting to 'free' if no subscription."""
+        if self.subscription:
+            return self.subscription.tier
+        return "free"
+
     def __repr__(self) -> str:
         return f"<User(id={self.id}, username={self.username}, email={self.email})>"

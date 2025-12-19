@@ -151,10 +151,10 @@ class SECClient:
         elif ticker:
             params["company"] = ticker
 
-        # Note: Not using start_date filter to avoid issues with system clock
+        # Optional: Filter filings by start date to reduce unnecessary API calls
         # SEC will return most recent filings up to 'count' limit
-        # if start_date:
-        #     params["datea"] = start_date.strftime("%Y%m%d")
+        if start_date:
+            params["datea"] = start_date.strftime("%Y%m%d")
 
         url = f"{self.EDGAR_SEARCH_URL}?{urlencode(params)}"
 

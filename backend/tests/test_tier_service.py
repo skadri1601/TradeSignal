@@ -61,8 +61,8 @@ async def test_get_tier_limits_free(test_db: AsyncSession):
     """Test free tier limits."""
     limits = await TierService.get_tier_limits(SubscriptionTier.FREE.value)
 
-    assert limits["ai_requests_per_day"] == 5
-    assert limits["alerts_max"] == 3
+    assert limits["ai_requests_limit"] == 1
+    assert limits["alerts_max"] == 2
     assert limits["real_time_updates"] is False
     assert limits["api_access"] is False
 
@@ -72,7 +72,7 @@ async def test_get_tier_limits_enterprise(test_db: AsyncSession):
     """Test enterprise tier limits."""
     limits = await TierService.get_tier_limits(SubscriptionTier.ENTERPRISE.value)
 
-    assert limits["ai_requests_per_day"] == -1  # Unlimited
+    assert limits["ai_requests_limit"] == -1  # Unlimited
     assert limits["alerts_max"] == -1  # Unlimited
     assert limits["real_time_updates"] is True
     assert limits["api_access"] is True
@@ -81,7 +81,7 @@ async def test_get_tier_limits_enterprise(test_db: AsyncSession):
 @pytest.mark.asyncio
 async def test_check_ai_limit_within_quota(test_db: AsyncSession):
     """Test AI limit check when user is within quota."""
-    # Create user with free tier (5 requests/day)
+    # Create user with free tier (1 request/day)
     user = User(
         email="ai@example.com",
         username="aiuser",
@@ -91,11 +91,11 @@ async def test_check_ai_limit_within_quota(test_db: AsyncSession):
     await test_db.commit()
     await test_db.refresh(user)
 
-    # Create usage with 3 requests (under limit)
+    # Create usage with 0 requests (under limit)
     usage = UsageTracking(
         user_id=user.id,
         date=date.today(),
-        ai_requests=3
+        ai_requests=0
     )
     test_db.add(usage)
     await test_db.commit()
@@ -108,7 +108,7 @@ async def test_check_ai_limit_within_quota(test_db: AsyncSession):
 @pytest.mark.asyncio
 async def test_check_ai_limit_exceeded(test_db: AsyncSession):
     """Test AI limit check when user exceeds quota."""
-    # Create user with free tier (5 requests/day)
+    # Create user with free tier (1 request/day)
     user = User(
         email="overlimit@example.com",
         username="overlimituser",
@@ -118,11 +118,11 @@ async def test_check_ai_limit_exceeded(test_db: AsyncSession):
     await test_db.commit()
     await test_db.refresh(user)
 
-    # Create usage with 5 requests (at limit)
+    # Create usage with 2 requests (over limit of 1)
     usage = UsageTracking(
         user_id=user.id,
         date=date.today(),
-        ai_requests=5
+        ai_requests=2
     )
     test_db.add(usage)
     await test_db.commit()
@@ -223,7 +223,7 @@ async def test_get_usage_stats(test_db: AsyncSession):
     usage = UsageTracking(
         user_id=user.id,
         date=date.today(),
-        ai_requests=10,
+        ai_requests=2,
         api_calls=50,
         alerts_triggered=5
     )
@@ -234,8 +234,9 @@ async def test_get_usage_stats(test_db: AsyncSession):
     stats = await TierService.get_usage_stats(user.id, test_db)
 
     assert stats["tier"] == SubscriptionTier.BASIC.value
-    assert stats["usage"]["ai_requests"] == 10
+    assert stats["usage"]["ai_requests"] == 2
     assert stats["usage"]["api_calls"] == 50
     assert stats["usage"]["alerts_triggered"] == 5
-    assert stats["remaining"]["ai_requests"] == 40  # Basic tier has 50/day
+    # Basic tier is mapped to Plus (20/day) internally. 20 - 2 = 18
+    assert stats["remaining"]["ai_requests"] == 18
     assert "limits" in stats

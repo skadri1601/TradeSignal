@@ -611,6 +611,12 @@ class AIService:
                     func.sum(
                         case((Trade.transaction_type == "SELL", Trade.shares), else_=0)
                     ).label("sell_volume"),
+                    func.sum(
+                        case((Trade.transaction_type == "BUY", Trade.total_value), else_=0)
+                    ).label("buy_value"),
+                    func.sum(
+                        case((Trade.transaction_type == "SELL", Trade.total_value), else_=0)
+                    ).label("sell_value"),
                 )
                 .join(Trade, Company.id == Trade.company_id)
                 .where(Trade.filing_date >= cutoff_date)
@@ -1334,7 +1340,7 @@ Be specific, cite numbers, and reference actual insiders and companies."""
                             full_prompt,
                             generation_config={
                                 "temperature": 0.2,  # Very low temperature for maximum precision
-                                "max_output_tokens": 1000,
+                                "max_output_tokens": 8000,  # Increased for comprehensive chat responses
                             },
                         ),
                         timeout=30.0,
@@ -1352,7 +1358,7 @@ Be specific, cite numbers, and reference actual insiders and companies."""
                                 {"role": "user", "content": question},
                             ],
                             temperature=0.2,  # Very low temperature for maximum precision
-                            max_tokens=500,
+                            max_tokens=8000,  # Increased for comprehensive chat responses
                         ),
                         timeout=30.0,
                     )
@@ -1379,7 +1385,7 @@ Be specific, cite numbers, and reference actual insiders and companies."""
 
         # Prepare company data with basic calculations
         company_data = []
-        for company_id, ticker, name, trade_count, buy_volume, sell_volume in companies:
+        for company_id, ticker, name, trade_count, buy_volume, sell_volume, buy_value, sell_value in companies:
             buy_vol = float(buy_volume or 0)
             sell_vol = float(sell_volume or 0)
             total_vol = buy_vol + sell_vol
@@ -1388,6 +1394,9 @@ Be specific, cite numbers, and reference actual insiders and companies."""
                 continue
 
             buy_ratio = buy_vol / total_vol if total_vol > 0 else 0
+            buy_val = float(buy_value or 0)
+            sell_val = float(sell_value or 0)
+            total_value = buy_val + sell_val
 
             company_data.append(
                 {
@@ -1396,8 +1405,9 @@ Be specific, cite numbers, and reference actual insiders and companies."""
                     "trade_count": trade_count,
                     "buy_volume": int(buy_vol),
                     "sell_volume": int(sell_vol),
-                    "buy_ratio": round(buy_ratio * 100, 1),
+                    "buy_ratio": round(buy_ratio * 100, 1),  # Already 0-100
                     "total_volume": int(total_vol),
+                    "total_value": total_value,
                 }
             )
 
@@ -1457,7 +1467,7 @@ Provide signals in JSON format."""
                         full_prompt,
                         generation_config={
                             "temperature": 0.3,
-                            "max_output_tokens": 2000,
+                            "max_output_tokens": 8000,  # Increased for detailed signal analysis
                         },
                     )
                     ai_signals = self._parse_json_response(response.text)
@@ -1473,7 +1483,7 @@ Provide signals in JSON format."""
                             {"role": "user", "content": user_prompt},
                         ],
                         temperature=0.3,
-                        max_tokens=2000,
+                        max_tokens=8000,  # Increased for detailed signal analysis
                         response_format={"type": "json_object"},
                     )
                     ai_signals = self._parse_json_response(
@@ -1500,20 +1510,24 @@ Provide signals in JSON format."""
             ticker = company["ticker"]
             ai_signal = ai_by_ticker.get(ticker, {})
 
+            # Convert buy_ratio from 0-100 to 0-1 for calculation functions
+            buy_ratio_decimal = company["buy_ratio"] / 100 if company["buy_ratio"] else 0
+            
             signals.append(
                 {
                     "ticker": ticker,
                     "company_name": company["name"],
                     "signal": ai_signal.get(
-                        "signal", self._calculate_signal(company["buy_ratio"])
+                        "signal", self._calculate_signal(buy_ratio_decimal)
                     ),
                     "strength": ai_signal.get(
-                        "strength", self._calculate_strength(company["buy_ratio"])
+                        "strength", self._calculate_strength(buy_ratio_decimal)
                     ),
                     "trade_count": company["trade_count"],
                     "buy_volume": company["buy_volume"],
                     "sell_volume": company["sell_volume"],
-                    "buy_ratio": company["buy_ratio"],
+                    "buy_ratio": company["buy_ratio"],  # Keep as 0-100 for frontend
+                    "total_value": company.get("total_value", 0),
                     "reasoning": ai_signal.get("reasoning", ""),
                 }
             )
@@ -1524,18 +1538,20 @@ Provide signals in JSON format."""
         """Fallback rule-based signal generation."""
         signals = []
         for company in companies:
-            buy_ratio = company["buy_ratio"] / 100
+            # Convert buy_ratio from 0-100 to 0-1 for calculation functions
+            buy_ratio_decimal = company["buy_ratio"] / 100 if company["buy_ratio"] else 0
 
             signals.append(
                 {
                     "ticker": company["ticker"],
                     "company_name": company["name"],
-                    "signal": self._calculate_signal(buy_ratio),
-                    "strength": self._calculate_strength(buy_ratio),
+                    "signal": self._calculate_signal(buy_ratio_decimal),
+                    "strength": self._calculate_strength(buy_ratio_decimal),
                     "trade_count": company["trade_count"],
                     "buy_volume": company["buy_volume"],
                     "sell_volume": company["sell_volume"],
-                    "buy_ratio": company["buy_ratio"],
+                    "buy_ratio": company["buy_ratio"],  # Keep as 0-100 for frontend
+                    "total_value": company.get("total_value", 0),
                     "reasoning": "",
                 }
             )

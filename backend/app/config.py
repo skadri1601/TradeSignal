@@ -189,6 +189,62 @@ class Settings(BaseSettings):
         description="Hours to wait before re-scraping same company",
         alias="SCRAPER_COOLDOWN_HOURS",
     )
+    scraper_max_companies_per_run: int = Field(
+        default=100,
+        description="Maximum number of companies to process per scraper run",
+        alias="SCRAPER_MAX_COMPANIES_PER_RUN",
+    )
+    scraper_priority_recent_days: int = Field(
+        default=7,
+        description="Days threshold for highest priority queue (recent filings)",
+        alias="SCRAPER_PRIORITY_RECENT_DAYS",
+    )
+    scraper_priority_medium_days: int = Field(
+        default=30,
+        description="Days threshold for medium priority queue",
+        alias="SCRAPER_PRIORITY_MEDIUM_DAYS",
+    )
+    
+    # Batch processing configuration
+    batch_processing_max_tickers_per_run: int = Field(
+        default=100,
+        description="Maximum tickers to process per batch run",
+        alias="BATCH_PROCESSING_MAX_TICKERS_PER_RUN",
+    )
+    batch_processing_batch_size: int = Field(
+        default=10,
+        description="Number of tickers to process in each batch",
+        alias="BATCH_PROCESSING_BATCH_SIZE",
+    )
+    batch_processing_rate_limit_delay: float = Field(
+        default=1.0,
+        description="Seconds to wait between API calls for rate limiting",
+        alias="BATCH_PROCESSING_RATE_LIMIT_DELAY",
+    )
+    
+    # Popular tickers configuration
+    popular_tickers_count: int = Field(
+        default=100,
+        description="Number of popular tickers to pre-calculate",
+        alias="POPULAR_TICKERS_COUNT",
+    )
+    popular_tickers_source: str = Field(
+        default="market_cap",
+        description="Source for popular tickers: market_cap, trade_volume, user_watchlists",
+        alias="POPULAR_TICKERS_SOURCE",
+    )
+    
+    # Cache TTLs
+    cache_competitive_strength_ttl: int = Field(
+        default=86400,
+        description="Cache TTL for competitive strength scores in seconds (24 hours)",
+        alias="CACHE_COMPETITIVE_STRENGTH_TTL",
+    )
+    cache_management_score_ttl: int = Field(
+        default=86400,
+        description="Cache TTL for management scores in seconds (24 hours)",
+        alias="CACHE_MANAGEMENT_SCORE_TTL",
+    )
 
     # Congressional Trading Configuration (Phase 7)
     congressional_scraper_enabled: bool = Field(

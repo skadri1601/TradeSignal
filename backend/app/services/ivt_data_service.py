@@ -18,6 +18,7 @@ from sqlalchemy import select
 from app.config import settings
 from app.models.company import Company
 from app.services.dcf_service import DCFService
+from app.services.stock_price_service import StockPriceService
 
 logger = logging.getLogger(__name__)
 
@@ -182,8 +183,17 @@ class IVTDataService:
             # Calculate historical CAGR (simplified)
             revenue_cagr = 0.10  # Would calculate from historical data
 
-        # Get current stock price (would fetch from stock service)
-        current_price = 100.0  # Placeholder
+        # Get current stock price from StockPriceService
+        try:
+            quote = StockPriceService.get_stock_quote(ticker)
+            current_price = quote["current_price"] if quote else None
+
+            if not current_price:
+                logger.warning(f"Could not fetch stock price for {ticker}, skipping IVT calculation")
+                return None
+        except Exception as e:
+            logger.error(f"Error fetching stock price for {ticker}: {e}")
+            return None
 
         # Calculate IVT using DCF
         ivt_result = self.dcf_service.calculate_intrinsic_value(
