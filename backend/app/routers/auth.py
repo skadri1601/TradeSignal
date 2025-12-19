@@ -666,8 +666,18 @@ async def forgot_password(
     if settings.debug:
         logger.debug(f"DEV ONLY - Reset Token: {reset_token}")
 
-    # TODO: Send email with reset link
-    # await email_service.send_password_reset_email(user.email, reset_url)
+    # Send email with reset link
+    from app.services.email_service import EmailService
+    email_result = await EmailService.send_password_reset_email(
+        email=user.email,
+        reset_token=reset_token,
+        expires_hours=1,
+    )
+    
+    if email_result.get("status") == "error":
+        logger.error(f"Failed to send password reset email to {user.email}: {email_result.get('error')}")
+    elif email_result.get("status") == "skipped":
+        logger.warning(f"Email configuration missing. Password reset token generated but email not sent for {user.email}")
 
     return {"message": "If that email exists, a password reset link has been sent."}
 

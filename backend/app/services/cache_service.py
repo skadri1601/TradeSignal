@@ -171,6 +171,8 @@ class CacheService:
             f"ts_score:{ticker}:*",
             f"management:{ticker}:*",
             f"competitive:{ticker}:*",
+            f"competitive_strength:{ticker}:*",  # Explicit pattern for competitive strength
+            f"management_score:{ticker}:*",  # Explicit pattern for management score
         ]
         
         total_deleted = 0

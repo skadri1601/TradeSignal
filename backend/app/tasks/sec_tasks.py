@@ -12,6 +12,7 @@ from app.models.trade import Trade
 from app.models.insider import Insider
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
+from sqlalchemy.dialects.postgresql import insert
 from datetime import datetime, timedelta, date
 from typing import List, Dict, Any, Optional
 import asyncio
@@ -59,10 +60,17 @@ def scrape_recent_form4_filings(company_info: Dict[str, Any]):
         company_ticker = company_info['ticker']
 
         logger.info(f"Scraping recent Form 4 filings for CIK: {cik} ({company_name}, {company_ticker})")
-        
+
         try:
-            # Fetch filings metadata
-            filings_metadata = await sec_client.fetch_recent_form4_filings(cik=cik, count=settings.scraper_max_filings)
+            # Calculate start date based on scraper_days_back config to reduce API load
+            start_date = datetime.utcnow() - timedelta(days=settings.scraper_days_back)
+
+            # Fetch filings metadata with date filter
+            filings_metadata = await sec_client.fetch_recent_form4_filings(
+                cik=cik,
+                count=settings.scraper_max_filings,
+                start_date=start_date
+            )
             
             if not filings_metadata:
                 logger.info(f"No new Form 4 filings found for {company_name} (CIK: {cik}).")
@@ -92,14 +100,45 @@ def scrape_recent_form4_filings(company_info: Dict[str, Any]):
                         continue
 
                     logger.info(f"New filing {accession_number} found for {company_name}. Enqueuing for processing.")
-                    # Enqueue task to process the document
-                    process_form4_document_task.delay(
-                        filing_url, 
-                        company_id, 
-                        cik, 
-                        company_name, 
-                        accession_number, 
-                        filing_date_str
+
+                    # Calculate filing age and route to appropriate queue with priority
+                    # Recent queue (last 30 days): High priority for AI analysis
+                    # Historical queue (older): Low priority for backfill
+                    if filing_date_str:
+                        try:
+                            filing_date = datetime.strptime(filing_date_str.split("T")[0], "%Y-%m-%d").date()
+                            days_old = (datetime.utcnow().date() - filing_date).days
+                        except (ValueError, AttributeError) as e:
+                            logger.warning(f"Invalid filing_date_str '{filing_date_str}' for {accession_number}: {e}. Routing to historical queue.")
+                            days_old = 999  # Treat as very old
+                            filing_date = None
+                    else:
+                        logger.warning(f"Missing filing_date_str for {accession_number}. Routing to historical queue.")
+                        days_old = 999  # Treat as very old
+                        filing_date = None
+
+                    # Route to appropriate queue based on age
+                    if days_old <= settings.scraper_priority_medium_days:
+                        # Recent filings: route to 'recent' queue with high priority
+                        queue_name = 'recent'
+                        if days_old <= settings.scraper_priority_recent_days:
+                            priority = 10  # Highest priority (last 7 days)
+                        else:
+                            priority = 7  # High priority (last 30 days)
+                    else:
+                        # Historical filings: route to 'historical' queue with low priority
+                        queue_name = 'historical'
+                        priority = 1  # Low priority (backfill)
+
+                    # Enqueue to appropriate queue with priority
+                    process_form4_document_task.apply_async(
+                        args=(filing_url, company_id, cik, company_name, accession_number, filing_date_str),
+                        queue=queue_name,
+                        priority=priority
+                    )
+                    logger.debug(
+                        f"Enqueued filing {accession_number} to '{queue_name}' queue "
+                        f"with priority {priority} (days_old: {days_old if filing_date_str else 'unknown'})"
                     )
                     new_filings_count += 1
 
@@ -235,7 +274,17 @@ def process_form4_document_task(
                         company = company_result.scalar_one_or_none()
                         ticker = company.ticker if company else None
                         
-                        filing_date = datetime.strptime(filing_date_str.split("T")[0], "%Y-%m-%d").date()
+                        # Handle missing filing_date_str gracefully
+                        if filing_date_str:
+                            try:
+                                filing_date = datetime.strptime(filing_date_str.split("T")[0], "%Y-%m-%d").date()
+                            except (ValueError, AttributeError) as e:
+                                logger.warning(f"Invalid filing_date_str '{filing_date_str}' for {accession_number}: {e}. Using current date.")
+                                filing_date = datetime.utcnow().date()
+                        else:
+                            logger.warning(f"Missing filing_date_str for {accession_number}. Using current date.")
+                            filing_date = datetime.utcnow().date()
+                        
                         now_naive = datetime.utcnow().replace(tzinfo=None)
                         processed_filing = ProcessedFiling(
                             accession_number=accession_number,
@@ -267,7 +316,17 @@ def process_form4_document_task(
                     company = company_result.scalar_one_or_none()
                     ticker = company.ticker if company else None
                     
-                    filing_date = datetime.strptime(filing_date_str.split("T")[0], "%Y-%m-%d").date()
+                    # Handle missing filing_date_str gracefully
+                    if filing_date_str:
+                        try:
+                            filing_date = datetime.strptime(filing_date_str.split("T")[0], "%Y-%m-%d").date()
+                        except (ValueError, AttributeError) as e:
+                            logger.warning(f"Invalid filing_date_str '{filing_date_str}' for {accession_number}: {e}. Using current date.")
+                            filing_date = datetime.utcnow().date()
+                    else:
+                        logger.warning(f"Missing filing_date_str for {accession_number}. Using current date.")
+                        filing_date = datetime.utcnow().date()
+                    
                     now_naive = datetime.utcnow().replace(tzinfo=None)
                     processed_filing = ProcessedFiling(
                         accession_number=accession_number,
@@ -292,10 +351,23 @@ def process_form4_document_task(
                 ticker = company.ticker if company else None
                 
                 # Create ProcessedFiling entry (only with fields that exist in the model)
-                filing_date = datetime.strptime(filing_date_str.split("T")[0], "%Y-%m-%d").date() # Ensure date only
+                # Handle missing filing_date_str gracefully
+                if filing_date_str:
+                    try:
+                        filing_date = datetime.strptime(filing_date_str.split("T")[0], "%Y-%m-%d").date() # Ensure date only
+                    except (ValueError, AttributeError) as e:
+                        logger.warning(f"Invalid filing_date_str '{filing_date_str}' for {accession_number}: {e}. Using current date.")
+                        filing_date = datetime.utcnow().date()
+                else:
+                    logger.warning(f"Missing filing_date_str for {accession_number}. Using current date.")
+                    filing_date = datetime.utcnow().date()
+                
                 # Use timezone-naive datetime for TIMESTAMP WITHOUT TIME ZONE columns
                 now_naive = datetime.utcnow().replace(tzinfo=None)
-                processed_filing = ProcessedFiling(
+
+                # Use INSERT ... ON CONFLICT to handle race conditions
+                # If another worker already processed this filing, skip gracefully
+                stmt = insert(ProcessedFiling).values(
                     accession_number=accession_number,
                     filing_url=filing_url,
                     filing_date=filing_date,
@@ -303,13 +375,24 @@ def process_form4_document_task(
                     trades_created=0,  # Will be updated after trades are saved
                     processed_at=now_naive,
                     created_at=now_naive,
+                ).on_conflict_do_nothing(index_elements=['accession_number'])
+
+                result = await db.execute(stmt)
+
+                # If no row was inserted, filing was already processed concurrently
+                if result.rowcount == 0:
+                    logger.info(f"Filing {accession_number} already processed by another worker. Skipping.")
+                    return
+
+                # Fetch the processed filing record
+                processed_filing_result = await db.execute(
+                    select(ProcessedFiling).filter(ProcessedFiling.accession_number == accession_number)
                 )
-                db.add(processed_filing)
-                await db.flush() # Flush to get processed_filing.id
+                processed_filing = processed_filing_result.scalar_one()
 
                 # Save trades and insiders (pass company_id, filing_date, filing_url we already have)
                 trades_count = await save_trades_and_insiders(db, processed_filing.id, parsed_data, company_id, filing_date, filing_url)
-                
+
                 # Update trades_created count
                 processed_filing.trades_created = trades_count
                 
