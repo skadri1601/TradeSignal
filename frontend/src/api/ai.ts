@@ -64,6 +64,12 @@ export interface DailySummary {
   generated_at: string;
   period: string;
   ai_overview?: string;
+  diagnostics?: {
+    total_trades_in_db?: number;
+    trades_in_last_7_days?: number;
+    trades_in_last_30_days?: number;
+    days_back_configured?: number;
+  };
 }
 
 export interface ChatResponse {
@@ -106,6 +112,15 @@ export interface TradingSignalsResponse {
   days_analyzed?: number;
   timestamp?: string;
   message?: string;
+  diagnostics?: {
+    total_trades_in_db?: number;
+    trades_in_last_7_days?: number;
+    trades_in_last_30_days?: number;
+    companies_with_trades?: number;
+    companies_meeting_criteria?: number;
+    companies_below_threshold?: number;
+    days_back_configured?: number;
+  };
 }
 
 export const aiApi = {
