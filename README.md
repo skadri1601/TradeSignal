@@ -183,7 +183,7 @@ uvicorn app.main:app --reload --port 8000
 #### Celery Worker (for background tasks)
 ```bash
 cd backend
-celery -A app.core.celery_app worker --loglevel=info --pool=solo
+celery -A app.core.celery_app worker --loglevel=info --pool=solo -n worker@%h
 ```
 
 #### Frontend
