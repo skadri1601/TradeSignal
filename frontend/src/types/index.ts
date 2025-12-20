@@ -267,3 +267,212 @@ export interface NewsResponse {
   total: number;
   limit: number;
 }
+
+// Forum Types
+export interface ForumTopic {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  is_active: boolean;
+  post_count: number;
+  last_post_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ForumPost {
+  id: number;
+  topic_id: number;
+  author_id: number;
+  title: string;
+  content: string;
+  upvotes: number;
+  downvotes: number;
+  comment_count: number;
+  view_count: number;
+  is_pinned: boolean;
+  is_locked: boolean;
+  is_deleted: boolean;
+  deleted_at: string | null;
+  spam_score: number | null;
+  is_flagged: boolean;
+  created_at: string;
+  updated_at: string;
+  last_comment_at: string | null;
+  // Optional nested details
+  topic?: ForumTopic;
+  author?: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  tags?: string[];
+}
+
+export interface ForumComment {
+  id: number;
+  post_id: number;
+  author_id: number;
+  parent_id: number | null;
+  depth: number;
+  content: string;
+  upvotes: number;
+  downvotes: number;
+  is_deleted: boolean;
+  deleted_at: string | null;
+  is_flagged: boolean;
+  created_at: string;
+  updated_at: string;
+  // Optional nested details
+  author?: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  replies?: ForumComment[];
+}
+
+export interface ForumVote {
+  id: number;
+  user_id: number;
+  post_id: number | null;
+  comment_id: number | null;
+  vote_type: 'upvote' | 'downvote';
+  created_at: string;
+}
+
+// Copy Trading Types
+export interface BrokerageAccount {
+  id: number;
+  user_id: number;
+  brokerage_name: string;
+  account_id: string;
+  account_number: string | null;
+  is_active: boolean;
+  is_verified: boolean;
+  account_balance: number | null;
+  buying_power: number | null;
+  connected_at: string;
+  last_synced_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RuleCondition {
+  id?: number;
+  type: 'insider_role' | 'trade_value' | 'trade_type' | 'ticker' | 'company_sector';
+  operator: 'equals' | 'greater_than' | 'less_than' | 'contains' | 'in';
+  value: string | number | string[];
+  logic?: 'AND' | 'OR';
+}
+
+export interface CopyTradeRule {
+  id: number;
+  user_id: number;
+  brokerage_account_id: number;
+  rule_name: string;
+  source_type: 'politician' | 'insider' | 'signal';
+  source_filter: Record<string, any> | null;
+  position_size_type: 'percentage' | 'fixed_dollar' | 'shares';
+  position_size_value: number;
+  max_position_size: number | null;
+  max_daily_trades: number | null;
+  max_daily_loss: number | null;
+  stop_loss_pct: number | null;
+  take_profit_pct: number | null;
+  is_active: boolean;
+  total_trades_executed: number;
+  total_profit_loss: number;
+  created_at: string;
+  updated_at: string;
+  // Optional nested details
+  brokerage_account?: BrokerageAccount;
+  conditions?: RuleCondition[];
+}
+
+export interface ExecutedTrade {
+  id: number;
+  copy_trade_rule_id: number;
+  brokerage_account_id: number;
+  ticker: string;
+  transaction_type: 'BUY' | 'SELL';
+  shares: number;
+  price: number;
+  total_value: number;
+  broker_order_id: string | null;
+  execution_status: 'pending' | 'filled' | 'rejected' | 'cancelled';
+  filled_at: string | null;
+  source_trade_id: number | null;
+  source_politician_trade_id: number | null;
+  created_at: string;
+}
+
+export interface CopyTradeSettings {
+  max_trade_size: number;
+  max_daily_trades: number;
+  risk_tolerance: 'conservative' | 'moderate' | 'aggressive';
+  auto_sell_on_loss_pct: number | null;
+  auto_sell_enabled: boolean;
+  notifications_enabled: boolean;
+  email_notifications: boolean;
+  push_notifications: boolean;
+}
+
+// Webhook Types
+export type WebhookEventType = 'trade_alert' | 'conversion' | 'subscription_updated' | 'user_signed_up' | 'custom';
+
+export type WebhookStatus = 'pending' | 'success' | 'failed' | 'retrying';
+
+export interface WebhookEndpoint {
+  id: number;
+  user_id: number;
+  url: string;
+  secret: string | null;
+  event_types: WebhookEventType[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  // Computed fields
+  success_rate?: number;
+  last_delivery_status?: WebhookStatus;
+  last_delivery_at?: string | null;
+}
+
+export interface WebhookDelivery {
+  id: number;
+  webhook_id: number;
+  event_type: WebhookEventType;
+  payload: Record<string, any>;
+  status: WebhookStatus;
+  response_code: number | null;
+  response_body: string | null;
+  attempts: number;
+  delivered_at: string | null;
+  created_at: string;
+}
+
+// API Key Types
+export interface APIKey {
+  id: number;
+  user_id: number;
+  name: string;
+  description: string | null;
+  key_prefix: string; // e.g., "ts_live_abc123"
+  last_used_at: string | null;
+  expires_at: string | null;
+  rate_limit: number; // requests per hour
+  permissions: ('read' | 'write' | 'delete')[];
+  usage_count: number;
+  created_at: string;
+  updated_at: string;
+  is_active: boolean;
+}
+
+export interface APIKeyUsage {
+  id: number;
+  api_key_id: number;
+  date: string; // YYYY-MM-DD
+  request_count: number;
+  created_at: string;
+}

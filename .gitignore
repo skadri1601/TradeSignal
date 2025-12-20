@@ -160,6 +160,9 @@ backend/migrations/
 
 # Claude Code settings (local)
 .claude/
+# AI task assignment files (work-in-progress)
+
+
 
 # Temporary database/test files
 .tmp_*.py
@@ -233,6 +236,7 @@ docker-compose.override.yml
 !frontend/README.md
 !backend/README.md
 !Docs/**/*.md
+vscode.md
 claudeplan*.md
 final_deploy.md
 geminiplan.md

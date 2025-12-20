@@ -32,7 +32,9 @@ class SECClient:
     
     # XML namespace URI for ATOM feeds (not an HTTP connection - this is an XML namespace identifier)
     # Note: XML namespaces use http:// URIs by convention, but these are identifiers, not actual URLs
-    ATOM_NAMESPACE_URI = "http://www.w3.org/2005/Atom"
+    # This is NOT a security issue - it's an XML namespace identifier defined by W3C specification
+    # See: https://www.w3.org/2005/Atom - this is the official IETF/W3C standard namespace URI
+    ATOM_NAMESPACE_URI = "http://www.w3.org/2005/Atom"  # nosec: B112 (XML namespace identifier, not HTTP request)
 
     # Rate limiting: 10 requests per second max
     MAX_REQUESTS_PER_SECOND = 10

@@ -59,10 +59,15 @@ const GlobalFooter = () => {
              <div className="space-y-4">
                <h4 className="font-bold text-white mb-6">Resources</h4>
                <ul className="space-y-3 text-sm text-gray-400">
+                 <li><Link to="/forum" className="hover:text-white transition-colors">Community Forum</Link></li>
+                 <li><Link to="/copy-trading" className="hover:text-white transition-colors">Copy Trading</Link></li>
                  <li><Link to="/contact" className="hover:text-white transition-colors">Contact Us</Link></li>
                  <li><Link to="/faq" className="hover:text-white transition-colors">FAQ</Link></li>
                  {isAuthenticated && (
-                   <li><Link to="/support" className="hover:text-white transition-colors">Help & Support</Link></li>
+                   <>
+                     <li><Link to="/settings" className="hover:text-white transition-colors">Settings</Link></li>
+                     <li><Link to="/support" className="hover:text-white transition-colors">Help & Support</Link></li>
+                   </>
                  )}
                </ul>
              </div>

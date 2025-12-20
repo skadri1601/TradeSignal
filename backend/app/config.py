@@ -370,6 +370,54 @@ class Settings(BaseSettings):
         alias="VAPID_SUBJECT",
     )
 
+    # OAuth & Encryption
+    token_encryption_key: str = Field(
+        default="",
+        description="Fernet encryption key for OAuth tokens (generate with: openssl rand -base64 32)",
+        alias="TOKEN_ENCRYPTION_KEY",
+    )
+
+    # Alpaca Broker Configuration
+    alpaca_oauth_client_id: str = Field(
+        default="",
+        description="Alpaca OAuth client ID",
+        alias="ALPACA_OAUTH_CLIENT_ID",
+    )
+    alpaca_oauth_client_secret: str = Field(
+        default="",
+        description="Alpaca OAuth client secret",
+        alias="ALPACA_OAUTH_CLIENT_SECRET",
+    )
+    alpaca_redirect_uri: str = Field(
+        default="http://localhost:8000/api/v1/brokerage/callback/alpaca",
+        description="Alpaca OAuth redirect URI",
+        alias="ALPACA_REDIRECT_URI",
+    )
+
+    # TD Ameritrade Broker Configuration
+    td_ameritrade_client_id: str = Field(
+        default="",
+        description="TD Ameritrade OAuth client ID",
+        alias="TD_AMERITRADE_CLIENT_ID",
+    )
+    td_ameritrade_redirect_uri: str = Field(
+        default="http://localhost:8000/api/v1/brokerage/callback/td_ameritrade",
+        description="TD Ameritrade OAuth redirect URI",
+        alias="TD_AMERITRADE_REDIRECT_URI",
+    )
+
+    # Interactive Brokers Configuration
+    ib_client_id: str = Field(
+        default="",
+        description="Interactive Brokers OAuth client ID",
+        alias="IB_CLIENT_ID",
+    )
+    ib_redirect_uri: str = Field(
+        default="http://localhost:8000/api/v1/brokerage/callback/ib",
+        description="Interactive Brokers OAuth redirect URI",
+        alias="IB_REDIRECT_URI",
+    )
+
     # Feature Flags
     enable_ai_insights: bool = Field(
         default=False,

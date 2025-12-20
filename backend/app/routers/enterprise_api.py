@@ -20,8 +20,15 @@ from sqlalchemy import select, func, desc
 from pydantic import BaseModel, Field
 
 from app.database import get_db
-from app.core.security import get_current_active_user
+from app.core.security import get_current_active_user, get_api_key_user, get_current_user_flexible
 from app.models.user import User
+from app.services.api_key_service import APIKeyService
+from app.schemas.api_key import (
+    APIKeyCreate,
+    APIKeyResponse,
+    APIKeyCreatedResponse,
+    APIKeyUsageStats,
+)
 from app.models.subscription import Subscription, SubscriptionTier
 from app.models.trade import Trade
 from app.models.company import Company
@@ -80,20 +87,14 @@ RATE_LIMITS = {
 
 
 async def get_api_user(
-    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
-    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user_flexible),
 ) -> User:
     """
-    Authenticate user via API key.
+    Authenticate user via API key or session.
 
-    For now, uses standard JWT auth. API key auth can be added later.
+    Accepts either X-API-Key header or standard JWT Bearer token.
     """
-    # TODO: Implement API key authentication
-    # For now, require standard authentication
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="API key authentication not yet implemented. Use standard JWT authentication.",
-    )
+    return user
 
 
 async def check_rate_limit(
@@ -342,4 +343,109 @@ async def delete_webhook(
 
     # TODO: Implement webhook deletion
     return {"message": "Webhook deleted", "webhook_id": webhook_id}
+
+
+# ============================================================================
+# API KEY ENDPOINTS
+# ============================================================================
+
+@router.get("/api-keys", response_model=List[APIKeyResponse])
+async def list_api_keys(
+    current_user: User = Depends(require_feature("api_access", "API access")),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    List all API keys for the current user.
+
+    Requires Enterprise tier.
+    """
+    api_key_service = APIKeyService(db)
+    keys = await api_key_service.list_user_keys(current_user.id)
+    return keys
+
+
+@router.post("/api-keys", response_model=APIKeyCreatedResponse, status_code=status.HTTP_201_CREATED)
+async def create_api_key(
+    key_data: APIKeyCreate,
+    current_user: User = Depends(require_feature("api_access", "API access")),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Create a new API key.
+
+    The plaintext key is returned only once - save it securely!
+
+    Requires Enterprise tier.
+    """
+    api_key_service = APIKeyService(db)
+
+    # Calculate expiration date
+    expires_at = None
+    if key_data.expires_in_days:
+        expires_at = datetime.utcnow() + timedelta(days=key_data.expires_in_days)
+
+    # Create API key
+    api_key, plaintext_key = await api_key_service.create_api_key(
+        user_id=current_user.id,
+        name=key_data.name,
+        description=key_data.description,
+        rate_limit=key_data.rate_limit_per_hour,
+        permissions=key_data.permissions,
+        expires_at=expires_at,
+    )
+
+    return APIKeyCreatedResponse(
+        api_key=APIKeyResponse.model_validate(api_key),
+        key=plaintext_key,
+    )
+
+
+@router.delete("/api-keys/{key_id}")
+async def revoke_api_key(
+    key_id: int,
+    current_user: User = Depends(require_feature("api_access", "API access")),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Revoke (deactivate) an API key.
+
+    Requires Enterprise tier.
+    """
+
+    api_key_service = APIKeyService(db)
+    success = await api_key_service.revoke_key(key_id, current_user.id)
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="API key not found",
+        )
+
+    return {"message": "API key revoked successfully"}
+
+
+@router.get("/api-keys/{key_id}/usage", response_model=APIKeyUsageStats)
+async def get_api_key_usage(
+    key_id: int,
+    days: int = Query(30, ge=1, le=90, description="Number of days to look back"),
+    current_user: User = Depends(require_feature("api_access", "API access")),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get usage statistics for an API key.
+
+    Requires Enterprise tier.
+    """
+
+    # Verify key belongs to user
+    api_key_service = APIKeyService(db)
+    keys = await api_key_service.list_user_keys(current_user.id)
+    if not any(k.id == key_id for k in keys):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="API key not found",
+        )
+
+    stats = await api_key_service.get_usage_stats(key_id, days)
+    return APIKeyUsageStats(**stats)
 

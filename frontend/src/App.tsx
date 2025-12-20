@@ -44,6 +44,14 @@ const SupportTicketsPage = lazy(() => import('./pages/admin/SupportTicketsPage')
 const AIInsightsPage = lazy(() => import('./pages/AIInsightsPage'));
 const PatternsPage = lazy(() => import('./pages/PatternsPage'));
 const AlertsPage = lazy(() => import('./pages/AlertsPage'));
+const ResearchDashboard = lazy(() => import('./pages/ResearchDashboard'));
+const ForumPage = lazy(() => import('./pages/ForumPage'));
+const ForumPostPage = lazy(() => import('./pages/ForumPostPage'));
+const ForumCreatePostPage = lazy(() => import('./pages/ForumCreatePostPage'));
+const CopyTradingPage = lazy(() => import('./pages/CopyTradingPage'));
+const CopyTradingRulesPage = lazy(() => import('./pages/CopyTradingRulesPage'));
+const CopyTradingAccountPage = lazy(() => import('./pages/CopyTradingAccountPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 
 // Loading skeleton component
 const PageLoader = () => (
@@ -101,10 +109,18 @@ function AppContent() {
               <Route path="/strategies" element={<ProtectedRoute redirectAdmin><StrategiesPage /></ProtectedRoute>} />
               <Route path="/patterns" element={<ProtectedRoute redirectAdmin requireTier="pro"><PatternsPage /></ProtectedRoute>} />
               <Route path="/ai-insights" element={<ProtectedRoute redirectAdmin requireTier="pro"><AIInsightsPage /></ProtectedRoute>} />
+              <Route path="/research" element={<ProtectedRoute redirectAdmin requireTier="pro"><ResearchDashboard /></ProtectedRoute>} />
               <Route path="/alerts" element={<ProtectedRoute redirectAdmin><AlertsPage /></ProtectedRoute>} />
+              <Route path="/forum" element={<ProtectedRoute redirectAdmin><ForumPage /></ProtectedRoute>} />
+              <Route path="/forum/post/:postId" element={<ProtectedRoute redirectAdmin><ForumPostPage /></ProtectedRoute>} />
+              <Route path="/forum/create" element={<ProtectedRoute redirectAdmin><ForumCreatePostPage /></ProtectedRoute>} />
+              <Route path="/copy-trading" element={<ProtectedRoute redirectAdmin requireTier="premium"><CopyTradingPage /></ProtectedRoute>} />
+              <Route path="/copy-trading/rules" element={<ProtectedRoute redirectAdmin requireTier="premium"><CopyTradingRulesPage /></ProtectedRoute>} />
+              <Route path="/copy-trading/account" element={<ProtectedRoute redirectAdmin requireTier="premium"><CopyTradingAccountPage /></ProtectedRoute>} />
               <Route path="/companies/:ticker" element={<ProtectedRoute redirectAdmin><CompanyPage /></ProtectedRoute>} />
               <Route path="/insiders/:id" element={<ProtectedRoute redirectAdmin><InsiderPage /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
               <Route path="/support" element={<ProtectedRoute><SupportPage /></ProtectedRoute>} />
               <Route path="/orders" element={<ProtectedRoute redirectAdmin><OrderHistoryPage /></ProtectedRoute>} />
               <Route path="/billing/success" element={<ProtectedRoute><BillingSuccessPage /></ProtectedRoute>} />

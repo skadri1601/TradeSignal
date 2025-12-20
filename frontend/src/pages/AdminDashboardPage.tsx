@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Users, CreditCard, Activity, Search,
-  ExternalLink, X, Mail, MessageSquare
+  ExternalLink, X, Mail
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { adminApi } from '../api/admin';

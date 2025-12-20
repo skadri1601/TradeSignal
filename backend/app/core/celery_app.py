@@ -282,6 +282,23 @@ celery_app.conf.update(
             "task": "batch_calculate_management_scores",
             "schedule": celery.schedules.crontab(minute=0, hour=4, day_of_week="sunday"),  # Sunday 4 AM UTC
         },
+        "batch-calculate-risk-levels-daily": {
+            "task": "batch_calculate_risk_levels",
+            "schedule": celery.schedules.crontab(minute=0, hour=4),  # 4 AM UTC daily
+        },
+        # Copy Trading Automation (Phase 3)
+        "sync-brokerage-accounts": {
+            "task": "sync_brokerage_accounts",
+            "schedule": celery.schedules.crontab(minute="*/5"),  # Every 5 minutes
+        },
+        "refresh-broker-tokens": {
+            "task": "refresh_broker_tokens",
+            "schedule": celery.schedules.crontab(hour="*/6"),  # Every 6 hours
+        },
+        "monitor-executed-trades": {
+            "task": "monitor_executed_trades",
+            "schedule": celery.schedules.crontab(minute="*/2"),  # Every 2 minutes
+        },
     },
 )
 

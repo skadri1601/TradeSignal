@@ -8,7 +8,7 @@ import logging
 import json
 import time
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import wraps
 
 from prometheus_client import Counter, Histogram, Gauge
@@ -78,7 +78,7 @@ class StructuredLogger:
     def _log(self, level: str, message: str, **kwargs):
         """Log with structured JSON format."""
         log_entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": level,
             "message": message,
             "service": "tradesignal-backend",
@@ -119,7 +119,7 @@ def trace_function(operation: str, table: Optional[str] = None):
                 ).observe(duration)
 
                 return result
-            except Exception as e:
+            except Exception:
                 duration = time.time() - start_time
                 database_queries_total.labels(operation=operation, table=table or "unknown").inc()
                 database_query_duration_seconds.labels(
@@ -145,7 +145,7 @@ def trace_ai_call(provider: str):
                 ai_api_duration_seconds.labels(provider=provider).observe(duration)
 
                 return result
-            except Exception as e:
+            except Exception:
                 duration = time.time() - start_time
                 ai_api_calls_total.labels(provider=provider, endpoint=func.__name__).inc()
                 ai_api_duration_seconds.labels(provider=provider).observe(duration)

@@ -141,7 +141,7 @@ export default function InsiderPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-400">Total Trades</p>
-                <p className="text-2xl font-bold text-white mt-1">{formatNumber(stats.totalTrades)}</p>
+                <p className="text-2xl font-bold text-white mt-1">{formatNumber(stats.total_trades)}</p>
               </div>
               <Activity className="h-8 w-8 text-gray-600" />
             </div>
@@ -151,7 +151,7 @@ export default function InsiderPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-400">Buy Transactions</p>
-                <p className="text-2xl font-bold text-green-400 mt-1">{formatNumber(stats.totalBuys)}</p>
+                <p className="text-2xl font-bold text-green-400 mt-1">{formatNumber(stats.total_buys)}</p>
               </div>
               <TrendingUp className="h-8 w-8 text-green-500/50" />
             </div>
@@ -161,7 +161,7 @@ export default function InsiderPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-400">Sell Transactions</p>
-                <p className="text-2xl font-bold text-red-400 mt-1">{formatNumber(stats.totalSells)}</p>
+                <p className="text-2xl font-bold text-red-400 mt-1">{formatNumber(stats.total_sells)}</p>
               </div>
               <TrendingDown className="h-8 w-8 text-red-500/50" />
             </div>
@@ -171,22 +171,22 @@ export default function InsiderPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-400">Total Buy Value</p>
-                <p className="text-2xl font-bold text-green-400 mt-1">{formatCurrencyCompact(stats.buyValue)}</p>
-                {stats.buyValue > 0 && (
-                  <p className="text-xs text-gray-500 mt-1">{stats.totalBuys} purchases</p>
+                <p className="text-2xl font-bold text-green-400 mt-1">{formatCurrencyCompact(stats.total_buy_value)}</p>
+                {stats.total_buy_value > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">{stats.total_buys} purchases</p>
                 )}
               </div>
               <DollarSign className="h-8 w-8 text-green-500/50" />
             </div>
           </div>
 
-          {stats.sellValue > 0 && (
+          {stats.total_sell_value > 0 && (
             <div className="bg-gray-900/50 backdrop-blur-sm rounded-xl border border-white/10 p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-400">Total Sell Value</p>
-                  <p className="text-2xl font-bold text-red-400 mt-1">{formatCurrencyCompact(stats.sellValue)}</p>
-                  <p className="text-xs text-gray-500 mt-1">{stats.totalSells} sales</p>
+                  <p className="text-2xl font-bold text-red-400 mt-1">{formatCurrencyCompact(stats.total_sell_value)}</p>
+                  <p className="text-xs text-gray-500 mt-1">{stats.total_sells} sales</p>
                 </div>
                 <DollarSign className="h-8 w-8 text-red-500/50" />
               </div>
@@ -204,13 +204,13 @@ export default function InsiderPage() {
               Buy vs Sell (Trade Count)
             </h2>
             <TradePieChart stats={{
-              total_trades: stats.totalTrades,
-              total_buys: stats.totalBuys,
-              total_sells: stats.totalSells,
+              total_trades: stats.total_trades,
+              total_buys: stats.total_buys,
+              total_sells: stats.total_sells,
               total_shares_traded: 0, // Not available in current stats
-              total_value: stats.totalValue,
-              total_buy_value: stats.buyValue,
-              total_sell_value: stats.sellValue,
+              total_value: stats.total_value,
+              total_buy_value: stats.total_buy_value,
+              total_sell_value: stats.total_sell_value,
               average_trade_size: 0, // Not available in current stats
               largest_trade: 0, // Not available in current stats
               most_active_company: "", // Not available in current stats
@@ -224,13 +224,13 @@ export default function InsiderPage() {
               Buy vs Sell (Dollar Volume)
             </h2>
             <TradePieChart stats={{
-              total_trades: stats.totalTrades,
-              total_buys: stats.totalBuys,
-              total_sells: stats.totalSells,
+              total_trades: stats.total_trades,
+              total_buys: stats.total_buys,
+              total_sells: stats.total_sells,
               total_shares_traded: 0, // Not available in current stats
-              total_value: stats.totalValue,
-              total_buy_value: stats.buyValue,
-              total_sell_value: stats.sellValue,
+              total_value: stats.total_value,
+              total_buy_value: stats.total_buy_value,
+              total_sell_value: stats.total_sell_value,
               average_trade_size: 0, // Not available in current stats
               largest_trade: 0, // Not available in current stats
               most_active_company: "", // Not available in current stats

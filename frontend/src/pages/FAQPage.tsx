@@ -70,7 +70,49 @@ const faqs: FAQItem[] = [
     question: 'Do limits reset daily or monthly?',
     answer: 'AI request limits reset daily at midnight UTC. Alert limits and company tracking limits are based on your subscription tier and do not reset - they are maximum concurrent limits.',
   },
+  // Data & Technology
+  {
+    category: 'Data & Technology',
+    question: 'Where do you get your insider trading data?',
+    answer: 'Our primary source is the SEC EDGAR database. We ingest Form 4 filings in near real-time directly from the source. For market data (stock prices), we use Finnhub and Alpha Vantage.',
+  },
+  {
+    category: 'Data & Technology',
+    question: 'Is the data real-time?',
+    answer: 'Yes. Insider trades appear on our platform within minutes of being filed with the SEC. Market price data may have a standard 15-minute delay depending on the exchange and your subscription tier.',
+  },
+  {
+    category: 'Data & Technology',
+    question: 'How does your AI analysis work?',
+    answer: 'We utilize LUNA, our custom-tuned Large Language Model engine based on Google Gemini and OpenAI architectures. LUNA parses the text, context, and footnotes of filings to identify non-standard transaction codes and sentiment that traditional screeners miss.',
+  },
+  {
+    category: 'Data & Technology',
+    question: 'How accurate is the Congressional trading data?',
+    answer: 'Congressional data is sourced from STOCK Act disclosures. Please note that by law, representatives have up to 45 days to report a trade, so this data is inherently delayed relative to the transaction date.',
+  },
 ];
+
+const GlossarySection = () => (
+  <div className="mt-20 border-t border-white/10 pt-16">
+    <h2 className="text-3xl font-bold text-center mb-12">Glossary of Terms</h2>
+    <div className="grid md:grid-cols-2 gap-8">
+      {[
+        { term: "SEC Form 4", def: "A document that must be filed with the SEC whenever there is a material change in the holdings of company insiders." },
+        { term: "10b5-1 Plan", def: "A pre-scheduled trading plan that allows insiders to sell a predetermined number of shares at a set time, often used to avoid accusations of insider trading." },
+        { term: "Short-Swing Profit Rule", def: "A regulation preventing insiders from profiting from short-term price swings (within 6 months), discouraging quick flips." },
+        { term: "Beneficial Owner", def: "Any person who, directly or indirectly, has the power to vote or dispose of a stock, even if they don't hold the title." },
+        { term: "Cluster Buying", def: "When multiple insiders at the same company purchase shares within a short timeframe, often considered a strong bullish signal." },
+        { term: "STOCK Act", def: "Stop Trading on Congressional Knowledge Act. A law designed to combat insider trading by members of Congress and their staff." }
+      ].map((item, i) => (
+        <div key={i} className="bg-white/5 p-6 rounded-xl border border-white/5 hover:border-purple-500/20 transition-colors">
+          <h3 className="text-lg font-bold text-white mb-2">{item.term}</h3>
+          <p className="text-sm text-gray-400 leading-relaxed">{item.def}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+);
 
 export default function FAQPage() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
@@ -157,6 +199,8 @@ export default function FAQPage() {
             </div>
           ))}
         </div>
+
+        <GlossarySection />
 
         {/* Contact Support */}
         <div className="bg-gradient-to-br from-blue-900/40 to-purple-900/40 border border-white/10 rounded-3xl p-8 text-center relative overflow-hidden">

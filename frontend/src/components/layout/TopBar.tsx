@@ -5,7 +5,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { ChevronDown, User, UserCircle, CreditCard, LogOut, MessageSquare, Zap } from 'lucide-react';
+import { ChevronDown, User, UserCircle, CreditCard, LogOut, MessageSquare, Zap, Settings } from 'lucide-react';
 import { getSubscription, getUsageStats } from '../../api/billing';
 import type { SubscriptionResponse, UsageStats } from '../../api/billing';
 
@@ -214,6 +214,19 @@ export default function TopBar() {
                   </button>
                 </>
               )}
+
+              <div className="border-t border-white/10 my-1"></div>
+
+              <button
+                onClick={() => {
+                  navigate('/settings');
+                  setIsDropdownOpen(false);
+                }}
+                className="w-full flex items-center space-x-3 px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors"
+              >
+                <Settings className="w-4 h-4 text-gray-500 group-hover:text-white" />
+                <span>Settings</span>
+              </button>
 
               <div className="border-t border-white/10 my-1"></div>
 

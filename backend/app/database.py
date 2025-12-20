@@ -5,30 +5,35 @@ Uses SQLAlchemy 2.0+ with async support (asyncpg driver).
 Provides async engine, session factory, and FastAPI dependency.
 """
 
+import asyncio
 import logging
 import os
 import socket
+import ssl
 import time
 from typing import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import HTTPException, status
-from sqlalchemy.ext.asyncio import (
+from sqlalchemy.ext.asyncio import (  # type: ignore[import-untyped]
     create_async_engine,
     AsyncSession,
     AsyncEngine,
     async_sessionmaker,
 )
-from sqlalchemy.orm import declarative_base
-from sqlalchemy.pool import NullPool, QueuePool
-from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import declarative_base  # type: ignore[import-untyped]
+from sqlalchemy.pool import NullPool, QueuePool  # type: ignore[import-untyped]
+from sqlalchemy import text  # type: ignore[import-untyped]
+from sqlalchemy.exc import SQLAlchemyError  # type: ignore[import-untyped]
 
 from app.config import settings
 from app.utils.dns_resolver import resolve_database_url, DNSResolutionError
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+# Constants for SSL error detection
+SSL_ERROR_TERMS = ['ssl', 'certificate', 'cert', 'tls', 'certificate verify', 'sslcertverificationerror']
 
 # Configure SQLAlchemy loggers to reduce verbosity
 # Only show warnings/errors, not all SQL queries
@@ -62,161 +67,147 @@ class DatabaseManager:
         self._last_connection_attempt: float = 0  # Timestamp of last connection attempt
         self._resolved_database_url: str | None = None  # Cached resolved URL
 
+    def _resolve_database_url(self) -> str:
+        """Resolve database URL with DNS resolution."""
+        try:
+            if self._resolved_database_url is None:
+                logger.info("Resolving database URL hostname...")
+                self._resolved_database_url = resolve_database_url(settings.database_url_async)
+                logger.info("✅ Database URL resolved successfully")
+            return self._resolved_database_url
+        except DNSResolutionError as dns_error:
+            logger.error(f"❌ DNS resolution failed: {dns_error}")
+            logger.warning("⚠️  Cannot create database engine - DNS resolution failed")
+            self._database_available = False
+            raise
+        except Exception as dns_error:
+            logger.error(f"❌ Unexpected error during DNS resolution: {dns_error}")
+            # Fall back to original URL if DNS resolution fails unexpectedly
+            return settings.database_url_async
+
+    def _is_supabase_connection(self) -> bool:
+        """Check if this is a Supabase connection."""
+        return "supabase.com" in settings.database_url or "supabase.co" in settings.database_url
+
+    def _create_ssl_context(self) -> ssl.SSLContext:
+        """Create and configure SSL context for Supabase connections."""
+        ssl_context = ssl.create_default_context()
+        # Explicitly set minimum protocol version to TLS 1.2 for security (S4423)
+        if hasattr(ssl, 'PROTOCOL_TLS_CLIENT'):
+            ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
+        # Explicitly enable hostname verification (S5527)
+        ssl_context.check_hostname = True
+        ssl_context.verify_mode = ssl.CERT_REQUIRED
+        
+        # Allow disabling SSL verification only for local development
+        disable_ssl_verification_env = os.getenv("DISABLE_SSL_VERIFICATION", "false").lower()
+        disable_ssl_verification = disable_ssl_verification_env == "true"
+        
+        logger.debug(
+            f"SSL configuration check: DISABLE_SSL_VERIFICATION={disable_ssl_verification_env}, "
+            f"environment={settings.environment}, will_disable={disable_ssl_verification and settings.environment in ['development', 'testing']}"
+        )
+        
+        if disable_ssl_verification and settings.environment in ["development", "testing"]:
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            logger.warning(
+                "⚠️  SSL certificate verification DISABLED for development - NOT SECURE FOR PRODUCTION. "
+                "This may be needed for corporate proxies or certificate chain issues."
+            )
+        else:
+            if settings.environment == "production":
+                logger.info("SSL configured for Supabase with full certificate verification (production mode)")
+            else:
+                logger.info("SSL configured for Supabase with certificate verification enabled")
+        
+        return ssl_context
+
+    def _build_connect_args(self, is_supabase: bool) -> dict:
+        """Build connection arguments for database engine."""
+        connect_args = {
+            "command_timeout": 60,
+            "server_settings": {
+                "application_name": "tradesignal_backend"
+            },
+            "timeout": 30,
+        }
+        
+        if is_supabase:
+            connect_args["ssl"] = self._create_ssl_context()
+            connect_args["statement_cache_size"] = 0
+            logger.info("SSL configured for Supabase (statement cache disabled for pooler compatibility)")
+        
+        return connect_args
+
+    def _determine_pool_class(self, is_supabase: bool) -> type:
+        """Determine the appropriate pool class based on database type and environment."""
+        if is_supabase:
+            return NullPool
+        return NullPool if settings.environment == "testing" else QueuePool
+
+    def _build_engine_args(
+        self, 
+        pool_class: type, 
+        connect_args: dict, 
+        is_supabase: bool
+    ) -> dict:
+        """Build engine arguments for SQLAlchemy engine creation."""
+        echo_enabled = os.getenv("SQLALCHEMY_ECHO", "false").lower() == "true"
+        pool_recycle_time = 60 if is_supabase else 3600
+        
+        engine_args = {
+            "echo": echo_enabled,
+            "pool_pre_ping": False if is_supabase else True,
+            "poolclass": pool_class,
+            "connect_args": connect_args,
+        }
+        
+        if pool_class != NullPool:
+            pool_size = 3 if is_supabase else 10
+            max_overflow = 5 if is_supabase else 20
+            engine_args["pool_size"] = pool_size
+            engine_args["max_overflow"] = max_overflow
+            engine_args["pool_recycle"] = pool_recycle_time
+            engine_args["pool_timeout"] = 30
+        
+        return engine_args
+
+    def _create_engine_with_error_handling(
+        self, 
+        database_url: str, 
+        engine_args: dict
+    ) -> AsyncEngine:
+        """Create async engine with error handling."""
+        try:
+            engine = create_async_engine(database_url, **engine_args)
+            logger.info(f"Database engine created successfully (environment: {settings.environment})")
+            return engine
+        except Exception as engine_error:
+            error_str = str(engine_error).lower()
+            if any(ssl_term in error_str for ssl_term in SSL_ERROR_TERMS):
+                logger.error(
+                    f"Database engine creation failed with SSL error: {engine_error}\n"
+                    "If you're behind a corporate proxy or experiencing certificate chain issues, "
+                    "set DISABLE_SSL_VERIFICATION=true in your .env file (development/testing only)."
+                )
+            raise
+
     def get_engine(self) -> AsyncEngine:
         if self._engine is None:
             try:
-                # Resolve DNS before creating engine
-                # This prevents DNS failures from crashing the application
-                try:
-                    if self._resolved_database_url is None:
-                        logger.info("Resolving database URL hostname...")
-                        self._resolved_database_url = resolve_database_url(settings.database_url_async)
-                        logger.info("✅ Database URL resolved successfully")
-                    database_url = self._resolved_database_url
-                except DNSResolutionError as dns_error:
-                    logger.error(f"❌ DNS resolution failed: {dns_error}")
-                    logger.warning("⚠️  Cannot create database engine - DNS resolution failed")
-                    self._database_available = False
-                    raise
-                except Exception as dns_error:
-                    logger.error(f"❌ Unexpected error during DNS resolution: {dns_error}")
-                    # Fall back to original URL if DNS resolution fails unexpectedly
-                    database_url = settings.database_url_async
-
-                # Determine pool class based on environment
-                pool_class = (
-                    NullPool if settings.environment == "testing" else QueuePool
-                )
-
-                # Determine if this is a Supabase connection (requires SSL)
-                is_supabase = "supabase.com" in settings.database_url or "supabase.co" in settings.database_url
+                database_url = self._resolve_database_url()
+                is_supabase = self._is_supabase_connection()
+                connect_args = self._build_connect_args(is_supabase)
+                pool_class = self._determine_pool_class(is_supabase)
                 
-                # Build connect_args with SSL for Supabase
-                connect_args = {
-                    "command_timeout": 60,  # Increased to 60s to prevent timeouts on heavy loads
-                    "server_settings": {
-                        "application_name": "tradesignal_backend"
-                    },
-                    "timeout": 30,  # Connection timeout
-                }
-                
-                # Add SSL for Supabase connections
                 if is_supabase:
-                    import ssl
-                    # Create SSL context with proper certificate verification
-                    # Supabase uses valid certificates that should be in Python's trust store
-                    ssl_context = ssl.create_default_context()
-                    
-                    # Allow disabling SSL verification only for local development via environment variable
-                    # SECURITY WARNING: Never disable SSL verification in production
-                    # This can help with corporate proxies, self-signed certificates, or certificate chain issues
-                    disable_ssl_verification_env = os.getenv("DISABLE_SSL_VERIFICATION", "false").lower()
-                    disable_ssl_verification = disable_ssl_verification_env == "true"
-                    
-                    logger.debug(
-                        f"SSL configuration check: DISABLE_SSL_VERIFICATION={disable_ssl_verification_env}, "
-                        f"environment={settings.environment}, will_disable={disable_ssl_verification and settings.environment in ['development', 'testing']}"
-                    )
-                    
-                    if disable_ssl_verification and settings.environment in ["development", "testing"]:
-                        # Only allow disabling verification in development/testing environments
-                        ssl_context.check_hostname = False
-                        ssl_context.verify_mode = ssl.CERT_NONE
-                        logger.warning(
-                            "⚠️  SSL certificate verification DISABLED for development - NOT SECURE FOR PRODUCTION. "
-                            "This may be needed for corporate proxies or certificate chain issues."
-                        )
-                    else:
-                        # Enable proper SSL verification (default and required for production)
-                        ssl_context.check_hostname = True
-                        ssl_context.verify_mode = ssl.CERT_REQUIRED
-                        # Try to handle certificate chain issues more gracefully
-                        # Some environments may have incomplete certificate chains
-                        try:
-                            # Test if we can create the context successfully
-                            # This will raise an error if there are fundamental SSL issues
-                            pass  # Context creation already happened above
-                        except Exception as ssl_error:
-                            logger.error(
-                                f"SSL context creation failed: {ssl_error}. "
-                                "If you're behind a corporate proxy or have certificate chain issues, "
-                                "set DISABLE_SSL_VERIFICATION=true in your .env (development only)."
-                            )
-                            raise
-                        
-                        if settings.environment == "production":
-                            logger.info("SSL configured for Supabase with full certificate verification (production mode)")
-                        else:
-                            logger.info("SSL configured for Supabase with certificate verification enabled")
-                    
-                    connect_args["ssl"] = ssl_context
-                    # Disable prepared statements for Supabase transaction pooler compatibility
-                    connect_args["statement_cache_size"] = 0
-                    logger.info("SSL configured for Supabase (statement cache disabled for pooler compatibility)")
-                
-                # Configure pool size based on database type
-                # Supabase Session/Transaction mode has connection limits
-                if is_supabase:
-                    # CRITICAL FIX: Use NullPool for Supabase to avoid "MaxClientsInSessionMode" error
-                    # NullPool creates a new connection per request and closes it immediately
-                    # This prevents exhausting the Supabase pooler's connection limit
-                    # Session mode has strict max_clients limit tied to pool_size
-                    pool_class = NullPool
-                    # Add statement_cache_size=0 to ensure asyncpg doesn't cache statements
-                    connect_args["statement_cache_size"] = 0
                     logger.info("Using Supabase-optimized configuration (NullPool for Session mode compatibility, no statement cache)")
-                else:
-                    pool_class = (
-                        NullPool if settings.environment == "testing" else QueuePool
-                    )
-                    pool_size = 10  # Standard pool size for direct PostgreSQL
-                    max_overflow = 20  # Allow additional burst connections
-
-                # Create async engine with asyncpg driver
-                # For Supabase, connections are recycled more frequently to avoid prepared statement conflicts
-                pool_recycle_time = 60 if is_supabase else 3600  # 60 seconds for Supabase, 1 hour for direct
-
-                # Build engine arguments
-                # Disable echo to prevent verbose SQL logging (use SQLALCHEMY_LOG_LEVEL=DEBUG if needed)
-                # echo=True logs all SQL queries at INFO level, which is too verbose for production
-                echo_enabled = os.getenv("SQLALCHEMY_ECHO", "false").lower() == "true"
-                engine_args = {
-                    "echo": echo_enabled,  # Only enable if explicitly requested via SQLALCHEMY_ECHO=true
-                    # Disable pre-ping for Supabase to reduce latency (PgBouncer handles liveness)
-                    # Enable for others for safety
-                    "pool_pre_ping": False if is_supabase else True,
-                    "poolclass": pool_class,
-                    "connect_args": connect_args,
-                }
-
-                # Only add pool arguments if NOT using NullPool
-                if pool_class != NullPool:
-                    engine_args["pool_size"] = pool_size if not is_supabase else 3  # Smaller pool for Supabase
-                    engine_args["max_overflow"] = max_overflow if not is_supabase else 5  # Limited overflow
-                    engine_args["pool_recycle"] = pool_recycle_time
-                    engine_args["pool_timeout"] = 30
-
-                try:
-                    self._engine = create_async_engine(
-                        database_url,  # Use resolved URL instead of settings.database_url_async
-                        **engine_args
-                    )
-                    logger.info(
-                        f"Database engine created successfully (environment: {settings.environment})"
-                    )
-                except Exception as engine_error:
-                    # Check if it's an SSL-related error
-                    error_str = str(engine_error).lower()
-                    if any(ssl_term in error_str for ssl_term in ['ssl', 'certificate', 'cert', 'tls']):
-                        logger.error(
-                            f"Database engine creation failed with SSL error: {engine_error}\n"
-                            "If you're behind a corporate proxy or experiencing certificate chain issues, "
-                            "set DISABLE_SSL_VERIFICATION=true in your .env file (development/testing only)."
-                        )
-                    raise
-                self._database_available = True  # Mark as available on success
+                
+                engine_args = self._build_engine_args(pool_class, connect_args, is_supabase)
+                self._engine = self._create_engine_with_error_handling(database_url, engine_args)
+                self._database_available = True
             except DNSResolutionError:
-                # DNS resolution failed - re-raise to prevent engine creation
                 self._database_available = False
                 raise
             except Exception as e:
@@ -248,6 +239,25 @@ class DatabaseManager:
             )
         return self._session_factory
 
+    async def _handle_session_error(self, e: Exception, session: AsyncSession | None) -> None:
+        """Handle errors in database session with appropriate logging."""
+        if session:
+            await session.rollback()
+        
+        error_str = str(e).lower()
+        is_ssl_error = any(ssl_term in error_str for ssl_term in SSL_ERROR_TERMS)
+        
+        if is_ssl_error:
+            logger.error(
+                f"Database SSL error: {e}\n"
+                "If you're behind a corporate proxy or experiencing certificate chain issues, "
+                "set DISABLE_SSL_VERIFICATION=true in your .env file (development/testing only)."
+            )
+        elif isinstance(e, SQLAlchemyError):
+            logger.error(f"Database session error: {e}")
+        else:
+            logger.error(f"Unexpected error in database session: {e}")
+
     @asynccontextmanager
     async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
         session_factory = self.get_session_factory()
@@ -261,38 +271,117 @@ class DatabaseManager:
             if session:
                 await session.rollback()
             raise
-        except SQLAlchemyError as e:
-            if session:
-                await session.rollback()
-            # Check if it's an SSL-related error
-            error_str = str(e).lower()
-            if any(ssl_term in error_str for ssl_term in ['ssl', 'certificate', 'cert', 'tls', 'certificate verify']):
-                logger.error(
-                    f"Database SSL error: {e}\n"
-                    "If you're behind a corporate proxy or experiencing certificate chain issues, "
-                    "set DISABLE_SSL_VERIFICATION=true in your .env file (development/testing only)."
-                )
-            else:
-                logger.error(f"Database session error: {e}")
-            raise
-        except Exception as e:
-            if session:
-                await session.rollback()
-            # Check if it's an SSL-related error
-            error_str = str(e).lower()
-            if any(ssl_term in error_str for ssl_term in ['ssl', 'certificate', 'cert', 'tls', 'certificate verify']):
-                logger.error(
-                    f"Database SSL error: {e}\n"
-                    "If you're behind a corporate proxy or experiencing certificate chain issues, "
-                    "set DISABLE_SSL_VERIFICATION=true in your .env file (development/testing only)."
-                )
-            else:
-                logger.error(f"Unexpected error in database session: {e}")
+        except (SQLAlchemyError, Exception) as e:
+            await self._handle_session_error(e, session)
             raise
         finally:
             # CRITICAL: Always close session to release connection back to pool (or close for NullPool)
             if session:
                 await session.close()
+
+    def _handle_dns_error(self, error: Exception) -> bool:
+        """Handle DNS resolution errors."""
+        logger.error(f"Database connection check failed (DNS): {error}")
+        logger.error("  -> DNS resolution failed. Check network connectivity and DNS settings.")
+        self._database_available = False
+        return False
+
+    def _handle_prepared_statement_error(self, error_str: str) -> bool:
+        """Handle prepared statement errors gracefully."""
+        logger.warning(
+            f"Database connection check: Prepared statement conflict detected. "
+            f"This is expected with pgbouncer in transaction mode. "
+            f"Connection may still work for actual queries. Error: {error_str}"
+        )
+        self._database_available = True
+        return True
+
+    def _handle_ssl_error(self, error_str: str, error_type_name: str | None = None) -> bool:
+        """Handle SSL-related errors."""
+        logger.error(f"Database connection check failed (SSL): {error_str}")
+        if error_type_name:
+            logger.error(f"Error type: {error_type_name}")
+        logger.error(
+            "  -> SSL certificate verification failed. This often happens when:\n"
+            "     - Behind a corporate proxy that intercepts SSL connections\n"
+            "     - Using a VPN with SSL inspection\n"
+            "     - Certificate chain issues with the database provider\n"
+            "  -> For development/testing, you can disable SSL verification by setting:\n"
+            "     DISABLE_SSL_VERIFICATION=true in your .env file\n"
+            "  -> WARNING: This is NOT secure for production environments!"
+        )
+        self._database_available = False
+        return False
+
+    def _handle_sqlalchemy_error(self, e: SQLAlchemyError) -> bool:
+        """Handle SQLAlchemy-specific errors."""
+        error_str = str(e)
+        error_lower = error_str.lower()
+        
+        if "DuplicatePreparedStatementError" in error_str or "prepared statement" in error_lower:
+            return self._handle_prepared_statement_error(error_str)
+        
+        if any(ssl_term in error_lower for ssl_term in SSL_ERROR_TERMS):
+            return self._handle_ssl_error(error_str)
+        
+        logger.error(f"Database connection check failed (SQLAlchemyError): {error_str}")
+        if "authentication" in error_lower or "password" in error_lower:
+            logger.error("  -> Authentication failed: Check username/password in DATABASE_URL")
+        elif "does not exist" in error_lower:
+            logger.error("  -> Database does not exist: Check database name in DATABASE_URL")
+        elif "could not connect" in error_lower or "connection refused" in error_lower:
+            logger.error("  -> Connection refused: Check if database server is running and host/port are correct")
+        elif "gaierror" in error_lower or "getaddrinfo" in error_lower:
+            logger.error("  -> DNS resolution failed: Check network connectivity and DNS settings")
+        
+        self._database_available = False
+        return False
+
+    def _handle_connection_exception(self, e: Exception) -> bool:
+        """Handle general exceptions during connection check."""
+        error_str = str(e)
+        error_lower = error_str.lower()
+        error_type_name = type(e).__name__
+        
+        if "DuplicatePreparedStatementError" in error_str or "prepared statement" in error_lower:
+            return self._handle_prepared_statement_error(error_str)
+        
+        if any(ssl_term in error_lower for ssl_term in SSL_ERROR_TERMS):
+            return self._handle_ssl_error(error_str, error_type_name)
+        
+        if "gaierror" in error_lower or "getaddrinfo" in error_lower:
+            return self._handle_dns_error(e)
+        
+        logger.error(f"Unexpected error during connection check: {error_str}")
+        logger.error(f"Error type: {error_type_name}")
+        self._database_available = False
+        return False
+
+    async def _test_connection_with_timeout(self, engine: AsyncEngine) -> bool:
+        """Test database connection with timeout protection."""
+        async def _connect_and_test():
+            conn = None
+            try:
+                conn = await engine.connect()
+                result = await conn.execute(text("SELECT 1"))
+                result.fetchone()
+                return True
+            finally:
+                if conn:
+                    await conn.close()
+        
+        try:
+            result = await asyncio.wait_for(_connect_and_test(), timeout=10.0)
+            if result:
+                logger.info("Database connection check: OK")
+                self._database_available = True
+            else:
+                self._database_available = False
+            return result
+        except asyncio.TimeoutError:
+            logger.warning("Database connection check timed out after 10s")
+            self._database_available = False
+            return False
 
     async def check_connection(self) -> bool:
         """
@@ -310,138 +399,18 @@ class DatabaseManager:
         self._last_connection_attempt = time.time()
 
         try:
-            import asyncio
             engine = self.get_engine()
-
-            # Create a connection with timeout protection
-            # Use raw SQL string execution to avoid prepared statements
-            async def _connect_and_test():
-                conn = None
-                try:
-                    conn = await engine.connect()
-                    # Use raw SQL execution without text() to avoid prepared statements
-                    # This is critical for Supabase with pgbouncer in transaction mode
-                    result = await conn.execute(text("SELECT 1"))
-                    # Consume the result to ensure query completes
-                    result.fetchone()  # Not async in SQLAlchemy's Result object
-                    return True
-                finally:
-                    if conn:
-                        await conn.close()
-
-            # Wrap the entire operation in a timeout
-            try:
-                result = await asyncio.wait_for(_connect_and_test(), timeout=10.0)
-                if result:
-                    logger.info("Database connection check: OK")
-                    self._database_available = True
-                else:
-                    self._database_available = False
-                return result
-            except asyncio.TimeoutError:
-                logger.warning("Database connection check timed out after 10s")
-                self._database_available = False
-                return False
+            return await self._test_connection_with_timeout(engine)
         except asyncio.CancelledError:
             logger.warning("Database connection check was cancelled")
             self._database_available = False
-            raise  # Re-raise CancelledError so it can be handled upstream
-        except DNSResolutionError as dns_error:
-            logger.error(f"Database connection check failed (DNS): {dns_error}")
-            logger.error("  -> Cannot resolve database hostname. Check network connectivity and DNS settings.")
-            self._database_available = False
-            return False
-        except socket.gaierror as dns_error:
-            logger.error(f"Database connection check failed (DNS): {dns_error}")
-            logger.error("  -> DNS resolution failed. Check network connectivity and DNS settings.")
-            self._database_available = False
-            return False
+            raise
+        except (DNSResolutionError, socket.gaierror) as dns_error:
+            return self._handle_dns_error(dns_error)
         except SQLAlchemyError as e:
-            error_str = str(e)
-            error_lower = error_str.lower()
-            
-            # Handle DuplicatePreparedStatementError gracefully
-            # This can occur with pgbouncer even with statement_cache_size=0
-            if "DuplicatePreparedStatementError" in error_str or "prepared statement" in error_lower:
-                logger.warning(
-                    f"Database connection check: Prepared statement conflict detected. "
-                    f"This is expected with pgbouncer in transaction mode. "
-                    f"Connection may still work for actual queries. Error: {error_str}"
-                )
-                # Return True since NullPool should prevent this in actual usage
-                # The connection check itself may fail, but real connections will work
-                self._database_available = True
-                return True
-            
-            # Check for SSL-related errors
-            if any(ssl_term in error_lower for ssl_term in ['ssl', 'certificate', 'cert', 'tls', 'certificate verify', 'sslcertverificationerror']):
-                logger.error(f"Database connection check failed (SSL): {error_str}")
-                logger.error(
-                    "  -> SSL certificate verification failed. This often happens when:\n"
-                    "     - Behind a corporate proxy that intercepts SSL connections\n"
-                    "     - Using a VPN with SSL inspection\n"
-                    "     - Certificate chain issues with the database provider\n"
-                    "  -> For development/testing, you can disable SSL verification by setting:\n"
-                    "     DISABLE_SSL_VERIFICATION=true in your .env file\n"
-                    "  -> WARNING: This is NOT secure for production environments!"
-                )
-                self._database_available = False
-                return False
-            
-            logger.error(f"Database connection check failed (SQLAlchemyError): {error_str}")
-            # Provide more specific error context
-            if "authentication" in error_lower or "password" in error_lower:
-                logger.error("  -> Authentication failed: Check username/password in DATABASE_URL")
-            elif "does not exist" in error_lower:
-                logger.error("  -> Database does not exist: Check database name in DATABASE_URL")
-            elif "could not connect" in error_lower or "connection refused" in error_lower:
-                logger.error("  -> Connection refused: Check if database server is running and host/port are correct")
-            elif "gaierror" in error_lower or "getaddrinfo" in error_lower:
-                logger.error("  -> DNS resolution failed: Check network connectivity and DNS settings")
-            self._database_available = False
-            return False
+            return self._handle_sqlalchemy_error(e)
         except Exception as e:
-            error_str = str(e)
-            error_type_name = type(e).__name__
-            
-            # Handle DuplicatePreparedStatementError at the Exception level too
-            if "DuplicatePreparedStatementError" in error_str or "prepared statement" in error_str.lower():
-                logger.warning(
-                    f"Database connection check: Prepared statement conflict detected. "
-                    f"This is expected with pgbouncer in transaction mode. "
-                    f"Connection may still work for actual queries. Error: {error_str}"
-                )
-                self._database_available = True
-                return True
-            
-            # Check for SSL-related errors
-            error_lower = error_str.lower()
-            if any(ssl_term in error_lower for ssl_term in ['ssl', 'certificate', 'cert', 'tls', 'certificate verify', 'sslcertverificationerror']):
-                logger.error(f"Database connection check failed (SSL): {error_str}")
-                logger.error(f"Error type: {error_type_name}")
-                logger.error(
-                    "  -> SSL certificate verification failed. This often happens when:\n"
-                    "     - Behind a corporate proxy that intercepts SSL connections\n"
-                    "     - Using a VPN with SSL inspection\n"
-                    "     - Certificate chain issues with the database provider\n"
-                    "  -> For development/testing, you can disable SSL verification by setting:\n"
-                    "     DISABLE_SSL_VERIFICATION=true in your .env file\n"
-                    "  -> WARNING: This is NOT secure for production environments!"
-                )
-                self._database_available = False
-                return False
-            
-            # Check for DNS-related errors
-            if "gaierror" in error_lower or "getaddrinfo" in error_lower:
-                logger.error(f"Database connection check failed (DNS): {error_str}")
-                logger.error("  -> DNS resolution failed. Check network connectivity and DNS settings.")
-                self._database_available = False
-                return False
-            
-            logger.error(f"Unexpected error during connection check: {error_str}")
-            logger.error(f"Error type: {error_type_name}")
-            self._database_available = False
-            return False
+            return self._handle_connection_exception(e)
 
     async def close(self) -> None:
         if self._engine is not None:

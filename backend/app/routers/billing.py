@@ -261,6 +261,9 @@ async def get_usage_stats(
         # #endregion
         logger.error(f"KeyError in get_usage_stats: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Configuration error: {str(e)}")
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
         # #region agent log
         try:
@@ -270,7 +273,19 @@ async def get_usage_stats(
         logger.error(f"[DEBUG] Exception in get_usage_stats: {type(e).__name__}: {e}", exc_info=True)
         # #endregion
         logger.error(f"Error in get_usage_stats: {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to fetch usage statistics")
+        
+        # Check if it's a database connection issue
+        error_str = str(e).lower()
+        if any(keyword in error_str for keyword in ['connection', 'database', 'unavailable', 'timeout', 'network']):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database service temporarily unavailable. Please try again later."
+            )
+        
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch usage statistics: {str(e)}"
+        )
 
 
 @router.post("/create-checkout-session")

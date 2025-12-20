@@ -2,17 +2,20 @@
 Security utilities for authentication and authorization.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Any
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Header
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional
 
 from app.config import settings
 from app.database import get_db
 from app.models.user import User
+from app.services.api_key_service import APIKeyService
+from app.models.api_key import UserAPIKey
 
 # Password hashing
 # Configure bcrypt to handle password validation properly
@@ -32,6 +35,10 @@ pwd_context = CryptContext(
 
 # OAuth2 scheme for token authentication
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.api_v1_prefix}/auth/login")
+
+# Constants
+INVALID_CREDENTIALS_MESSAGE = "Could not validate credentials"
+ERROR_INVALID_API_KEY = "Invalid API key"
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -64,13 +71,13 @@ def create_access_token(
     to_encode = data.copy()
 
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(
+        expire = datetime.now(timezone.utc) + timedelta(
             minutes=settings.access_token_expire_minutes
         )
 
-    to_encode.update({"exp": expire, "iat": datetime.utcnow()})
+    to_encode.update({"exp": expire, "iat": datetime.now(timezone.utc)})
     encoded_jwt = jwt.encode(
         to_encode, settings.secret_key, algorithm=settings.algorithm
     )
@@ -88,8 +95,8 @@ def create_refresh_token(data: dict[str, Any]) -> str:
         Encoded JWT refresh token
     """
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(days=settings.refresh_token_expire_days)
-    to_encode.update({"exp": expire, "iat": datetime.utcnow(), "type": "refresh"})
+    expire = datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)
+    to_encode.update({"exp": expire, "iat": datetime.now(timezone.utc), "type": "refresh"})
     encoded_jwt = jwt.encode(
         to_encode, settings.secret_key, algorithm=settings.algorithm
     )
@@ -114,7 +121,7 @@ def decode_token(token: str) -> dict[str, Any]:
     if not token or not isinstance(token, str):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
+            detail=INVALID_CREDENTIALS_MESSAGE,
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -123,7 +130,7 @@ def decode_token(token: str) -> dict[str, Any]:
     if len(token_parts) != 3:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
+            detail=INVALID_CREDENTIALS_MESSAGE,
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -131,7 +138,7 @@ def decode_token(token: str) -> dict[str, Any]:
     if not all(part.strip() for part in token_parts):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
+            detail=INVALID_CREDENTIALS_MESSAGE,
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -148,7 +155,7 @@ def decode_token(token: str) -> dict[str, Any]:
         logger.debug(f"JWT decode error: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
+            detail=INVALID_CREDENTIALS_MESSAGE,
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -171,7 +178,7 @@ async def get_current_user(
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
+        detail=INVALID_CREDENTIALS_MESSAGE,
         headers={"WWW-Authenticate": "Bearer"},
     )
 
@@ -220,7 +227,7 @@ async def get_current_user(
     return user
 
 
-async def get_current_admin_user(
+async def get_current_admin_user(  # noqa: S7503
     current_user: User = Depends(get_current_user),
 ) -> User:
     """
@@ -237,7 +244,7 @@ async def get_current_admin_user(
     return current_user
 
 
-async def get_current_active_user(
+async def get_current_active_user(  # noqa: S7503
     current_user: User = Depends(get_current_user),
 ) -> User:
     """
@@ -259,7 +266,7 @@ async def get_current_active_user(
     return current_user
 
 
-async def get_current_verified_user(
+async def get_current_verified_user(  # noqa: S7503
     current_user: User = Depends(get_current_active_user),
 ) -> User:
     """
@@ -282,7 +289,7 @@ async def get_current_verified_user(
     return current_user
 
 
-async def get_current_superuser(
+async def get_current_superuser(  # noqa: S7503
     current_user: User = Depends(get_current_active_user),
 ) -> User:
     """
@@ -308,7 +315,7 @@ async def get_current_superuser(
     return current_user
 
 
-async def get_current_support_or_superuser(
+async def get_current_support_or_superuser(  # noqa: S7503
     current_user: User = Depends(get_current_active_user),
 ) -> User:
     """
@@ -332,7 +339,128 @@ async def get_current_support_or_superuser(
     return current_user
 
 
-async def get_current_super_admin(
+async def get_api_key_user(
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    db: AsyncSession = Depends(get_db),
+) -> Optional[User]:
+    """
+    Validate API key from X-API-Key header and return user if valid.
+
+    Args:
+        x_api_key: API key from X-API-Key header
+        db: Database session
+
+    Returns:
+        User if valid, None if no key provided or invalid
+
+    Raises:
+        HTTPException: If key is invalid or rate limit exceeded
+    """
+    if not x_api_key:
+        return None
+
+    try:
+        api_key_service = APIKeyService(db)
+        key_record = await api_key_service.validate_api_key(x_api_key)
+
+        if not key_record:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=ERROR_INVALID_API_KEY,
+            )
+
+        # Check rate limit
+        if not await api_key_service.check_rate_limit(key_record.id):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Rate limit exceeded",
+            )
+
+        # Get user
+        from sqlalchemy import select
+        result = await db.execute(select(User).where(User.id == key_record.user_id))
+        user = result.scalar_one_or_none()
+
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=ERROR_INVALID_API_KEY,
+            )
+
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error validating API key: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=ERROR_INVALID_API_KEY,
+        )
+
+
+async def get_current_user_flexible(
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    authorization: Optional[str] = Header(None),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """
+    Accept either session auth (JWT) or API key auth.
+
+    Tries API key first, then falls back to session auth.
+
+    Args:
+        x_api_key: API key from X-API-Key header
+        authorization: Authorization header (Bearer token)
+        db: Database session
+
+    Returns:
+        Authenticated User
+
+    Raises:
+        HTTPException: If neither authentication method is valid
+    """
+    # Try API key first
+    if x_api_key:
+        try:
+            api_key_service = APIKeyService(db)
+            key_record = await api_key_service.validate_api_key(x_api_key)
+            if key_record:
+                # Check rate limit
+                if await api_key_service.check_rate_limit(key_record.id):
+                    # Get user
+                    from sqlalchemy import select
+                    result = await db.execute(select(User).where(User.id == key_record.user_id))
+                    user = result.scalar_one_or_none()
+                    if user and user.is_active:
+                        return user
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                        detail="Rate limit exceeded",
+                    )
+        except HTTPException:
+            raise
+        except Exception:
+            pass  # Fall through to session auth
+
+    # Fall back to session auth
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.replace("Bearer ", "")
+        try:
+            return await get_current_user(token, db)
+        except HTTPException:
+            pass
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Not authenticated",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+async def get_current_super_admin(  # noqa: S7503
     current_user: User = Depends(get_current_active_user),
 ) -> User:
     """

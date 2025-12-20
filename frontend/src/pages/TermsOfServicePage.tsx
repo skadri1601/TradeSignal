@@ -1,4 +1,3 @@
-import React from 'react';
 import LegalHeroSection from '../components/legal/LegalHeroSection';
 import LegalContentSection from '../components/legal/LegalContentSection';
 import Section from '../components/legal/Section';

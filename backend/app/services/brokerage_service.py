@@ -6,6 +6,7 @@ OAuth with broker APIs, account linking, trade execution, copy trading.
 
 import logging
 from typing import Dict, Any, Optional, List
+from decimal import Decimal
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
@@ -15,6 +16,8 @@ from app.models.brokerage import (
     CopyTradeRule,
     ExecutedTrade,
 )
+from app.services.broker_clients import get_broker_client
+from app.services.oauth_service import oauth_service
 
 logger = logging.getLogger(__name__)
 
@@ -90,23 +93,22 @@ class BrokerageService:
 
     async def _fetch_account_info(self, account: BrokerageAccount) -> Optional[Dict[str, Any]]:
         """
-        Fetch account information from brokerage API.
-
-        Would integrate with actual broker APIs (Alpaca, TD Ameritrade, etc.)
+        Fetch account information from brokerage API using broker clients.
         """
-        # Placeholder - would make actual API call
-        # Example for Alpaca:
-        # async with httpx.AsyncClient() as client:
-        #     response = await client.get(
-        #         "https://api.alpaca.markets/v2/account",
-        #         headers={"Authorization": f"Bearer {account.access_token}"}
-        #     )
-        #     return response.json()
+        try:
+            # Decrypt access token
+            access_token = oauth_service.encryption.decrypt(account.access_token)
 
-        return {
-            "balance": 10000.0,
-            "buying_power": 20000.0,
-        }
+            # Get broker client
+            broker_client = get_broker_client(account.broker, access_token)
+
+            # Fetch account info
+            account_info = await broker_client.get_account_info()
+
+            return account_info
+        except Exception as e:
+            logger.error(f"Error fetching account info for {account.broker}: {e}")
+            return None
 
     async def create_copy_trade_rule(
         self,
@@ -183,8 +185,8 @@ class BrokerageService:
         # Calculate position size
         shares, total_value = await self._calculate_position_size(rule, account, ticker)
 
-        # Get current price (would fetch from broker API)
-        current_price = await self._get_current_price(ticker)
+        # Get current price from broker API
+        current_price = await self._get_current_price(account, ticker)
 
         # Create executed trade record
         executed_trade = ExecutedTrade(
@@ -205,20 +207,25 @@ class BrokerageService:
         # Execute trade via broker API
         try:
             order_result = await self._place_broker_order(
-                account, ticker, transaction_type, shares
+                account, ticker, transaction_type, Decimal(str(shares))
             )
 
-            if order_result.get("status") == "filled":
+            status = order_result.get("status", "pending")
+            if status == "filled":
                 executed_trade.execution_status = "filled"
-                executed_trade.broker_order_id = order_result.get("order_id")
+                executed_trade.broker_order_id = order_result.get("broker_order_id")
                 executed_trade.filled_at = datetime.utcnow()
-                executed_trade.price = order_result.get("fill_price", current_price)
+                filled_price = order_result.get("filled_price")
+                executed_trade.price = filled_price if filled_price else current_price
 
                 # Update rule statistics
                 rule.total_trades_executed += 1
+            elif status == "pending":
+                executed_trade.execution_status = "pending"
+                executed_trade.broker_order_id = order_result.get("broker_order_id")
             else:
                 executed_trade.execution_status = "rejected"
-                executed_trade.broker_order_id = order_result.get("order_id")
+                executed_trade.broker_order_id = order_result.get("broker_order_id")
 
         except Exception as e:
             logger.error(f"Error executing copy trade: {e}", exc_info=True)
@@ -243,58 +250,73 @@ class BrokerageService:
         elif rule.position_size_type == "fixed_dollar":
             position_value = rule.position_size_value
         else:  # shares
-            # Would need current price
-            current_price = await self._get_current_price(ticker)
-            position_value = rule.position_size_value * current_price
+            # Need current price
+            current_price = await self._get_current_price(account, ticker)
+            position_value = float(rule.position_size_value) * float(current_price)
 
         # Apply max position size limit
         if rule.max_position_size:
             position_value = min(position_value, float(rule.max_position_size))
 
         # Get current price
-        current_price = await self._get_current_price(ticker)
-        shares = position_value / current_price if current_price > 0 else 0
+        current_price = await self._get_current_price(account, ticker)
+        shares = position_value / float(current_price) if current_price > 0 else 0
 
         return shares, position_value
 
-    async def _get_current_price(self, ticker: str) -> float:
-        """Get current stock price (would fetch from broker API)."""
-        # Placeholder - would fetch from broker API
-        return 100.0
+    async def _get_current_price(self, account: BrokerageAccount, ticker: str) -> Decimal:
+        """Get current stock price from broker API."""
+        try:
+            # Decrypt access token
+            access_token = oauth_service.encryption.decrypt(account.access_token)
+
+            # Get broker client
+            broker_client = get_broker_client(account.broker, access_token)
+
+            # Get current price
+            price = await broker_client.get_current_price(ticker)
+
+            return price
+        except Exception as e:
+            logger.error(f"Error fetching price for {ticker} from {account.broker}: {e}")
+            raise ValueError(f"Could not fetch price for {ticker}")
 
     async def _place_broker_order(
         self,
         account: BrokerageAccount,
         ticker: str,
         transaction_type: str,
-        shares: float,
+        shares: Decimal,
+        order_type: str = "market",
+        limit_price: Optional[Decimal] = None,
+        stop_price: Optional[Decimal] = None,
+        time_in_force: str = "day",
     ) -> Dict[str, Any]:
         """
-        Place order via broker API.
-
-        Would integrate with actual broker APIs.
+        Place order via broker API using broker clients.
         """
-        # Placeholder - would make actual API call
-        # Example for Alpaca:
-        # async with httpx.AsyncClient() as client:
-        #     response = await client.post(
-        #         "https://api.alpaca.markets/v2/orders",
-        #         headers={"Authorization": f"Bearer {account.access_token}"},
-        #         json={
-        #             "symbol": ticker,
-        #             "qty": shares,
-        #             "side": transaction_type.lower(),
-        #             "type": "market",
-        #             "time_in_force": "day"
-        #         }
-        #     )
-        #     return response.json()
+        try:
+            # Decrypt access token
+            access_token = oauth_service.encryption.decrypt(account.access_token)
 
-        return {
-            "status": "filled",
-            "order_id": f"order_{int(datetime.utcnow().timestamp())}",
-            "fill_price": await self._get_current_price(ticker),
-        }
+            # Get broker client
+            broker_client = get_broker_client(account.broker, access_token)
+
+            # Place order
+            order_result = await broker_client.place_order(
+                ticker=ticker,
+                side=transaction_type.lower(),  # 'buy' or 'sell'
+                quantity=shares,
+                order_type=order_type,
+                limit_price=limit_price,
+                stop_price=stop_price,
+                time_in_force=time_in_force,
+            )
+
+            return order_result
+        except Exception as e:
+            logger.error(f"Error placing order for {ticker} on {account.broker}: {e}")
+            raise
 
     async def get_user_brokerage_accounts(self, user_id: int) -> List[BrokerageAccount]:
         """Get all brokerage accounts for a user."""

@@ -387,7 +387,8 @@ cp .env.example .env
 uvicorn app.main:app --reload --port 8000
 
 # Run Celery worker (REQUIRED - separate terminal)
-celery -A app.core.celery_app worker --pool=solo --loglevel=info
+# NOTE: The -n worker@%h flag ensures unique node names (prevents duplicate node warnings)
+celery -A app.core.celery_app worker --pool=solo --loglevel=info -n worker@%h
 
 # Run Celery beat scheduler (REQUIRED - separate terminal)
 # NOTE: Beat is required for automated scraping every 2 hours
@@ -511,8 +512,8 @@ redis-cli ping
 # Check worker is running
 celery -A app.core.celery_app inspect active
 
-# Check for errors in logs
-celery -A app.core.celery_app worker --loglevel=debug
+# Check for errors in logs (with unique node name)
+celery -A app.core.celery_app worker --loglevel=debug -n worker@%h
 ```
 
 ### Celery Beat Corruption (EOFError)

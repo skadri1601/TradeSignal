@@ -13,6 +13,13 @@ from app.tasks.ai_tasks import generate_daily_ai_summary_task, cache_ai_insights
 from app.tasks.ivt_tasks import calculate_ivt_for_company_task, batch_process_ivt_calculations_task
 from app.tasks.ts_score_tasks import calculate_ts_score_for_company_task, batch_update_ts_scores_task
 from app.tasks.marketing_tasks import send_campaign_email_task, process_drip_campaign_task
+from app.tasks.copy_trade_tasks import (
+    execute_copy_trade_task,
+    check_and_execute_copy_trades_task,
+    sync_brokerage_accounts_task,
+    refresh_broker_tokens_task,
+    monitor_executed_trades_task,
+)
 
 __all__ = [
     "refresh_all_quotes",
@@ -51,4 +58,9 @@ __all__ = [
     "batch_update_ts_scores_task",
     "send_campaign_email_task",
     "process_drip_campaign_task",
+    "execute_copy_trade_task",
+    "check_and_execute_copy_trades_task",
+    "sync_brokerage_accounts_task",
+    "refresh_broker_tokens_task",
+    "monitor_executed_trades_task",
 ]

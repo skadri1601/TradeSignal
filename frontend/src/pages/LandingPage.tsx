@@ -1,10 +1,7 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
-import { TrendingUp, Shield, Zap, Search, ChevronRight, ArrowRight, BarChart2, Globe, Activity, Building2 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { TrendingUp, Zap, ChevronRight, ArrowRight, Globe, Activity, Building2 } from 'lucide-react';
 
 const LandingPage = () => {
-  const { isAuthenticated } = useAuth();
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-purple-500 selection:text-white font-sans overflow-x-hidden">
@@ -29,7 +26,7 @@ const LandingPage = () => {
               </span>
             </h1>
             <p className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto leading-relaxed">
-              TradeSignal tracks congressional trades, insider moves, and institutional flows with AI-powered precision. See what the market movers are doing before the news breaks.
+              TradeSignal tracks <strong>SEC Form 4</strong> insider filings, <strong>STOCK Act</strong> congressional disclosures, and institutional flows with <strong>LUNA</strong>, our advanced AI engine. See what the market movers are doing before the news breaks.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link 
@@ -92,8 +89,8 @@ const LandingPage = () => {
                 },
                 {
                   icon: <Zap className="w-6 h-6" />,
-                  title: "AI-Powered Analysis",
-                  desc: "Our proprietary AI filters out noise to highlight high-conviction trades and anomalies."
+                  title: "LUNA Advanced AI",
+                  desc: "Our proprietary LUNA engine filters out noise to highlight high-conviction trades, sentiment anomalies, and hidden patterns."
                 }
               ].map((feature, i) => (
                 <div key={i} className="flex gap-5 p-6 rounded-2xl bg-black/40 border border-white/5 hover:border-purple-500/30 transition-all hover:bg-white/[0.02]">
@@ -106,6 +103,102 @@ const LandingPage = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works Section */}
+      <section className="py-24 bg-black relative">
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-bold mb-6">From Data to Alpha</h2>
+            <p className="text-gray-400 max-w-2xl mx-auto text-lg">
+              We process millions of regulatory filings instantly so you don't have to.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-12 relative">
+            {/* Connecting Line */}
+            <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-purple-500/0 via-purple-500/30 to-purple-500/0 z-0"></div>
+
+            {[
+              {
+                step: "01",
+                title: "Ingest",
+                desc: "We monitor SEC EDGAR, Capitol Hill disclosures, and dark pool data feeds in real-time."
+              },
+              {
+                step: "02",
+                title: "Analyze",
+                desc: "LUNA, our advanced AI, parses filings, analyzes sentiment, and identifies anomalous transaction patterns in milliseconds."
+              },
+              {
+                step: "03",
+                title: "Alert",
+                desc: "You receive instant notifications via SMS, Email, or Discord when a high-conviction trade occurs."
+              }
+            ].map((item, i) => (
+              <div key={i} className="relative z-10 text-center">
+                <div className="w-24 h-24 bg-[#0f0f1a] border border-purple-500/30 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(168,85,247,0.15)]">
+                  <span className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-br from-white to-purple-400">{item.step}</span>
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
+                <p className="text-gray-400 leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Who Uses TradeSignal */}
+      <section className="py-24 bg-[#0f0f1a]">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid md:grid-cols-2 gap-16 items-center">
+            <div>
+              <h2 className="text-3xl md:text-5xl font-bold mb-8">Built for the <br/> Modern Trader</h2>
+              <div className="space-y-8">
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-3">
+                    <span className="w-8 h-px bg-purple-500"></span> Retail Investors
+                  </h3>
+                  <p className="text-gray-400 pl-11">Level the playing field by accessing the same data institutional investors use to make decisions.</p>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-3">
+                    <span className="w-8 h-px bg-blue-500"></span> Day Traders
+                  </h3>
+                  <p className="text-gray-400 pl-11">Catch momentum shifts early by tracking real-time insider buying and selling clusters.</p>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-3">
+                    <span className="w-8 h-px bg-green-500"></span> Financial Analysts
+                  </h3>
+                  <p className="text-gray-400 pl-11">Save hours of research time with automated summaries of Form 4 filings and sentiment analysis.</p>
+                </div>
+              </div>
+            </div>
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-blue-500/10 blur-3xl -z-10" />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-black/50 p-6 rounded-2xl border border-white/5 mt-12">
+                  <div className="text-4xl font-bold text-white mb-1">15m+</div>
+                  <div className="text-sm text-gray-500">Filings Processed</div>
+                </div>
+                <div className="bg-black/50 p-6 rounded-2xl border border-white/5">
+                  <div className="text-4xl font-bold text-white mb-1">24/7</div>
+                  <div className="text-sm text-gray-500">Market Monitoring</div>
+                </div>
+                <div className="bg-black/50 p-6 rounded-2xl border border-white/5">
+                  <div className="text-4xl font-bold text-white mb-1">500+</div>
+                  <div className="text-sm text-gray-500">Congressional Trades</div>
+                </div>
+                <div className="bg-black/50 p-6 rounded-2xl border border-white/5 mt-[-3rem]">
+                  <div className="text-4xl font-bold text-white mb-1">92%</div>
+                  <div className="text-sm text-gray-500">Sentiment Accuracy</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
