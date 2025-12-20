@@ -24,7 +24,7 @@ export function UpgradeCTA({
   onDismiss,
   className = '',
 }: UpgradeCTAProps) {
-  const { userTier, canUpgrade } = useFeatureAccess();
+  const { canUpgrade } = useFeatureAccess();
 
   // Don't show if user already has required tier or can't upgrade
   if (!canUpgrade) {

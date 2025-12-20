@@ -22,7 +22,7 @@ export function Paywall({
   onDismiss,
   showComparison = true,
 }: PaywallProps) {
-  const { userTier, canUpgrade } = useFeatureAccess();
+  const { canUpgrade } = useFeatureAccess();
 
   const tierNames: Record<string, string> = {
     plus: 'Plus',

@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  TrendingUp, 
-  ChevronDown, 
-  LayoutDashboard, 
-  Bell, 
+import {
+  TrendingUp,
+  ChevronDown,
+  LayoutDashboard,
+  Bell,
   Zap,
   LineChart,
   Newspaper,
@@ -19,7 +19,8 @@ import {
   LogOut,
   Shield,
   Ticket,
-  Activity
+  Activity,
+  Settings
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getSubscription, getUsageStats } from '../../api/billing';
@@ -297,9 +298,15 @@ const DashboardNavbar = () => {
                                             </button>
                                         </>
                                     )}
-                                    
+
                                     <div className="h-px bg-white/5 my-1 mx-2"></div>
-                                    
+
+                                    <button onClick={() => navigate('/settings')} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors">
+                                        <Settings className="w-4 h-4" /> Settings
+                                    </button>
+
+                                    <div className="h-px bg-white/5 my-1 mx-2"></div>
+
                                     <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10 rounded-xl transition-colors">
                                         <LogOut className="w-4 h-4" /> Log Out
                                     </button>

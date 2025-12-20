@@ -23,7 +23,7 @@ interface TierComparisonTableProps {
 
 export function TierComparisonTable({
   features,
-  showCurrentTier = true,
+  showCurrentTier: _showCurrentTier = true,
   onUpgrade,
 }: TierComparisonTableProps) {
   const { userTier } = useFeatureAccess();
