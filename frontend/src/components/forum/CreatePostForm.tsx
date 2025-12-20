@@ -111,12 +111,19 @@ export default function CreatePostForm({
   };
 
   // Simple markdown preview
+  // Input length limit to prevent ReDoS attacks
+  const MAX_PREVIEW_LENGTH = 50000;
   const renderPreview = (text: string) => {
-    let html = text
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      .replace(/`(.+?)`/g, '<code class="bg-black/30 px-1 py-0.5 rounded text-purple-300">$1</code>')
-      .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" class="text-purple-400 hover:underline">$1</a>')
+    // Truncate input to prevent ReDoS attacks
+    const safeText = text.length > MAX_PREVIEW_LENGTH ? text.substring(0, MAX_PREVIEW_LENGTH) : text;
+    
+    // Use negated character classes to prevent catastrophic backtracking
+    // These patterns cannot backtrack because [^X]+ matches a specific character class
+    let html = safeText
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+      .replace(/`([^`]+)`/g, '<code class="bg-black/30 px-1 py-0.5 rounded text-purple-300">$1</code>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-purple-400 hover:underline">$1</a>')
       .replace(/\n/g, '<br />');
     return { __html: html };
   };
