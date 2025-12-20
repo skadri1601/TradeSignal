@@ -32,7 +32,7 @@ export default function PricingPage() {
   const [error, setError] = useState<string | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null);
-  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+  const [, setSubscriptionLoading] = useState(true);
 
   // Fetch user's current subscription
   useEffect(() => {

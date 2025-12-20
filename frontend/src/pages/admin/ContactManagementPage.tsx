@@ -4,7 +4,7 @@ import {
   Mail, Search, Filter, Eye, CheckCircle, MessageSquare,
   X, Calendar, Building, Phone, User, Globe, Lock
 } from 'lucide-react';
-import { contactsApi, ContactSubmission, ContactSubmissionDetail } from '../../api/contacts';
+import { contactsApi } from '../../api/contacts';
 import { useAuth } from '../../contexts/AuthContext';
 
 type TabType = 'public' | 'authenticated' | 'all';
@@ -18,7 +18,6 @@ function ContactDetailModal({
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
 
   const { data: contact, isLoading } = useQuery({
     queryKey: ['contact-detail', contactId],

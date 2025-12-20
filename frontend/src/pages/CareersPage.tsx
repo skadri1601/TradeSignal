@@ -1,6 +1,6 @@
 import { useState, useContext } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Briefcase, MapPin, Clock, Plus, Edit, Trash2, FileText, Send, X, TrendingUp, Users, Globe } from 'lucide-react';
+import { Briefcase, MapPin, Clock, Plus, Trash2, FileText, Send, X, TrendingUp, Users, Globe } from 'lucide-react';
 import { jobsApi, type Job, type JobCreate, type JobApplicationCreate } from '../api/jobs';
 import { AuthContext } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -418,7 +418,7 @@ export default function CareersPage() {
             {
               icon: <TrendingUp className="w-6 h-6" />,
               title: "Mission-Driven",
-              desc: "We're democratizing access to insider trading data, giving retail investors the same information as institutions."
+              desc: "We're democratizing access to financial intelligence. Help us train LUNA, our advanced AI, to give retail investors the same edge as institutions."
             },
             {
               icon: <Globe className="w-6 h-6" />,
@@ -439,6 +439,29 @@ export default function CareersPage() {
               <p className="text-gray-400 leading-relaxed">{item.desc}</p>
             </div>
           ))}
+        </div>
+
+        {/* Perks & Benefits */}
+        <div>
+          <h2 className="text-3xl font-bold text-white mb-8 text-center">Perks & Benefits</h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              { title: "Competitive Salary", desc: "Top-tier compensation packages that rival big tech." },
+              { title: "Equity Options", desc: "Own a piece of the company you're helping to build." },
+              { title: "100% Remote", desc: "Work from home, a co-working space, or a beach in Bali." },
+              { title: "Health & Wellness", desc: "Comprehensive medical, dental, and vision coverage." },
+              { title: "Home Office Stipend", desc: "$1,500 budget to set up your dream workspace." },
+              { title: "Unlimited PTO", desc: "Take time off when you need it. We trust you." },
+            ].map((perk, i) => (
+              <div key={i} className="flex items-start gap-4 p-6 rounded-xl bg-gray-900/30 border border-white/5">
+                <div className="w-2 h-2 mt-2 rounded-full bg-green-400 shrink-0 shadow-[0_0_10px_rgba(74,222,128,0.5)]"></div>
+                <div>
+                  <h3 className="font-bold text-white mb-1">{perk.title}</h3>
+                  <p className="text-sm text-gray-400">{perk.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Open Positions */}

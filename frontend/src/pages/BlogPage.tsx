@@ -1,39 +1,37 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { Calendar, User, ArrowRight, Tag } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
-// Placeholder Blog Data
+// Educational & Feature-Focused Blog Content
 const blogPosts = [
   {
     id: 1,
-    title: "TradeSignal Secures Series A Funding",
-    excerpt: "We're excited to announce our latest funding round led by top fintech investors to accelerate our mission of democratizing financial intelligence.",
-    date: "Dec 12, 2025",
-    author: "CEO",
-    category: "Company News",
-    image: "https://images.unsplash.com/photo-1553729459-efe14ef6055d?auto=format&fit=crop&q=80&w=800",
-    slug: "series-a-funding"
+    title: "Mastering SEC Form 4: A Trader's Guide",
+    excerpt: "Decode the language of insider trading. Learn the difference between Transaction Code 'P' (Purchase) and 'S' (Sale), and why clustered filing dates matter more than individual trades.",
+    date: "Dec 18, 2025",
+    author: "Research Team",
+    category: "Education",
+    image: "https://images.unsplash.com/photo-1611974765270-ca1258634369?auto=format&fit=crop&q=80&w=800",
+    slug: "mastering-sec-form-4"
   },
   {
     id: 2,
-    title: "Introducing AI-Powered Insider Insights",
-    excerpt: "Our new AI model analyzes thousands of SEC filings to give you clear, actionable summaries of insider activity.",
-    date: "Nov 28, 2025",
-    author: "Product Team",
-    category: "Product Update",
-    image: "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&q=80&w=800",
-    slug: "ai-insights-launch"
+    title: "The STOCK Act: Tracking Congressional Trades",
+    excerpt: "Members of Congress consistently beat the S&P 500. We explain how the STOCK Act mandates disclosure and how you can use our Congressional Trading feature to track their moves.",
+    date: "Dec 15, 2025",
+    author: "Policy Analyst",
+    category: "Market Analysis",
+    image: "https://images.unsplash.com/photo-1555848962-6e79363ec58f?auto=format&fit=crop&q=80&w=800",
+    slug: "stock-act-explained"
   },
   {
     id: 3,
-    title: "Understanding Form 4 Filings",
-    excerpt: "A beginner's guide to reading SEC Form 4 filings and understanding what they mean for your trading strategy.",
-    date: "Nov 15, 2025",
-    author: "Editorial Team",
-    category: "Education",
-    image: "https://images.unsplash.com/photo-1611974765270-ca1258634369?auto=format&fit=crop&q=80&w=800",
-    slug: "guide-to-form-4"
+    title: "Meet LUNA: Our Advanced AI Sentiment Engine",
+    excerpt: "TradeSignal isn't just a data feed. Discover how LUNA analyzes thousands of filings to assign 'Bullish' or 'Bearish' sentiment scores to complex transaction patterns.",
+    date: "Dec 10, 2025",
+    author: "Engineering",
+    category: "Technology",
+    image: "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&q=80&w=800",
+    slug: "ai-sentiment-engine"
   }
 ];
 
@@ -52,7 +50,7 @@ const BlogPage = () => {
             animate={{ opacity: 1, y: 0 }}
             className="text-5xl lg:text-7xl font-bold mb-6 tracking-tight"
           >
-            Latest <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">Updates</span>
+            Market <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">Insights</span>
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
@@ -60,7 +58,7 @@ const BlogPage = () => {
             transition={{ delay: 0.1 }}
             className="text-xl text-gray-400 max-w-2xl mx-auto"
           >
-            News, product updates, and insights from the TradeSignal team.
+            Educational resources, feature deep-dives, and analysis to help you trade with institutional confidence.
           </motion.p>
         </div>
       </section>
@@ -113,12 +111,12 @@ const BlogPage = () => {
                     {post.excerpt}
                   </p>
 
-                  <Link 
-                    to={`/blog/${post.slug}`} 
-                    className="inline-flex items-center gap-2 text-sm font-medium text-white group-hover:gap-3 transition-all"
+                  <button 
+                    className="inline-flex items-center gap-2 text-sm font-medium text-white group-hover:gap-3 transition-all cursor-not-allowed opacity-80"
+                    title="Coming Soon"
                   >
                     Read Article <ArrowRight className="w-4 h-4 text-purple-400" />
-                  </Link>
+                  </button>
                 </div>
               </motion.article>
             ))}
@@ -130,9 +128,9 @@ const BlogPage = () => {
       <section className="py-20 px-6">
         <div className="max-w-4xl mx-auto bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-white/10 rounded-3xl p-8 md:p-12 text-center relative overflow-hidden">
           <div className="relative z-10">
-            <h2 className="text-3xl font-bold text-white mb-4">Never Miss an Update</h2>
+            <h2 className="text-3xl font-bold text-white mb-4">Never Miss a Signal</h2>
             <p className="text-gray-400 mb-8 max-w-lg mx-auto">
-              Subscribe to our newsletter to get the latest product news and market insights delivered to your inbox.
+              Join 10,000+ traders getting weekly breakdowns of the most significant insider moves and congressional trades.
             </p>
             
             <form className="max-w-md mx-auto relative flex items-center">

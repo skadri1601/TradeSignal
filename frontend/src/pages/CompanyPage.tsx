@@ -182,7 +182,7 @@ export default function CompanyPage() {
                 patternAnalysis.trend === 'BULLISH' ? 'text-green-400' :
                 patternAnalysis.trend === 'BEARISH' ? 'text-red-400' : 'text-gray-300'
               }`}>
-                {patternAnalysis.pattern.replace('_', ' ')}
+                {patternAnalysis.pattern?.replace(/_/g, ' ') || 'N/A'}
               </p>
             </div>
             <div className="bg-white/5 rounded-lg p-4 border border-white/5">
@@ -209,7 +209,7 @@ export default function CompanyPage() {
                 patternAnalysis.recommendation === 'BUY' || patternAnalysis.recommendation === 'CONSIDER_BUY' ? 'text-green-400' :
                 patternAnalysis.recommendation === 'SELL' || patternAnalysis.recommendation === 'CONSIDER_SELL' ? 'text-red-400' : 'text-gray-300'
               }`}>
-                {patternAnalysis.recommendation.replace('_', ' ')}
+                {patternAnalysis.recommendation?.replace(/_/g, ' ') || 'N/A'}
               </p>
             </div>
             <div className="bg-white/5 rounded-lg p-4 border border-white/5">
@@ -218,13 +218,13 @@ export default function CompanyPage() {
                 <div className="w-full bg-gray-700 rounded-full h-2 mr-2">
                   <div
                     className={`h-2 rounded-full ${
-                      patternAnalysis.confidence > 0.7 ? 'bg-green-500' :
-                      patternAnalysis.confidence > 0.4 ? 'bg-yellow-500' : 'bg-red-500'
+                      (patternAnalysis.confidence ?? 0) > 0.7 ? 'bg-green-500' :
+                      (patternAnalysis.confidence ?? 0) > 0.4 ? 'bg-yellow-500' : 'bg-red-500'
                     }`}
-                    style={{ width: `${patternAnalysis.confidence * 100}%` }}
+                    style={{ width: `${((patternAnalysis.confidence ?? 0) * 100)}%` }}
                   />
                 </div>
-                <span className="text-sm font-medium text-white">{Math.round(patternAnalysis.confidence * 100)}%</span>
+                <span className="text-sm font-medium text-white">{Math.round((patternAnalysis.confidence ?? 0) * 100)}%</span>
               </div>
             </div>
           </div>
@@ -319,7 +319,7 @@ export default function CompanyPage() {
                       })}
                     </p>
                   </div>
-                  {earnings.upcoming_earnings[0] && (
+                  {earnings.upcoming_earnings?.[0] && (
                     <div className="text-right">
                       <p className="text-sm text-blue-300">Days Until</p>
                       <p className="text-2xl font-bold text-blue-100">
@@ -332,7 +332,7 @@ export default function CompanyPage() {
             )}
 
             {/* Recent Earnings History */}
-            {earnings.earnings_history.length > 0 && (
+            {earnings.earnings_history && earnings.earnings_history.length > 0 && (
               <div>
                 <h3 className="text-sm font-medium text-gray-400 mb-2">Recent Earnings History</h3>
                 <div className="overflow-x-auto">
