@@ -177,24 +177,28 @@ function WebhooksTab() {
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
         </div>
-      ) : webhooks.length === 0 ? (
-        <div className="bg-white/5 border border-white/10 rounded-lg p-12 text-center">
-          <WebhookIcon className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">
-            No webhooks configured
-          </h3>
-          <p className="text-gray-400 mb-6">
-            Get started by creating your first webhook endpoint
-          </p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Create Webhook
-          </button>
-        </div>
-      ) : (
+      ) : (() => {
+        if (webhooks.length === 0) {
+          return (
+            <div className="bg-white/5 border border-white/10 rounded-lg p-12 text-center">
+              <WebhookIcon className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-white mb-2">
+                No webhooks configured
+              </h3>
+              <p className="text-gray-400 mb-6">
+                Get started by creating your first webhook endpoint
+              </p>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Create Webhook
+              </button>
+            </div>
+          );
+        }
+        return (
         <div className="space-y-4">
           {webhooks.map((webhook) => (
             <WebhookListItem
@@ -205,7 +209,8 @@ function WebhooksTab() {
             />
           ))}
         </div>
-      )}
+        );
+      })()}
 
       {/* Create Modal */}
       {showCreateModal && (
@@ -234,9 +239,9 @@ function WebhookListItem({
   onTest,
   onViewDeliveries,
 }: {
-  webhook: Webhook;
-  onTest: () => void;
-  onViewDeliveries: () => void;
+  readonly webhook: Webhook;
+  readonly onTest: () => void;
+  readonly onViewDeliveries: () => void;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -307,8 +312,8 @@ function CreateWebhookModal({
   onClose,
   onSuccess,
 }: {
-  onClose: () => void;
-  onSuccess: () => void;
+  readonly onClose: () => void;
+  readonly onSuccess: () => void;
 }) {
   const [formData, setFormData] = useState<CreateWebhookRequest>({
     url: '',
@@ -339,10 +344,11 @@ function CreateWebhookModal({
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">
+            <label htmlFor="webhook-url" className="block text-sm font-medium text-gray-400 mb-1">
               Endpoint URL
             </label>
             <input
+              id="webhook-url"
               type="url"
               value={formData.url}
               onChange={(e) => setFormData({ ...formData, url: e.target.value })}
@@ -378,10 +384,11 @@ function CreateWebhookModal({
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">
+            <label htmlFor="webhook-secret" className="block text-sm font-medium text-gray-400 mb-1">
               Secret (Optional)
             </label>
             <input
+              id="webhook-secret"
               type="password"
               value={formData.secret}
               onChange={(e) => setFormData({ ...formData, secret: e.target.value })}
@@ -411,7 +418,7 @@ function CreateWebhookModal({
   );
 }
 
-function WebhookDeliveryHistory({ webhook, onClose }: { webhook: Webhook; onClose: () => void }) {
+function WebhookDeliveryHistory({ webhook, onClose }: { readonly webhook: Webhook; readonly onClose: () => void }) {
   const { data: deliveries = [] } = useQuery({
     queryKey: ['webhook-deliveries', webhook.id],
     queryFn: () => webhooksApi.getDeliveries(webhook.id, { limit: 50 }),
@@ -475,7 +482,7 @@ function WebhookDeliveryHistory({ webhook, onClose }: { webhook: Webhook; onClos
                       </div>
                     )}
                     <div className="text-sm text-gray-400">
-                      {delivery.attempts} attempt{delivery.attempts !== 1 ? 's' : ''}
+                      {delivery.attempts} attempt{delivery.attempts === 1 ? '' : 's'}
                     </div>
                   </div>
                 </div>
@@ -541,24 +548,28 @@ function APIKeysTab() {
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
         </div>
-      ) : apiKeys.length === 0 ? (
-        <div className="bg-white/5 border border-white/10 rounded-lg p-12 text-center">
-          <KeyIcon className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">
-            No API keys
-          </h3>
-          <p className="text-gray-400 mb-6">
-            Generate your first API key to access the TradeSignal API
-          </p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Generate API Key
-          </button>
-        </div>
-      ) : (
+      ) : (() => {
+        if (apiKeys.length === 0) {
+          return (
+            <div className="bg-white/5 border border-white/10 rounded-lg p-12 text-center">
+              <KeyIcon className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-white mb-2">
+                No API keys
+              </h3>
+              <p className="text-gray-400 mb-6">
+                Generate your first API key to access the TradeSignal API
+              </p>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Generate API Key
+              </button>
+            </div>
+          );
+        }
+        return (
         <div className="space-y-4">
           {apiKeys.map((apiKey) => (
             <APIKeyListItem
@@ -568,7 +579,8 @@ function APIKeysTab() {
             />
           ))}
         </div>
-      )}
+        );
+      })()}
 
       {/* Create Modal */}
       {showCreateModal && (
@@ -588,8 +600,8 @@ function APIKeyListItem({
   apiKey,
   onRevoke,
 }: {
-  apiKey: APIKey;
-  onRevoke: () => void;
+  readonly apiKey: APIKey;
+  readonly onRevoke: () => void;
 }) {
   const [showUsage, setShowUsage] = useState(false);
 
@@ -697,8 +709,8 @@ function CreateAPIKeyModal({
   onClose,
   onSuccess,
 }: {
-  onClose: () => void;
-  onSuccess: () => void;
+  readonly onClose: () => void;
+  readonly onSuccess: () => void;
 }) {
   const [formData, setFormData] = useState<CreateAPIKeyRequest>({
     name: '',
@@ -785,10 +797,11 @@ function CreateAPIKeyModal({
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">
+            <label htmlFor="api-key-name" className="block text-sm font-medium text-gray-400 mb-1">
               Name *
             </label>
             <input
+              id="api-key-name"
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -798,10 +811,11 @@ function CreateAPIKeyModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">
+            <label htmlFor="api-key-description" className="block text-sm font-medium text-gray-400 mb-1">
               Description
             </label>
             <textarea
+              id="api-key-description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="w-full px-3 py-2 border border-white/10 rounded-lg bg-black/40 text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -859,14 +873,15 @@ function CreateAPIKeyModal({
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">
+            <label htmlFor="api-key-rate-limit" className="block text-sm font-medium text-gray-400 mb-1">
               Rate Limit (requests/hour)
             </label>
             <input
+              id="api-key-rate-limit"
               type="number"
               value={formData.rate_limit_per_hour}
               onChange={(e) =>
-                setFormData({ ...formData, rate_limit_per_hour: parseInt(e.target.value) })
+                setFormData({ ...formData, rate_limit_per_hour: Number.parseInt(e.target.value, 10) })
               }
               className="w-full px-3 py-2 border border-white/10 rounded-lg bg-black/40 text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               min="1"
@@ -874,13 +889,14 @@ function CreateAPIKeyModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">
+            <label htmlFor="api-key-expires" className="block text-sm font-medium text-gray-400 mb-1">
               Expires In (days)
             </label>
             <select
+              id="api-key-expires"
               value={formData.expires_in_days}
               onChange={(e) =>
-                setFormData({ ...formData, expires_in_days: parseInt(e.target.value) })
+                setFormData({ ...formData, expires_in_days: Number.parseInt(e.target.value, 10) })
               }
               className="w-full px-3 py-2 border border-white/10 rounded-lg bg-black/40 text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             >
@@ -903,7 +919,7 @@ function CreateAPIKeyModal({
               disabled={createMutation.isPending}
               className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
             >
-              {createMutation.isPending ? 'Generate Key' : 'Generate Key'}
+              {createMutation.isPending ? 'Generating...' : 'Generate Key'}
             </button>
           </div>
         </form>

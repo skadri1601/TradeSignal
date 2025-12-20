@@ -4,6 +4,7 @@ Provides endpoints for forum topics, posts, comments, votes, and moderation.
 """
 
 from typing import List, Optional, Literal
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,6 +29,9 @@ from app.schemas.forum import (
 
 router = APIRouter(prefix="/api/v1/forum", tags=["forum"])
 
+# Constants
+POST_NOT_FOUND = "Post not found"
+
 
 # ============================================================================
 # TOPICS ENDPOINTS
@@ -43,8 +47,6 @@ async def get_topics(
 
     Public endpoint - no authentication required.
     """
-    forum_service = ForumService(db)
-
     # Get all topics (ForumService doesn't have a get_all method, so we'll query directly)
     from app.models.forum import ForumTopic
     from sqlalchemy import select
@@ -204,7 +206,7 @@ async def get_post(
     post = result.scalar_one_or_none()
 
     if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
+        raise HTTPException(status_code=404, detail=POST_NOT_FOUND)
 
     # Get user's vote if authenticated
     user_vote = None
@@ -331,7 +333,7 @@ async def update_post(
     post = result.scalar_one_or_none()
 
     if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
+        raise HTTPException(status_code=404, detail=POST_NOT_FOUND)
 
     # Check ownership
     if post.author_id != current_user.id:
@@ -345,7 +347,7 @@ async def update_post(
     if post_data.tags is not None:
         post.tags = post_data.tags
 
-    post.updated_at = datetime.utcnow()
+    post.updated_at = datetime.now(timezone.utc)
 
     await db.commit()
     await db.refresh(post)
@@ -393,14 +395,13 @@ async def delete_post(
     """
     from app.models.forum import ForumPost
     from sqlalchemy import select
-    from datetime import datetime
 
     # Get post
     result = await db.execute(select(ForumPost).where(ForumPost.id == post_id))
     post = result.scalar_one_or_none()
 
     if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
+        raise HTTPException(status_code=404, detail=POST_NOT_FOUND)
 
     # Check ownership or moderator status
     is_moderator = current_user.is_superuser or current_user.role in ["super_admin", "support"]
@@ -410,7 +411,7 @@ async def delete_post(
 
     # Soft delete
     post.is_deleted = True
-    post.deleted_at = datetime.utcnow()
+    post.deleted_at = datetime.now(timezone.utc)
 
     await db.commit()
 
@@ -559,7 +560,6 @@ async def delete_comment(
     """
     from app.models.forum import ForumComment
     from sqlalchemy import select
-    from datetime import datetime
 
     # Get comment
     result = await db.execute(select(ForumComment).where(ForumComment.id == comment_id))
@@ -576,7 +576,7 @@ async def delete_comment(
 
     # Soft delete
     comment.is_deleted = True
-    comment.deleted_at = datetime.utcnow()
+    comment.deleted_at = datetime.now(timezone.utc)
 
     await db.commit()
 
