@@ -38,13 +38,17 @@ def parse_ticker(ticker: str) -> str:
 
 def validate_email(email: str) -> bool:
     """Validate email address format."""
-    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    # Fixed ReDoS vulnerability - limited repetition to prevent exponential backtracking
+    # Email max: 64 chars local + 253 chars domain + 63 chars TLD (RFC 5321)
+    pattern = r"^[a-zA-Z0-9._%+-]{1,64}@[a-zA-Z0-9.-]{1,253}\.[a-zA-Z]{2,63}$"
     return bool(re.match(pattern, email))
 
 
 def validate_url(url: str) -> bool:
     """Validate URL format."""
-    pattern = r"^https?://[^\s/$.?#].[^\s]*$"
+    # Fixed ReDoS vulnerability - limited repetition to prevent exponential backtracking
+    # URL max: 256 chars per component (browser limits)
+    pattern = r"^https?://[^\s/$.?#]{1,256}\.[^\s]{2,256}$"
     return bool(re.match(pattern, url))
 
 

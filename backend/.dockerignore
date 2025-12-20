@@ -1,0 +1,79 @@
+# Environment files
+.env
+.env.local
+.env.*.local
+*.env
+
+# Git
+.git
+.gitignore
+.github
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Testing
+.pytest_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+celerybeat-schedule*
+
+# Documentation
+*.md
+!README.md
+
+# Scripts
+scripts/create_*.py
+scripts/fix_*.py
+scripts/test_*.py
+scripts/migrate_*.py
+scripts/seed_*.py
+
+# Sensitive files
+secrets/
+*.pem
+*.key
+*.crt
+
+# Build artifacts
+dist/
+build/
+*.egg
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary
+temp/
+tmp/
+*.bak
+*.tmp

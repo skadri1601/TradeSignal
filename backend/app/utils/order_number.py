@@ -5,7 +5,7 @@ Generates unique order numbers for subscriptions in the format:
 ORD-{YYYYMMDD}-{USER_ID}-{RANDOM_6_CHARS}
 """
 
-import random
+import secrets
 import string
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,8 +15,14 @@ from app.models.subscription import Subscription
 
 
 def generate_random_chars(length: int = 6) -> str:
-    """Generate random alphanumeric uppercase characters."""
-    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+    """
+    Generate cryptographically secure random alphanumeric uppercase characters.
+
+    Uses secrets module instead of random for security-sensitive order numbers.
+    The random module is NOT cryptographically secure and can be predicted.
+    """
+    alphabet = string.ascii_uppercase + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
 
 
 async def generate_order_number(user_id: int, db: AsyncSession) -> str:
