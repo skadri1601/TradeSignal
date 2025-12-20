@@ -7,7 +7,7 @@ Supports Alpaca, TD Ameritrade, and Interactive Brokers.
 
 import logging
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,6 +35,10 @@ from app.services.broker_clients import get_broker_client
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# Constants
+ERROR_BROKERAGE_NOT_FOUND = "Brokerage account not found"
+ERROR_COPY_RULE_NOT_FOUND = "Copy trade rule not found"
 
 
 # ============================================================================
@@ -140,7 +144,7 @@ async def disconnect_broker(
         if not account:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Brokerage account not found",
+                detail=ERROR_BROKERAGE_NOT_FOUND,
             )
 
         # Verify ownership
@@ -195,7 +199,7 @@ async def get_account_details(
         if not account:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Brokerage account not found",
+                detail=ERROR_BROKERAGE_NOT_FOUND,
             )
 
         # Verify ownership
@@ -254,7 +258,7 @@ async def sync_account(
         if not account:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Brokerage account not found",
+                detail=ERROR_BROKERAGE_NOT_FOUND,
             )
 
         # Verify ownership
@@ -272,7 +276,7 @@ async def sync_account(
             account.balance = account_info["balance"]
             account.buying_power = account_info["buying_power"]
             account.portfolio_value = account_info["portfolio_value"]
-            account.last_synced_at = datetime.utcnow()
+            account.last_synced_at = datetime.now(timezone.utc)
             await db.commit()
 
         return {"success": True, "message": "Account synced successfully", "account": account}
@@ -403,7 +407,7 @@ async def update_copy_trade_rule(
         if not rule:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Copy trade rule not found",
+                detail=ERROR_COPY_RULE_NOT_FOUND,
             )
 
         # Verify ownership
@@ -473,7 +477,7 @@ async def delete_copy_trade_rule(
         if not rule:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Copy trade rule not found",
+                detail=ERROR_COPY_RULE_NOT_FOUND,
             )
 
         # Verify ownership
@@ -508,7 +512,7 @@ async def toggle_rule_status(
         if not rule:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Copy trade rule not found",
+                detail=ERROR_COPY_RULE_NOT_FOUND,
             )
 
         # Verify ownership
@@ -680,7 +684,7 @@ async def place_manual_trade(
         if not account:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Brokerage account not found",
+                detail=ERROR_BROKERAGE_NOT_FOUND,
             )
 
         # Verify ownership

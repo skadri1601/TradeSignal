@@ -103,46 +103,9 @@ class AlpacaClient(BaseBrokerClient):
             alpaca_tif = tif_map.get(time_in_force.lower(), TimeInForce.DAY)
 
             # Create order request based on type
-            if order_type.lower() == "market":
-                order_request = MarketOrderRequest(
-                    symbol=ticker,
-                    qty=float(quantity),
-                    side=alpaca_side,
-                    time_in_force=alpaca_tif,
-                )
-            elif order_type.lower() == "limit":
-                if not limit_price:
-                    raise ValueError("limit_price required for limit orders")
-                order_request = LimitOrderRequest(
-                    symbol=ticker,
-                    qty=float(quantity),
-                    side=alpaca_side,
-                    time_in_force=alpaca_tif,
-                    limit_price=float(limit_price),
-                )
-            elif order_type.lower() == "stop":
-                if not stop_price:
-                    raise ValueError("stop_price required for stop orders")
-                order_request = StopOrderRequest(
-                    symbol=ticker,
-                    qty=float(quantity),
-                    side=alpaca_side,
-                    time_in_force=alpaca_tif,
-                    stop_price=float(stop_price),
-                )
-            elif order_type.lower() == "stop_limit":
-                if not limit_price or not stop_price:
-                    raise ValueError("limit_price and stop_price required for stop_limit orders")
-                order_request = StopLimitOrderRequest(
-                    symbol=ticker,
-                    qty=float(quantity),
-                    side=alpaca_side,
-                    time_in_force=alpaca_tif,
-                    limit_price=float(limit_price),
-                    stop_price=float(stop_price),
-                )
-            else:
-                raise ValueError(f"Unsupported order type: {order_type}")
+            order_request = self._create_order_request(
+                ticker, quantity, alpaca_side, alpaca_tif, order_type, limit_price, stop_price
+            )
 
             # Submit order
             order = self.trading_client.submit_order(order_request)
@@ -247,6 +210,60 @@ class AlpacaClient(BaseBrokerClient):
     # ========================================================================
     # HELPERS
     # ========================================================================
+
+    def _create_order_request(
+        self,
+        ticker: str,
+        quantity: Decimal,
+        alpaca_side: OrderSide,
+        alpaca_tif: TimeInForce,
+        order_type: str,
+        limit_price: Optional[Decimal],
+        stop_price: Optional[Decimal],
+    ):
+        """Create appropriate order request based on type."""
+        qty = float(quantity)
+
+        if order_type.lower() == "market":
+            return MarketOrderRequest(
+                symbol=ticker,
+                qty=qty,
+                side=alpaca_side,
+                time_in_force=alpaca_tif,
+            )
+        elif order_type.lower() == "limit":
+            if not limit_price:
+                raise ValueError("limit_price required for limit orders")
+            return LimitOrderRequest(
+                symbol=ticker,
+                qty=qty,
+                side=alpaca_side,
+                time_in_force=alpaca_tif,
+                limit_price=float(limit_price),
+            )
+        elif order_type.lower() == "stop":
+            if not stop_price:
+                raise ValueError("stop_price required for stop orders")
+            return StopOrderRequest(
+                symbol=ticker,
+                qty=qty,
+                side=alpaca_side,
+                time_in_force=alpaca_tif,
+                stop_price=float(stop_price),
+            )
+        elif order_type.lower() == "stop_limit":
+            if not limit_price or not stop_price:
+                raise ValueError("limit_price and stop_price required for stop_limit orders")
+            return StopLimitOrderRequest(
+                symbol=ticker,
+                qty=qty,
+                side=alpaca_side,
+                time_in_force=alpaca_tif,
+                limit_price=float(limit_price),
+                stop_price=float(stop_price),
+            )
+        else:
+            raise ValueError(f"Unsupported order type: {order_type}")
 
     def _map_order_status(self, alpaca_status: str) -> str:
         """Map Alpaca order status to our standard status."""

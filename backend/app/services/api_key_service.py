@@ -7,7 +7,7 @@ Handles API key creation, validation, rate limiting, and usage tracking.
 import logging
 import hashlib
 from typing import Optional, List, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 
@@ -61,7 +61,7 @@ class APIKeyService:
             can_read=permissions.get("read", True),
             can_write=permissions.get("write", False),
             can_delete=permissions.get("delete", False),
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             expires_at=expires_at,
             is_active=True,
         )
@@ -102,12 +102,12 @@ class APIKeyService:
             return None
 
         # Check expiration
-        if api_key.expires_at and api_key.expires_at < datetime.utcnow():
+        if api_key.expires_at and api_key.expires_at < datetime.now(timezone.utc):
             logger.warning(f"API key {api_key.id} has expired")
             return None
 
         # Update last used timestamp
-        api_key.last_used_at = datetime.utcnow()
+        api_key.last_used_at = datetime.now(timezone.utc)
         await self.db.commit()
 
         return api_key
@@ -132,7 +132,7 @@ class APIKeyService:
             return False
 
         # Count usage in last hour
-        one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+        one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
 
         result = await self.db.execute(
             select(func.count(APIKeyUsage.id)).where(
@@ -165,7 +165,7 @@ class APIKeyService:
         usage = APIKeyUsage(
             api_key_id=api_key_id,
             endpoint=endpoint,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             status_code=status_code,
             response_time_ms=response_time_ms,
         )
@@ -234,7 +234,7 @@ class APIKeyService:
         Returns:
             Dict with usage statistics
         """
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         # Get total usage count
         result = await self.db.execute(

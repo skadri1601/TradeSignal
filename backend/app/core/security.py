@@ -38,6 +38,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.api_v1_prefix}/auth/lo
 
 # Constants
 INVALID_CREDENTIALS_MESSAGE = "Could not validate credentials"
+ERROR_INVALID_API_KEY = "Invalid API key"
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -365,7 +366,7 @@ async def get_api_key_user(
         if not key_record:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid API key",
+                detail=ERROR_INVALID_API_KEY,
             )
 
         # Check rate limit
@@ -383,7 +384,7 @@ async def get_api_key_user(
         if not user or not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid API key",
+                detail=ERROR_INVALID_API_KEY,
             )
 
         return user
@@ -395,7 +396,7 @@ async def get_api_key_user(
         logger.error(f"Error validating API key: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid API key",
+            detail=ERROR_INVALID_API_KEY,
         )
 
 
