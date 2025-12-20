@@ -45,6 +45,10 @@ from app.models.forum import (
     ForumVote,
     ForumModerationLog,
 )
+from app.models.api_key import (
+    UserAPIKey,
+    APIKeyUsage,
+)
 from app.models.portfolio import (
     VirtualPortfolio,
     PortfolioPosition,
@@ -186,4 +190,6 @@ __all__ = [
     "WebhookDelivery",
     "WebhookEventType",
     "WebhookStatus",
+    "UserAPIKey",
+    "APIKeyUsage",
 ]

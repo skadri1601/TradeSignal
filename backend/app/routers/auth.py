@@ -549,7 +549,8 @@ async def update_profile(
     if profile_data.full_name is not None:
         current_user.full_name = profile_data.full_name
 
-    if profile_data.date_of_birth is not None:
+    if profile_data.date_of_birth is not None and profile_data.date_of_birth.strip():
+        # Only process if date_of_birth is not None and not empty string
         try:
             current_user.date_of_birth = dt.strptime(
                 profile_data.date_of_birth, "%Y-%m-%d"
@@ -559,6 +560,9 @@ async def update_profile(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid date format. Use YYYY-MM-DD",
             )
+    elif profile_data.date_of_birth is not None and not profile_data.date_of_birth.strip():
+        # Empty string - set to None
+        current_user.date_of_birth = None
 
     if profile_data.phone_number is not None:
         current_user.phone_number = profile_data.phone_number
