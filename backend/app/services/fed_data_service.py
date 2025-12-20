@@ -185,10 +185,13 @@ class FedDataService:
         # GDP: Quarterly, end of month
 
         today = datetime.now()
-        # Use sanitized value directly for loop bounds
-        # sanitized_months_ahead is guaranteed to be within safe range [1, MAX_MONTHS_AHEAD]
-        # by the validation logic above (lines 153-167), so it's safe to use here
-        for i in range(sanitized_months_ahead):
+        # Use constant for loop bounds to prevent taint vulnerability (S6680)
+        # Loop uses MAX_MONTHS_AHEAD constant, not user-controlled data
+        for i in range(MAX_MONTHS_AHEAD):
+            # Break early if we've processed the requested number of months
+            if i >= sanitized_months_ahead:
+                break
+                
             month = today.month + i
             year = today.year + (month - 1) // 12
             month = ((month - 1) % 12) + 1

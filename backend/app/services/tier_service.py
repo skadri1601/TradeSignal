@@ -4,7 +4,7 @@ Tier limit enforcement service.
 Checks user subscription tier and enforces usage limits.
 """
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -86,7 +86,7 @@ class TierService:
         return usage
 
     @staticmethod
-    async def check_ai_limit(user_id: int, db: AsyncSession) -> bool:
+    async def check_ai_limit(user_id: int, db: AsyncSession) -> bool:  # noqa: S3516
         """
         Check if user can make AI request.
 
@@ -110,7 +110,7 @@ class TierService:
 
         if usage.ai_requests >= ai_limit:
             # Calculate time until next reset (midnight UTC)
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             tomorrow = (now + timedelta(days=1)).replace(
                 hour=0, minute=0, second=0, microsecond=0
             )
@@ -130,7 +130,7 @@ class TierService:
         return True
 
     @staticmethod
-    async def check_alert_limit(user_id: int, db: AsyncSession) -> bool:
+    async def check_alert_limit(user_id: int, db: AsyncSession) -> bool:  # noqa: S3516
         """
         Check if user can create more alerts.
 
@@ -289,7 +289,7 @@ class TierService:
         return True
 
     @staticmethod
-    async def check_companies_tracked_limit(
+    async def check_companies_tracked_limit(  # noqa: S3516
         user_id: int, current_count: int, db: AsyncSession
     ) -> bool:
         """

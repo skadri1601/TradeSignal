@@ -7,7 +7,7 @@ Training data collection, feature engineering, gradient boosting model, backtest
 import logging
 import numpy as np
 from typing import Dict, Any, List, Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, desc
 
@@ -37,7 +37,7 @@ class PredictiveModelingService:
         - Market data
         - Historical performance
         """
-        cutoff_date = datetime.utcnow() - timedelta(days=days_back)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_back)
 
         # Get trades with company and insider data
         query = (
@@ -154,10 +154,15 @@ class PredictiveModelingService:
         return features
 
     async def _calculate_target(
-        self, trade: Trade, company: Company, days_forward: int = 30
+        self, trade: Trade, company: Company, days_forward: int = 30  # noqa: ARG002
     ) -> Optional[float]:
         """
         Calculate target variable (future price performance).
+
+        Args:
+            trade: Trade object
+            company: Company object (reserved for future use)
+            days_forward: Number of days forward to calculate performance
 
         Returns price change percentage after N days, or None if insufficient data.
         """
@@ -169,14 +174,15 @@ class PredictiveModelingService:
 
         # Get price N days later (would fetch from stock service)
         # For now, return None as placeholder
-        # In production, would fetch historical prices
-        future_date = trade.filing_date + timedelta(days=days_forward)
+        # In production, would fetch historical prices using:
+        # future_date = trade.filing_date + timedelta(days=days_forward)
+        # future_price = await stock_service.get_price_at_date(company.ticker, future_date)
 
         # Placeholder: would fetch actual price data
-        future_price = None
-
-        if future_price:
-            return ((future_price - filing_price) / filing_price) * 100
+        # This condition will always be False until price fetching is implemented
+        # future_price = await stock_service.get_price_at_date(company.ticker, future_date)
+        # if future_price is not None:
+        #     return ((future_price - filing_price) / filing_price) * 100
 
         return None
 
