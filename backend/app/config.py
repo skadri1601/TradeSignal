@@ -389,8 +389,8 @@ class Settings(BaseSettings):
         alias="ALPACA_OAUTH_CLIENT_SECRET",
     )
     alpaca_redirect_uri: str = Field(
-        default="http://localhost:8000/api/v1/brokerage/callback/alpaca",
-        description="Alpaca OAuth redirect URI",
+        default="https://api.yourdomain.com/api/v1/brokerage/callback/alpaca",
+        description="Alpaca OAuth redirect URI (use HTTPS in production)",
         alias="ALPACA_REDIRECT_URI",
     )
 
@@ -401,8 +401,8 @@ class Settings(BaseSettings):
         alias="TD_AMERITRADE_CLIENT_ID",
     )
     td_ameritrade_redirect_uri: str = Field(
-        default="http://localhost:8000/api/v1/brokerage/callback/td_ameritrade",
-        description="TD Ameritrade OAuth redirect URI",
+        default="https://api.yourdomain.com/api/v1/brokerage/callback/td_ameritrade",
+        description="TD Ameritrade OAuth redirect URI (use HTTPS in production)",
         alias="TD_AMERITRADE_REDIRECT_URI",
     )
 
@@ -413,8 +413,8 @@ class Settings(BaseSettings):
         alias="IB_CLIENT_ID",
     )
     ib_redirect_uri: str = Field(
-        default="http://localhost:8000/api/v1/brokerage/callback/ib",
-        description="Interactive Brokers OAuth redirect URI",
+        default="https://api.yourdomain.com/api/v1/brokerage/callback/ib",
+        description="Interactive Brokers OAuth redirect URI (use HTTPS in production)",
         alias="IB_REDIRECT_URI",
     )
 
@@ -455,7 +455,7 @@ class Settings(BaseSettings):
         description="Application environment (development, staging, production)",
         alias="ENVIRONMENT",
     )
-    debug: bool = Field(default=True, description="Enable debug mode", alias="DEBUG")
+    debug: bool = Field(default=False, description="Enable debug mode (disabled by default for security)", alias="DEBUG")
     log_level: str = Field(
         default="INFO",
         description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
@@ -464,8 +464,8 @@ class Settings(BaseSettings):
 
     # CORS Configuration
     cors_origins: str = Field(
-        default="http://localhost:5174,http://localhost:5173,http://localhost:5175",
-        description="Comma-separated list of allowed CORS origins",
+        default="https://yourdomain.com",
+        description="Comma-separated list of allowed CORS origins (use HTTPS in production)",
         alias="CORS_ORIGINS",
     )
 

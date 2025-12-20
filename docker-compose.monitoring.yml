@@ -1,7 +1,8 @@
 version: '3.8'
 services:
   prometheus:
-    image: prom/prometheus:latest
+    # Pin to specific version for stability and security
+    image: prom/prometheus:v2.51.0
     container_name: tradesignal-prometheus
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
@@ -11,10 +12,11 @@ services:
     restart: unless-stopped
 
   grafana:
-    image: grafana/grafana:latest
+    # Pin to specific version for stability and security
+    image: grafana/grafana:10.4.0
     container_name: tradesignal-grafana
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-changeme}
       - GF_USERS_ALLOW_SIGN_UP=false
     ports:
       - "3001:3000"
@@ -25,7 +27,8 @@ services:
     restart: unless-stopped
 
   uptime-kuma:
-    image: louislam/uptime-kuma:1
+    # Pin to specific minor version for stability
+    image: louislam/uptime-kuma:1.23.13
     container_name: tradesignal-uptime-kuma
     ports:
       - "3002:3001"

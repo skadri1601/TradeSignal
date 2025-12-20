@@ -92,7 +92,7 @@ class APIKeyService:
             select(UserAPIKey).where(
                 and_(
                     UserAPIKey.key_hash == key_hash,
-                    UserAPIKey.is_active == True
+                    UserAPIKey.is_active
                 )
             )
         )

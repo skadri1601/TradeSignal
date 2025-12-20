@@ -2,12 +2,14 @@ version: '3.8'
 
 services:
   grafana:
-    image: grafana/grafana:latest
+    # Pin to specific version for stability and security
+    # Update regularly: https://grafana.com/grafana/download
+    image: grafana/grafana:10.4.0
     container_name: tradesignal-grafana
     ports:
       - "3500:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-changeme}
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_SERVER_ROOT_URL=http://localhost:3500
     volumes:
@@ -18,7 +20,9 @@ services:
       - tradesignal_default
 
   prometheus:
-    image: prom/prometheus:latest
+    # Pin to specific version for stability and security
+    # Update regularly: https://prometheus.io/download/
+    image: prom/prometheus:v2.51.0
     container_name: tradesignal-prometheus-grafana
     ports:
       - "9091:9090"

@@ -65,8 +65,8 @@ services:
       - REDIS_PORT=6379
       - PROMETHEUS_ENABLED=true
     dns:
-      - 8.8.8.8
-      - 8.8.4.4
+      - ${DNS_PRIMARY:-8.8.8.8}
+      - ${DNS_SECONDARY:-8.8.4.4}
     depends_on:
       postgres:
         condition: service_healthy

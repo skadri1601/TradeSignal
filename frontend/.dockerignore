@@ -1,0 +1,58 @@
+# Environment files
+.env
+.env.local
+.env.*.local
+*.env
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Build artifacts
+dist/
+dist-ssr/
+.turbo/
+.parcel-cache/
+.vite/
+.next/
+
+# Testing
+coverage/
+.nyc_output/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git
+.gitignore
+.github
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# TypeScript
+*.tsbuildinfo
+
+# Temporary
+temp/
+tmp/
+*.bak
+*.tmp
+
+# Documentation
+*.md
+!README.md
