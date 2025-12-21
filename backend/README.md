@@ -356,7 +356,7 @@ LOG_LEVEL=INFO
 USE_JSON_LOGGING=false
 
 # CORS
-CORS_ORIGINS=http://localhost:3000,https://yourdomain.com
+CORS_ORIGINS=http://localhost:3000,https://tradesignal.capital,https://www.tradesignal.capital
 
 # Rate Limiting
 RATE_LIMIT_FREE_TIER=100
