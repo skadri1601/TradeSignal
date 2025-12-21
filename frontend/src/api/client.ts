@@ -5,7 +5,7 @@ const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT ?? '60000'); // Redu
 
 // Create axios instance with base configuration
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://api.yourdomain.com',
+  baseURL: import.meta.env.VITE_API_URL || 'https://api.tradesignal.capital',
   timeout: Number.isFinite(API_TIMEOUT) && API_TIMEOUT >= 0 ? API_TIMEOUT : 120000,
   headers: {
     'Content-Type': 'application/json',

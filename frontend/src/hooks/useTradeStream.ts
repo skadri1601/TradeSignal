@@ -8,7 +8,7 @@ type TradeStreamMessage = {
 type TradeStreamStatus = 'idle' | 'connecting' | 'open' | 'closed';
 
 export function buildTradeStreamUrl(): string {
-  const httpBase = (import.meta.env.VITE_API_URL || 'https://api.yourdomain.com').replace(/\/$/, '');
+  const httpBase = (import.meta.env.VITE_API_URL || 'https://api.tradesignal.capital').replace(/\/$/, '');
   const protocol = httpBase.startsWith('https') ? 'wss' : 'ws';
   return httpBase.replace(/^https?/, protocol) + '/api/v1/trades/stream';
 }

@@ -1,6 +1,6 @@
 import { getAccessToken } from '../contexts/AuthContext';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.yourdomain.com';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.tradesignal.capital';
 
 function getAuthHeaders(): HeadersInit {
   const token = getAccessToken();
