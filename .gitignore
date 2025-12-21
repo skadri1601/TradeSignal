@@ -230,24 +230,13 @@ celerydb
 worker.pid
 docker-compose.override.yml
 
-# Markdown files - ignore all except specific ones
+# Markdown files (root folder only)
 *.md
-!README.md
-!frontend/README.md
-!backend/README.md
-!Docs/**/*.md
-vscode.md
-claudeplan*.md
-final_deploy.md
-geminiplan.md
-implementation.md
-improvement.md
-production_security_hardening_8aaf6e21.plan.md
-TradeSignal*.md
-TROUBLESHOOTING.md
+!/README.md
+
+# Specific PDFs
 TradeSignal Business Viability Analysis.pdf
 Understanding Morningstar’s Research Model for Stocks.pdf
-
 backend/scripts/manual_scrape_test.py	
 backend/celerybeat-schedule.dir	
 backend/celerybeat-schedule.dat	
@@ -255,3 +244,4 @@ backend/celerybeat-schedule.*
 backend/scripts/manual_scrape_test.py
 TradeSignal_deploy.md
 TradeSignal_deploy.md
+CHANGELOG.md
