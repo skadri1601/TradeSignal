@@ -375,7 +375,7 @@ class DatabaseManager:
                     await conn.close()
         
         try:
-            result = await asyncio.wait_for(_connect_and_test(), timeout=10.0)
+            result = await asyncio.wait_for(_connect_and_test(), timeout=30.0)
             if result:
                 logger.info("Database connection check: OK")
                 self._database_available = True
@@ -383,7 +383,7 @@ class DatabaseManager:
                 self._database_available = False
             return result
         except asyncio.TimeoutError:
-            logger.warning("Database connection check timed out after 10s")
+            logger.warning("Database connection check timed out after 30s")
             self._database_available = False
             return False
 

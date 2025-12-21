@@ -3,9 +3,22 @@ import { getAccessToken } from '../contexts/AuthContext';
 
 const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT ?? '60000'); // Reduced from 120s to 60s
 
+// Determine API URL: use env var if set, otherwise default to localhost in dev, production in prod
+const getApiUrl = (): string => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  // In development mode, default to local backend
+  if (import.meta.env.DEV || import.meta.env.MODE === 'development') {
+    return 'http://localhost:8000';
+  }
+  // In production, use production API
+  return 'https://api.tradesignal.capital';
+};
+
 // Create axios instance with base configuration
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://api.tradesignal.capital',
+  baseURL: getApiUrl(),
   timeout: Number.isFinite(API_TIMEOUT) && API_TIMEOUT >= 0 ? API_TIMEOUT : 120000,
   headers: {
     'Content-Type': 'application/json',

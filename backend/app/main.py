@@ -147,32 +147,64 @@ def _format_db_error_messages(error_str: str, masked_url: str) -> None:
 
 
 async def _check_database_connection(masked_url: str) -> bool:
-    """Check database connection with timeout and error handling."""
-    try:
-        logger.info(" Testing database connection...")
-        db_connected = await asyncio.wait_for(
-            db_manager.check_connection(),
-            timeout=15.0  # 15 second timeout - increased from 5 to allow cold starts
-        )
-        return db_connected
-    except asyncio.TimeoutError:
-        logger.error("=" * 80)
-        logger.error(" Database connection check TIMED OUT after 15s")
-        logger.error(" Possible causes:")
-        logger.error("  1. Database server is not running or unreachable")
-        logger.error("  2. Network/firewall blocking connection")
-        logger.error("  3. Incorrect DATABASE_URL (wrong host/port)")
-        logger.error("  4. Database server is overloaded")
-        logger.error(f" Database URL: {masked_url}")
-        logger.error(" App will start but database operations will fail!")
-        logger.error("=" * 80)
-        return False
-    except asyncio.CancelledError:
-        logger.warning(" Database connection check was cancelled")
-        raise  # Re-raise to allow proper cancellation propagation
-    except Exception as db_error:
-        _format_db_error_messages(str(db_error), masked_url)
-        return False
+    """Check database connection with timeout, retry logic, and error handling."""
+    max_retries = 3
+    retry_delay = 5  # seconds
+
+    for attempt in range(max_retries):
+        try:
+            if attempt > 0:
+                logger.info(f" Retry attempt {attempt + 1}/{max_retries} - Testing database connection...")
+            else:
+                logger.info(" Testing database connection...")
+
+            db_connected = await asyncio.wait_for(
+                db_manager.check_connection(),
+                timeout=25.0  # 25 second timeout per attempt (less than database.py's 30s timeout)
+            )
+
+            if db_connected:
+                if attempt > 0:
+                    logger.info(f"✅ Database connection established on attempt {attempt + 1}/{max_retries}")
+                return True
+            else:
+                if attempt < max_retries - 1:
+                    logger.warning(f" Database connection attempt {attempt + 1}/{max_retries} failed, retrying in {retry_delay}s...")
+                    await asyncio.sleep(retry_delay)
+                else:
+                    logger.error(" Database connection failed after all retry attempts")
+                    return False
+
+        except asyncio.TimeoutError:
+            if attempt < max_retries - 1:
+                logger.warning(f" Database connection TIMED OUT on attempt {attempt + 1}/{max_retries}, retrying in {retry_delay}s...")
+                await asyncio.sleep(retry_delay)
+            else:
+                logger.error("=" * 80)
+                logger.error(f" Database connection check TIMED OUT after {max_retries} attempts")
+                logger.error(" Possible causes:")
+                logger.error("  1. Database server is not running or unreachable")
+                logger.error("  2. Network/firewall blocking connection")
+                logger.error("  3. Incorrect DATABASE_URL (wrong host/port)")
+                logger.error("  4. Database server is overloaded")
+                logger.error(f" Database URL: {masked_url}")
+                logger.error(" App will start but database operations will fail!")
+                logger.error("=" * 80)
+                return False
+
+        except asyncio.CancelledError:
+            logger.warning(" Database connection check was cancelled")
+            raise  # Re-raise to allow proper cancellation propagation
+
+        except Exception as db_error:
+            if attempt < max_retries - 1:
+                logger.warning(f" Database connection error on attempt {attempt + 1}/{max_retries}: {db_error}, retrying in {retry_delay}s...")
+                await asyncio.sleep(retry_delay)
+            else:
+                _format_db_error_messages(str(db_error), masked_url)
+                return False
+
+    return False
 
 
 async def _create_database_tables() -> None:
@@ -612,9 +644,17 @@ async def health_check() -> dict[str, Any]:
         - 503: Unhealthy (database connection failed)
     """
     try:
-        # Check database connectivity with error handling
+        # Check database connectivity with error handling and timeout
         try:
-            db_healthy = await db_manager.check_connection()
+            # Add timeout at endpoint level (25s, less than database.py's 30s timeout)
+            # This ensures the health check endpoint doesn't hang indefinitely
+            db_healthy = await asyncio.wait_for(
+                db_manager.check_connection(),
+                timeout=25.0
+            )
+        except asyncio.TimeoutError:
+            logger.warning("Health check: Database connection check timed out after 25s")
+            db_healthy = False
         except Exception as db_error:
             logger.error(
                 f"Health check: Database connection check failed: {db_error}",
@@ -721,9 +761,10 @@ app.include_router(
 app.include_router(
     stocks.router, prefix=f"{settings.api_v1_prefix}", tags=["Stock Prices"]
 )
-app.include_router(
-    health.router, prefix=f"{settings.api_v1_prefix}", tags=["Health Checks"]
-)
+# COMMENTED OUT: Duplicate health router conflicts with main app health check at GET /health
+# app.include_router(
+#     health.router, prefix=f"{settings.api_v1_prefix}", tags=["Health Checks"]
+# )
 app.include_router(
     data_health.router, prefix=f"{settings.api_v1_prefix}/data-health", tags=["Data Health Checks"]
 )
@@ -804,11 +845,12 @@ app.include_router(
     prefix=f"{settings.api_v1_prefix}",
     tags=["Pricing"],
 )
-app.include_router(
-    health_api.router,
-    prefix=f"{settings.api_v1_prefix}",
-    tags=["Health"],
-)
+# COMMENTED OUT: Duplicate health_api router conflicts with main app health check at GET /health
+# app.include_router(
+#     health_api.router,
+#     prefix=f"{settings.api_v1_prefix}",
+#     tags=["Health"],
+# )
 
 
 if __name__ == "__main__":
