@@ -14,6 +14,8 @@ import time
 from typing import AsyncGenerator
 from contextlib import asynccontextmanager
 
+import certifi
+
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import (  # type: ignore[import-untyped]
     create_async_engine,
@@ -91,7 +93,9 @@ class DatabaseManager:
 
     def _create_ssl_context(self) -> ssl.SSLContext:
         """Create and configure SSL context for Supabase connections."""
-        ssl_context = ssl.create_default_context()
+        # Use certifi's CA bundle to ensure proper certificate verification
+        # This is especially important in production environments like Render
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
         # Explicitly set minimum protocol version to TLS 1.2 for security (S4423)
         if hasattr(ssl, 'PROTOCOL_TLS_CLIENT'):
             ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
