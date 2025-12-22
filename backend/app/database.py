@@ -103,21 +103,22 @@ class DatabaseManager:
         ssl_context.check_hostname = True
         ssl_context.verify_mode = ssl.CERT_REQUIRED
         
-        # Allow disabling SSL verification only for local development
+        # Allow disabling SSL verification when explicitly enabled via environment variable
         disable_ssl_verification_env = os.getenv("DISABLE_SSL_VERIFICATION", "false").lower()
         disable_ssl_verification = disable_ssl_verification_env == "true"
-        
+
         logger.debug(
             f"SSL configuration check: DISABLE_SSL_VERIFICATION={disable_ssl_verification_env}, "
-            f"environment={settings.environment}, will_disable={disable_ssl_verification and settings.environment in ['development', 'testing']}"
+            f"environment={settings.environment}, will_disable={disable_ssl_verification}"
         )
-        
-        if disable_ssl_verification and settings.environment in ["development", "testing"]:
+
+        if disable_ssl_verification:
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
             logger.warning(
-                "⚠️  SSL certificate verification DISABLED for development - NOT SECURE FOR PRODUCTION. "
-                "This may be needed for corporate proxies or certificate chain issues."
+                f"⚠️  SSL certificate verification DISABLED (environment={settings.environment}). "
+                "This may be needed for corporate proxies or certificate chain issues with Supabase. "
+                "Only use this if you trust the network connection."
             )
         else:
             if settings.environment == "production":
