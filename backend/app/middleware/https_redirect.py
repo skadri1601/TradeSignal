@@ -95,26 +95,15 @@ class HTTPSRedirectMiddleware(BaseHTTPMiddleware):
 
         # Only enforce HTTPS in production
         if settings.environment == "production":
-            # Determine the actual protocol by checking proxy headers first
-            protocol = self._get_request_protocol(request)
-
-            # Log protocol detection for debugging (only in debug mode)
-            if settings.debug:
-                logger.debug(
-                    f"HTTPS Middleware - Path: {request.url.path}, "
-                    f"Detected Protocol: {protocol}, "
-                    f"Direct Scheme: {request.url.scheme}, "
-                    f"X-Forwarded-Proto: {request.headers.get('x-forwarded-proto', 'not set')}"
-                )
+            # Check the X-Forwarded-Proto header (set by load balancer) first
+            # Render's load balancer terminates SSL and forwards HTTP with X-Forwarded-Proto: https
+            forwarded_proto = request.headers.get("x-forwarded-proto", "")
+            actual_scheme = forwarded_proto if forwarded_proto else request.url.scheme
 
             # Only redirect if protocol is actually HTTP (not HTTPS)
-            if protocol != "https":
+            if actual_scheme != "https":
                 # Redirect to HTTPS version
                 https_url = request.url.replace(scheme="https")
-                logger.info(
-                    f"Redirecting HTTP → HTTPS: {request.url.path} "
-                    f"(detected: {protocol}, trusted headers: {settings.trust_proxy_headers})"
-                )
                 return RedirectResponse(url=str(https_url), status_code=301)
 
         # Process the request

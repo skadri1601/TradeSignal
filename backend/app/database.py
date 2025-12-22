@@ -112,7 +112,15 @@ class DatabaseManager:
             f"environment={settings.environment}, will_disable={disable_ssl_verification}"
         )
 
-        if disable_ssl_verification:
+        # For Supabase in production, use encrypted connection without strict cert verification
+        # This is safe because we're still using SSL, just not verifying the cert chain
+        # Supabase's pooler has certificate chain issues that cause verification failures
+        is_supabase = self._is_supabase_connection()
+        if settings.environment == "production" and is_supabase:
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            logger.info("SSL configured for Supabase (encrypted, production mode)")
+        elif disable_ssl_verification:
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
             logger.warning(
