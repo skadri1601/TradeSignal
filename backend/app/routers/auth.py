@@ -230,6 +230,26 @@ async def register(
             logger.info(
                 f"User registered successfully: {new_user.email}, ID: {new_user.id}"
             )
+
+            # Send welcome email (don't fail registration if email fails)
+            try:
+                from app.services.email_service import EmailService
+                email_result = await EmailService.send_welcome_email(
+                    email=new_user.email,
+                    user_name=new_user.username
+                )
+                if email_result.get("status") == "error":
+                    logger.warning(
+                        f"Failed to send welcome email to {new_user.email}: {email_result.get('error')}"
+                    )
+                elif email_result.get("status") == "enqueued":
+                    logger.info(f"Welcome email enqueued for {new_user.email}")
+            except Exception as email_error:
+                logger.warning(
+                    f"Failed to send welcome email to {new_user.email}: {email_error}"
+                )
+                # Don't fail registration if email fails
+
             return new_user
 
         except SQLAlchemyError as db_error:

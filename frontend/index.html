@@ -2,10 +2,37 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' wss://api.tradesignal.capital https://api.tradesignal.capital https://api.stripe.com https://checkout.stripe.com; frame-src https://js.stripe.com https://hooks.stripe.com;">
+    <!-- CSP will be set dynamically by script below -->
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TradeSignal - Insider Trading Intelligence</title>
+    <script>
+      // Dynamically set CSP based on environment
+      // In development (localhost), allow localhost connections
+      // In production, only allow production domains
+      (function() {
+        const isDevelopment = window.location.hostname === 'localhost' || 
+                              window.location.hostname === '127.0.0.1' ||
+                              window.location.hostname.startsWith('192.168.') ||
+                              window.location.hostname.startsWith('10.') ||
+                              window.location.port !== '';
+        
+        // Base CSP for production
+        let connectSrc = "'self' wss://api.tradesignal.capital https://api.tradesignal.capital https://api.stripe.com https://checkout.stripe.com";
+        
+        // Add localhost origins in development
+        if (isDevelopment) {
+          connectSrc += " http://localhost:8000 http://localhost:5173 http://localhost:5174 http://localhost:3000 http://127.0.0.1:8000 ws://localhost:8000";
+        }
+        
+        const csp = `default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https:; connect-src ${connectSrc}; frame-src https://js.stripe.com https://hooks.stripe.com;`;
+        
+        const meta = document.createElement('meta');
+        meta.httpEquiv = 'Content-Security-Policy';
+        meta.content = csp;
+        document.head.appendChild(meta);
+      })();
+    </script>
   </head>
   <body style="background-color: #0a0a0a; color: white;">
     <div id="root"></div>

@@ -558,10 +558,30 @@ class Settings(BaseSettings):
         Get CORS origins as a list.
 
         Converts comma-separated string to list of origins.
+        Automatically includes localhost origins in development mode.
         """
-        return [
+        origins = [
             origin.strip() for origin in self.cors_origins.split(",") if origin.strip()
         ]
+        
+        # Auto-include localhost origins in development mode
+        if self.is_development:
+            localhost_origins = [
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://localhost:5174",
+                "http://localhost:8080",
+                "http://127.0.0.1:3000",
+                "http://127.0.0.1:5173",
+                "http://127.0.0.1:5174",
+                "http://127.0.0.1:8080",
+            ]
+            # Add localhost origins that aren't already in the list
+            for localhost_origin in localhost_origins:
+                if localhost_origin not in origins:
+                    origins.append(localhost_origin)
+        
+        return origins
 
     @property
     def database_url_async(self) -> str:

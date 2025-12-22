@@ -52,10 +52,13 @@ const DashboardNavbar = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Fetch Stats (Ported from TopBar)
+  // Check if user is an admin role (Super Admin or Support Admin)
+  const isAdminRole = user?.is_superuser || user?.role === 'super_admin' || user?.role === 'support';
+
+  // Fetch Stats (Ported from TopBar) - Skip for admin roles as they don't need usage stats
   useEffect(() => {
     const fetchData = async () => {
-      if (user) {
+      if (user && !isAdminRole) {
         try {
           const [sub, stats] = await Promise.all([
             getSubscription(),
@@ -69,7 +72,7 @@ const DashboardNavbar = () => {
       }
     };
     fetchData();
-  }, [user, isProfileOpen]);
+  }, [user, isProfileOpen, isAdminRole]);
 
   const handleLogout = () => {
     logout();
@@ -91,39 +94,48 @@ const DashboardNavbar = () => {
   };
 
   // Navigation Structure
-  const navLinks = [
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { 
-      name: 'Market', 
-      path: '/market-overview',
-      dropdown: [
-        { name: 'Market Overview', path: '/market-overview', icon: LineChart },
-        { name: 'News', path: '/news', icon: Newspaper },
-        { name: 'Fed Calendar', path: '/fed-calendar', icon: Calendar },
-      ]
-    },
-    { 
-      name: 'Analysis', 
-      path: '/trades',
-      dropdown: [
-        { name: 'Congressional Trades', path: '/congressional-trades', icon: Building2 },
-        { name: 'Insider Trades', path: '/trades', icon: Users }, // Assuming /trades is insider
-        { name: 'Strategies', path: '/strategies', icon: Search },
-      ]
-    },
-    { 
-      name: 'Signals', 
-      path: '/ai-insights',
-      dropdown: [
-        { name: 'AI Insights', path: '/ai-insights', icon: Zap },
-        { name: 'Chart Patterns', path: '/patterns', icon: Activity },
-        { name: 'Alerts', path: '/alerts', icon: Bell },
-      ]
-    },
-  ];
+  // For admin roles, only show Dashboard and Admin
+  // For regular users, show Dashboard, Market, Analysis, Signals
+  const navLinks = [];
+  
+  // Always show Dashboard
+  navLinks.push({ name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard });
+  
+  // Only show customer-facing nav items for non-admin users
+  if (!isAdminRole) {
+    navLinks.push(
+      { 
+        name: 'Market', 
+        path: '/market-overview',
+        dropdown: [
+          { name: 'Market Overview', path: '/market-overview', icon: LineChart },
+          { name: 'News', path: '/news', icon: Newspaper },
+          { name: 'Fed Calendar', path: '/fed-calendar', icon: Calendar },
+        ]
+      },
+      { 
+        name: 'Analysis', 
+        path: '/trades',
+        dropdown: [
+          { name: 'Congressional Trades', path: '/congressional-trades', icon: Building2 },
+          { name: 'Insider Trades', path: '/trades', icon: Users }, // Assuming /trades is insider
+          { name: 'Strategies', path: '/strategies', icon: Search },
+        ]
+      },
+      { 
+        name: 'Signals', 
+        path: '/ai-insights',
+        dropdown: [
+          { name: 'AI Insights', path: '/ai-insights', icon: Zap },
+          { name: 'Chart Patterns', path: '/patterns', icon: Activity },
+          { name: 'Alerts', path: '/alerts', icon: Bell },
+        ]
+      }
+    );
+  }
 
-  // Admin Links
-  if (user?.is_superuser) {
+  // Admin Links - only show for admin roles
+  if (isAdminRole) {
     navLinks.push({
       name: 'Admin',
       path: '/admin',
@@ -181,7 +193,7 @@ const DashboardNavbar = () => {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute top-full left-1/2 -translate-x-1/2 pt-4 w-60"
+                    className="absolute top-full left-0 pt-4 w-60"
                   >
                     <div className="bg-[#0f0f1a] border border-white/10 rounded-2xl p-2 shadow-xl overflow-hidden ring-1 ring-white/10">
                       <div className="flex flex-col gap-1">
@@ -208,8 +220,8 @@ const DashboardNavbar = () => {
 
         {/* Right: User Cluster */}
         <div className="flex items-center gap-3 ml-auto">
-            {/* Upgrade Button (Visible only for Free Tier) */}
-            {isFreeTier && !user?.is_superuser && (
+            {/* Upgrade Button (Visible only for Free Tier and non-admin users) */}
+            {isFreeTier && !isAdminRole && (
                 <Link 
                     to="/pricing"
                     className="hidden md:flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white text-xs font-bold px-4 py-2 rounded-full transition-all hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]"
@@ -253,8 +265,8 @@ const DashboardNavbar = () => {
                                     <p className="text-xs text-gray-500 truncate">{user?.email}</p>
                                 </div>
 
-                                {/* AI Usage Stats (Preserved) */}
-                                {usageStats && (
+                                {/* AI Usage Stats - Only show for non-admin users */}
+                                {!isAdminRole && usageStats && (
                                     <div className="px-5 py-3 border-b border-white/5 bg-black/20">
                                         <div className="flex justify-between items-center mb-2">
                                             <div className="flex items-center space-x-2">
@@ -285,7 +297,7 @@ const DashboardNavbar = () => {
                                     <button onClick={() => navigate('/profile')} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors">
                                         <UserCircle className="w-4 h-4" /> Profile
                                     </button>
-                                    {!user?.is_superuser && (
+                                    {!isAdminRole && (
                                         <>
                                             <button onClick={() => navigate('/pricing')} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors">
                                                 <CreditCard className="w-4 h-4" /> Billing & Plans

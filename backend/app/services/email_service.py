@@ -173,9 +173,9 @@ class EmailService:
                 "error": "Email configuration missing",
             }
 
-        # Build reset URL
+        # Build reset URL (frontend expects token as URL param, not query param)
         frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5174")
-        reset_url = f"{frontend_url}/reset-password?token={reset_token}"
+        reset_url = f"{frontend_url}/reset-password/{reset_token}"
 
         # Build email content
         subject = "Reset Your TradeSignal Password"
@@ -225,7 +225,7 @@ class EmailService:
 
         name = user_name or "there"
         frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5174")
-        subject = "Welcome to TradeSignal!"
+        subject = "Welcome to TradeSignal - Thank You for Choosing Us!"
         html_body = f"""
 <!DOCTYPE html>
 <html>
@@ -254,55 +254,122 @@ class EmailService:
             margin-bottom: 30px;
         }}
         .logo {{
-            font-size: 28px;
+            font-size: 32px;
             font-weight: bold;
-            color: #2563eb;
+            color: #7c3aed;
             margin-bottom: 10px;
+            letter-spacing: -0.5px;
         }}
         h1 {{
             color: #1f2937;
-            font-size: 24px;
+            font-size: 26px;
             margin: 0 0 20px 0;
+            text-align: center;
         }}
         p {{
             color: #4b5563;
             font-size: 16px;
             margin: 0 0 15px 0;
         }}
+        .highlight {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 600;
+        }}
         .button {{
             display: inline-block;
-            padding: 14px 28px;
-            background-color: #2563eb;
+            padding: 14px 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: #ffffff !important;
             text-decoration: none;
-            border-radius: 6px;
+            border-radius: 8px;
             font-weight: 600;
-            margin: 20px 0;
+            margin: 25px 0;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
+            transition: transform 0.2s;
+        }}
+        .button:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+        }}
+        .features {{
+            background-color: #f9fafb;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 25px 0;
+        }}
+        .features h2 {{
+            color: #1f2937;
+            font-size: 18px;
+            margin: 0 0 15px 0;
+        }}
+        .features ul {{
+            margin: 0;
+            padding-left: 20px;
+            color: #4b5563;
+        }}
+        .features li {{
+            margin: 8px 0;
+            font-size: 15px;
         }}
         .footer {{
-            margin-top: 30px;
-            padding-top: 20px;
+            margin-top: 35px;
+            padding-top: 25px;
             border-top: 1px solid #e5e7eb;
             text-align: center;
             color: #6b7280;
             font-size: 14px;
+        }}
+        .footer p {{
+            margin: 5px 0;
+        }}
+        .support-link {{
+            color: #7c3aed;
+            text-decoration: none;
+        }}
+        .support-link:hover {{
+            text-decoration: underline;
         }}
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">TradeSignal</div>
+            <div class="logo">TradeSignal.</div>
         </div>
         <h1>Welcome, {name}!</h1>
-        <p>Thank you for joining TradeSignal - your gateway to real-time insider trading intelligence.</p>
-        <p>Get started by exploring insider trades, setting up alerts, and discovering investment opportunities.</p>
+        <p>Thank you for choosing <span class="highlight">TradeSignal</span>! We're thrilled to have you join our community of informed traders and investors.</p>
+        
+        <p>At TradeSignal, we provide you with <strong>real-time insider trading intelligence</strong> to help you make smarter investment decisions. You now have access to:</p>
+        
+        <div class="features">
+            <h2>🚀 What You Can Do:</h2>
+            <ul>
+                <li><strong>Track Insider Trades</strong> - Monitor SEC Form 4 filings and congressional trades in real-time</li>
+                <li><strong>AI-Powered Insights</strong> - Get intelligent analysis of market-moving transactions</li>
+                <li><strong>Custom Alerts</strong> - Set up personalized notifications for trades that matter to you</li>
+                <li><strong>Market Analysis</strong> - Explore comprehensive data on companies, insiders, and trading patterns</li>
+                <li><strong>Congressional Trading</strong> - Follow what politicians are buying and selling</li>
+            </ul>
+        </div>
+        
+        <p>Ready to get started? Click the button below to explore your dashboard and begin discovering investment opportunities.</p>
+        
         <center>
-            <a href="{frontend_url}" class="button">Get Started</a>
+            <a href="{frontend_url}/dashboard" class="button">Get Started →</a>
         </center>
+        
+        <p style="margin-top: 25px; font-size: 15px;">If you have any questions or need assistance, our support team is here to help. Don't hesitate to reach out!</p>
+        
         <div class="footer">
-            <p>Happy trading!</p>
+            <p><strong>Happy Trading!</strong></p>
             <p>The TradeSignal Team</p>
+            <p style="margin-top: 15px;">
+                <a href="{frontend_url}/support" class="support-link">Contact Support</a> | 
+                <a href="{frontend_url}" class="support-link">Visit Website</a>
+            </p>
         </div>
     </div>
 </body>
