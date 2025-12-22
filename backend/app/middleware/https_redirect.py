@@ -2,13 +2,34 @@
 HTTPS Redirect Middleware
 
 Enforces HTTPS in production and adds security headers.
+
+Features:
+- Redirects HTTP to HTTPS in production (301 permanent redirect)
+- Supports reverse proxy deployments (Render, Heroku, AWS ALB, etc.)
+- Checks X-Forwarded-Proto header when behind load balancers
+- Adds comprehensive security headers (HSTS, CSP, etc.)
+
+Configuration:
+- ENVIRONMENT: Set to "production" to enable HTTPS enforcement
+- TRUST_PROXY_HEADERS: Trust X-Forwarded-Proto header (default: true)
+
+Proxy Detection:
+1. Checks X-Forwarded-Proto header (if TRUST_PROXY_HEADERS=true)
+2. Falls back to request.url.scheme (for direct connections)
+
+This prevents redirect loops on platforms like Render.com where:
+Client → HTTPS → Load Balancer → HTTP (+ X-Forwarded-Proto: https) → Backend
+
 Based on TRUTH_FREE.md Phase 1.6 specifications.
 """
 
+import logging
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import RedirectResponse
+
+logger = logging.getLogger(__name__)
 
 
 class HTTPSRedirectMiddleware(BaseHTTPMiddleware):
@@ -20,6 +41,43 @@ class HTTPSRedirectMiddleware(BaseHTTPMiddleware):
     - Adds security headers (HSTS, X-Content-Type-Options, X-Frame-Options, X-XSS-Protection)
     - Only enforces HTTPS when ENVIRONMENT=production
     """
+
+    def _get_request_protocol(self, request: Request) -> str:
+        """
+        Determine the actual request protocol (http or https).
+
+        Priority order:
+        1. X-Forwarded-Proto header (if proxy headers are trusted)
+        2. Direct request.url.scheme (fallback)
+
+        Args:
+            request: FastAPI Request object
+
+        Returns:
+            str: "https" or "http"
+
+        Notes:
+            - X-Forwarded-Proto is set by Render's load balancer
+            - Render terminates SSL and forwards HTTP with X-Forwarded-Proto: https
+            - Only trusts proxy headers when TRUST_PROXY_HEADERS=true
+        """
+        from app.config import settings
+
+        # Check X-Forwarded-Proto header first (if proxy headers are trusted)
+        if settings.trust_proxy_headers:
+            # X-Forwarded-Proto can contain multiple protocols if multiple proxies
+            # Format: "https" or "https,http" (take first - original client protocol)
+            forwarded_proto = request.headers.get("x-forwarded-proto", "").lower()
+
+            if forwarded_proto:
+                # Handle multiple proxies: take first protocol (original client)
+                protocol = forwarded_proto.split(",")[0].strip()
+
+                if protocol in ("https", "http"):
+                    return protocol
+
+        # Fallback: check direct request scheme (for non-proxied deployments)
+        return request.url.scheme
 
     async def dispatch(self, request: Request, call_next):
         """
@@ -37,10 +95,26 @@ class HTTPSRedirectMiddleware(BaseHTTPMiddleware):
 
         # Only enforce HTTPS in production
         if settings.environment == "production":
-            # Check if request is HTTP (not HTTPS)
-            if request.url.scheme != "https":
+            # Determine the actual protocol by checking proxy headers first
+            protocol = self._get_request_protocol(request)
+
+            # Log protocol detection for debugging (only in debug mode)
+            if settings.debug:
+                logger.debug(
+                    f"HTTPS Middleware - Path: {request.url.path}, "
+                    f"Detected Protocol: {protocol}, "
+                    f"Direct Scheme: {request.url.scheme}, "
+                    f"X-Forwarded-Proto: {request.headers.get('x-forwarded-proto', 'not set')}"
+                )
+
+            # Only redirect if protocol is actually HTTP (not HTTPS)
+            if protocol != "https":
                 # Redirect to HTTPS version
                 https_url = request.url.replace(scheme="https")
+                logger.info(
+                    f"Redirecting HTTP → HTTPS: {request.url.path} "
+                    f"(detected: {protocol}, trusted headers: {settings.trust_proxy_headers})"
+                )
                 return RedirectResponse(url=str(https_url), status_code=301)
 
         # Process the request

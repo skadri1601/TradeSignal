@@ -440,6 +440,13 @@ class Settings(BaseSettings):
         alias="ENABLE_PUSH_NOTIFICATIONS",
     )
 
+    # Proxy & Load Balancer Configuration
+    trust_proxy_headers: bool = Field(
+        default=True,
+        description="Trust X-Forwarded-Proto and other proxy headers (required for Render, Heroku, etc.)",
+        alias="TRUST_PROXY_HEADERS",
+    )
+
     # Redis Configuration (Phase 4.1 - Caching)
     redis_url: Optional[str] = Field(
         default=None, description="Redis connection URL for caching", alias="REDIS_URL"
