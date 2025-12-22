@@ -22,7 +22,7 @@ import logging
 import time
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, Optional, Tuple
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -42,6 +42,10 @@ from prometheus_fastapi_instrumentator import Instrumentator
 
 # Background tasks registry
 _background_tasks = set()
+
+# Health check cache (to prevent connection pool exhaustion from frequent health checks)
+_health_check_cache: Optional[Tuple[bool, datetime]] = None
+_HEALTH_CHECK_CACHE_TTL = 15  # seconds
 
 
 # Configure logging (Phase 5.4: Structured JSON logging in production)
@@ -625,15 +629,18 @@ async def root() -> dict[str, Any]:
     }
 
 
-# Health Check Endpoint
+# Health Check Endpoint (with caching to prevent connection pool exhaustion)
 @app.get("/health", tags=["Health"])
 async def health_check() -> dict[str, Any]:
     """
     Health check endpoint for monitoring and load balancers.
 
+    Implements 15-second caching to prevent connection pool exhaustion from
+    frequent health checks (Render checks every ~5 seconds).
+
     Checks:
         - API availability
-        - Database connectivity
+        - Database connectivity (cached for 15s)
         - Timestamp for request tracking
 
     Returns:
@@ -643,11 +650,42 @@ async def health_check() -> dict[str, Any]:
         - 200: Healthy (API and database both OK)
         - 503: Unhealthy (database connection failed)
     """
+    global _health_check_cache
+
     try:
-        # Check database connectivity with error handling and timeout
+        # Check if we have a valid cached result
+        now = datetime.now(timezone.utc)
+        if _health_check_cache is not None:
+            cached_result, cached_time = _health_check_cache
+            cache_age = (now - cached_time).total_seconds()
+
+            if cache_age < _HEALTH_CHECK_CACHE_TTL:
+                # Return cached result
+                response = {
+                    "status": "healthy" if cached_result else "unhealthy",
+                    "timestamp": now.isoformat(),
+                    "version": settings.project_version,
+                    "environment": settings.environment,
+                    "checks": {
+                        "api": "ok",
+                        "database": "ok" if cached_result else "error",
+                    },
+                    "cache": {
+                        "hit": True,
+                        "age_seconds": round(cache_age, 1)
+                    }
+                }
+
+                if not cached_result:
+                    return JSONResponse(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        content=response,
+                    )
+                return response
+
+        # Cache miss or expired - perform actual database check
         try:
             # Add timeout at endpoint level (25s, less than database.py's 30s timeout)
-            # This ensures the health check endpoint doesn't hang indefinitely
             db_healthy = await asyncio.wait_for(
                 db_manager.check_connection(),
                 timeout=25.0
@@ -662,22 +700,26 @@ async def health_check() -> dict[str, Any]:
             )
             db_healthy = False
 
-        # Overall health status
-        is_healthy = db_healthy
+        # Update cache with result
+        _health_check_cache = (db_healthy, now)
 
         response = {
-            "status": "healthy" if is_healthy else "unhealthy",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "status": "healthy" if db_healthy else "unhealthy",
+            "timestamp": now.isoformat(),
             "version": settings.project_version,
             "environment": settings.environment,
             "checks": {
                 "api": "ok",
                 "database": "ok" if db_healthy else "error",
             },
+            "cache": {
+                "hit": False,
+                "age_seconds": 0
+            }
         }
 
         # Return 503 if unhealthy
-        if not is_healthy:
+        if not db_healthy:
             logger.warning("Health check failed: Database connection error")
             return JSONResponse(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
