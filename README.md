@@ -1,10 +1,10 @@
 # TradeSignal
 
-> Real-time insider trading intelligence platform for tracking SEC Form 4 filings, congressional trades, and market-moving transactions with AI-powered insights and professional research tools.
+> Real-time insider trading intelligence platform for tracking SEC Form 4 filings, congressional trades, and market-moving transactions with **LUNA**—our proprietary AI-powered insights engine driven by **Gemini 2.5 Flash**.
 
 ## Overview
 
-TradeSignal is a comprehensive financial intelligence platform that aggregates and analyzes insider trading activity, congressional stock transactions, and market data to help users make informed investment decisions. Built with modern technologies and real-time data processing.
+TradeSignal is a comprehensive financial intelligence platform that aggregates and analyzes insider trading activity, congressional stock transactions, and market data to help users make informed investment decisions. Built with modern technologies and real-time data processing, featuring the LUNA intelligence layer for deep forensic analysis of market moves.
 
 ## Tech Stack
 

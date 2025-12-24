@@ -125,7 +125,7 @@ export default function CompanyAnalysis() {
       {analyzeMutation.isPending && (
         <div className="space-y-6 mt-6 relative z-0">
           <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
-            <AISkeleton message={`AI is analyzing ${ticker} insider trading patterns...`} />
+            <AISkeleton message={`LUNA (Gemini 2.5 Flash) is analyzing ${ticker} insider trading patterns...`} />
           </div>
           <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-white/10 p-6 space-y-4">
              <div className="h-8 bg-white/10 rounded w-1/3 animate-pulse"></div>
@@ -176,10 +176,15 @@ export default function CompanyAnalysis() {
           <div className="bg-gradient-to-r from-purple-900/40 to-blue-900/40 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-bold text-white">
-                  {analysis.ticker} - {analysis.company_name}
-                </h2>
-                <p className="text-sm text-gray-300 mt-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <h2 className="text-2xl font-bold text-white">
+                    {analysis.ticker} - {analysis.company_name}
+                  </h2>
+                  <span className="px-2 py-0.5 bg-purple-500/20 border border-purple-500/30 rounded text-[10px] font-bold text-purple-300 uppercase tracking-widest">
+                    LUNA AI Enhanced
+                  </span>
+                </div>
+                <p className="text-sm text-gray-300">
                   Analysis over {analysis.days_analyzed ?? 0} days • {analysis.total_trades ?? 0} trades analyzed
                 </p>
               </div>

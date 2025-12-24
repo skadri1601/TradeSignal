@@ -73,8 +73,8 @@ class Settings(BaseSettings):
         alias="GEMINI_API_KEY",
     )
     gemini_model: str = Field(
-        default="gemini-2.0-flash",
-        description="Gemini model to use (e.g., gemini-2.0-flash, gemini-2.5-flash)",
+        default="gemini-2.5-flash",
+        description="Gemini model to use (e.g., gemini-2.5-flash, gemini-2.0-flash)",
         alias="GEMINI_MODEL",
     )
 

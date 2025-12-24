@@ -17,6 +17,7 @@ class CompanyAnalysisResponse(BaseModel):
     sentiment: str
     insights: List[str]
     timestamp: str
+    provider: Optional[str] = Field(None, description="AI provider that generated the analysis")
     error: Optional[str] = None
 
 

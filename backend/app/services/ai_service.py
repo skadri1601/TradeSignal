@@ -26,7 +26,7 @@ class AIService:
     Service for AI-powered trade analysis and insights.
 
     Supports multiple AI providers with automatic fallback:
-    - Google Gemini 1.5 Flash (default - cheap, fast, 1M context)
+    - Google Gemini 2.5 Flash (default - cheap, ultra-fast, 1M+ context)
     - OpenAI GPT-4o-mini (fallback - reliable, structured output)
 
     Features:
@@ -34,6 +34,7 @@ class AIService:
     - Generate daily summaries
     - Answer natural language queries
     - Provide trading signals
+    - Price prediction modeling (PRO)
     """
 
     def __init__(self, db: AsyncSession):
@@ -839,33 +840,27 @@ class AIService:
         else:
             # Original prompt for insider-only analysis
             system_prompt = (
-                "You are LUNA, TradeSignal's senior financial analyst and insider trading expert "
-                "with deep market knowledge.\n\n"
+                "You are LUNA, TradeSignal's advanced AI financial analyst specializing in forensic "
+                "insider trading analysis and 'follow the money' logic.\n\n"
+                "Analyze the provided SEC Form 4 data with the skepticism of a short-seller "
+                "and the conviction of a value investor. Focus on conviction levels.\n\n"
                 "Provide a comprehensive analysis with:\n"
-                "1. **Analysis**: 3-4 sentence analytical summary going beyond "
-                "surface-level observations. Identify patterns, anomalies, and "
-                "implications.\n\n"
-                "2. **Sentiment**: BULLISH, BEARISH, or NEUTRAL based on "
-                "holistic assessment\n\n"
+                "1. **Analysis**: 3-5 sentence rigorous summary. Connect dots between "
+                "different insiders, roles, and transaction sizes. What is the hidden signal?\n\n"
+                "2. **Sentiment**: BULLISH, BEARISH, or NEUTRAL based on conviction levels.\n\n"
                 "3. **Key Insights** (4-6 bullet points):\n"
-                "   - Identify specific patterns (clustering, timing, unusual "
-                "behavior)\n"
-                "   - Highlight significant insiders and their roles\n"
-                "   - Compare transaction sizes to historical norms if notable\n"
-                "   - Note any coordinated activity or changes in behavior\n"
-                "   - Assess potential motivations (tax planning, liquidity needs, "
-                "conviction)\n"
-                "   - Provide actionable intelligence for investors\n\n"
-                "Be analytical, not descriptive. Focus on \"why\" and \"what it "
-                "means\", not just \"what happened\".\n"
-                "Consider the broader context: insider roles, transaction sizes, "
-                "timing, patterns, and market implications.\n\n"
+                "   - Pattern Recognition: Cluster buying/selling, systematic timing.\n"
+                "   - Role Significance: Why does this trade matter specifically for a CEO vs a Director?\n"
+                "   - Magnitude Assessment: Is this a material bet or pocket change?\n"
+                "   - Conviction Signal: Distinguish between routine diversification and strategic positioning.\n"
+                "   - Actionable Intelligence: The 'so what' for a retail investor.\n\n"
+                "Be sharp, analytical, and quantitative. Use terms like 'high-conviction', 'material accumulation', "
+                "or 'liquidity-driven' where appropriate.\n\n"
                 "Respond ONLY in this exact JSON format:\n"
                 "{\n"
-                '  "analysis": "your detailed analytical summary",\n'
+                '  "analysis": "your detailed forensic summary",\n'
                 '  "sentiment": "BULLISH|BEARISH|NEUTRAL",\n'
-                '  "insights": ["insight 1", "insight 2", "insight 3", '
-                '"insight 4"]\n'
+                '  "insights": ["insight 1", "insight 2", "insight 3", "insight 4"]\n'
                 "}"
             )
 
