@@ -323,6 +323,28 @@ export default function PricingPage() {
             )}
           </div>
 
+          {/* Platform Value Proposition */}
+          <section className="py-12 px-6 max-w-4xl mx-auto text-center mb-12 relative z-10">
+            <p className="text-gray-400 leading-relaxed mb-6">
+              TradeSignal provides real-time insider trading intelligence by tracking SEC Form 4 filings,
+              congressional trades, and market-moving transactions. Choose the plan that fits your trading style.
+            </p>
+            <div className="flex flex-wrap justify-center gap-4 text-sm">
+              <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full">
+                <span className="text-blue-400">✓</span>
+                <span className="text-gray-300">15M+ Filings Processed</span>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full">
+                <span className="text-purple-400">✓</span>
+                <span className="text-gray-300">92% AI Accuracy</span>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full">
+                <span className="text-green-400">✓</span>
+                <span className="text-gray-300">10K+ Active Traders</span>
+              </div>
+            </div>
+          </section>
+
           {/* Pricing Cards */}
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10">
             {tiers.map((tier) => (

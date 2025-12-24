@@ -161,40 +161,31 @@ async def get_usage_stats(
     """
     Get current user's usage statistics and tier limits.
     """
-    # #region agent log
-    import json
-    try:
-        with open(r'c:\Users\kadri\TradeSignal\.cursor\debug.log', 'a') as f:
-            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"billing.py:164","message":"get_usage_stats entry","data":{"user_id":current_user.id if current_user else None},"timestamp":int(datetime.utcnow().timestamp()*1000)}) + '\n')
-    except Exception as log_err:
-        logger.debug(f"Debug log write failed: {log_err}")
-    logger.info(f"[DEBUG] get_usage_stats called for user {current_user.id if current_user else None}")
-    # #endregion
+    logger.debug(
+        "get_usage_stats called",
+        extra={"user_id": current_user.id if current_user else None}
+    )
     try:
         tier = await TierService.get_user_tier(current_user.id, db)
-        # #region agent log
-        try:
-            with open(r'c:\Users\kadri\TradeSignal\.cursor\debug.log', 'a') as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"billing.py:171","message":"tier retrieved","data":{"tier":tier},"timestamp":int(datetime.utcnow().timestamp()*1000)}) + '\n')
-        except: pass
-        logger.info(f"[DEBUG] Tier retrieved: {tier}")
-        # #endregion
+        logger.debug("Tier retrieved", extra={"user_id": current_user.id, "tier": tier})
+
         limits = await TierService.get_tier_limits(tier)
-        # #region agent log
-        try:
-            with open(r'c:\Users\kadri\TradeSignal\.cursor\debug.log', 'a') as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"billing.py:177","message":"limits retrieved","data":{"limits_keys":list(limits.keys()) if limits else None,"has_ai_requests_per_day":"ai_requests_per_day" in limits if limits else False,"has_ai_requests_limit":"ai_requests_limit" in limits if limits else False},"timestamp":int(datetime.utcnow().timestamp()*1000)}) + '\n')
-        except: pass
-        logger.info(f"[DEBUG] Limits keys: {list(limits.keys()) if limits else None}, has_ai_requests_per_day: {'ai_requests_per_day' in limits if limits else False}, has_ai_requests_limit: {'ai_requests_limit' in limits if limits else False}")
-        # #endregion
+        logger.debug(
+            "Limits retrieved",
+            extra={
+                "user_id": current_user.id,
+                "limits_keys": list(limits.keys()) if limits else None
+            }
+        )
+
         usage = await TierService.get_or_create_usage(current_user.id, db)
-        # #region agent log
-        try:
-            with open(r'c:\Users\kadri\TradeSignal\.cursor\debug.log', 'a') as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"B","location":"billing.py:185","message":"usage retrieved","data":{"usage_ai_requests":usage.ai_requests if usage else None},"timestamp":int(datetime.utcnow().timestamp()*1000)}) + '\n')
-        except: pass
-        logger.info(f"[DEBUG] Usage retrieved: ai_requests={usage.ai_requests if usage else None}")
-        # #endregion
+        logger.debug(
+            "Usage retrieved",
+            extra={
+                "user_id": current_user.id,
+                "ai_requests": usage.ai_requests if usage else None
+            }
+        )
 
         # Calculate reset time (midnight UTC)
         now = datetime.utcnow()
@@ -202,30 +193,31 @@ async def get_usage_stats(
             hour=0, minute=0, second=0, microsecond=0
         )
 
-        # #region agent log
-        try:
-            with open(r'c:\Users\kadri\TradeSignal\.cursor\debug.log', 'a') as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"billing.py:194","message":"before accessing ai_requests_per_day","data":{"limits_keys":list(limits.keys()) if limits else None},"timestamp":int(datetime.utcnow().timestamp()*1000)}) + '\n')
-        except: pass
-        logger.info(f"[DEBUG] Before accessing ai_requests_per_day, limits keys: {list(limits.keys()) if limits else None}")
-        # #endregion
-        
+        logger.debug(
+            "Accessing ai_requests_per_day",
+            extra={
+                "user_id": current_user.id,
+                "limits_keys": list(limits.keys()) if limits else None
+            }
+        )
+
         # Handle both key names for backward compatibility
         # TIER_LIMITS uses "ai_requests_limit" but frontend expects "ai_requests_per_day"
         ai_limit = limits.get("ai_requests_limit", limits.get("ai_requests_per_day", 0))
-        
+
         # Ensure limits dict includes the key frontend expects
         limits_for_response = limits.copy()
         if "ai_requests_limit" in limits and "ai_requests_per_day" not in limits:
             limits_for_response["ai_requests_per_day"] = limits["ai_requests_limit"]
-        
-        # #region agent log
-        try:
-            with open(r'c:\Users\kadri\TradeSignal\.cursor\debug.log', 'a') as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"billing.py:204","message":"ai_limit calculated","data":{"ai_limit":ai_limit,"usage_ai_requests":usage.ai_requests,"limits_has_both_keys":"ai_requests_per_day" in limits_for_response and "ai_requests_limit" in limits_for_response},"timestamp":int(datetime.utcnow().timestamp()*1000)}) + '\n')
-        except: pass
-        logger.info(f"[DEBUG] ai_limit={ai_limit}, usage_ai_requests={usage.ai_requests}, has_both_keys={'ai_requests_per_day' in limits_for_response and 'ai_requests_limit' in limits_for_response}")
-        # #endregion
+
+        logger.debug(
+            "AI limit calculated",
+            extra={
+                "user_id": current_user.id,
+                "ai_limit": ai_limit,
+                "usage_ai_requests": usage.ai_requests
+            }
+        )
 
         result = {
             "tier": tier,
@@ -243,35 +235,24 @@ async def get_usage_stats(
             },
             "reset_at": tomorrow.isoformat() + "Z",
         }
-        # #region agent log
-        try:
-            with open(r'c:\Users\kadri\TradeSignal\.cursor\debug.log', 'a') as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"billing.py:218","message":"get_usage_stats success","data":{},"timestamp":int(datetime.utcnow().timestamp()*1000)}) + '\n')
-        except: pass
-        logger.info("[DEBUG] get_usage_stats returning success")
-        # #endregion
+        logger.debug("get_usage_stats success", extra={"user_id": current_user.id})
         return result
     except KeyError as e:
-        # #region agent log
-        try:
-            with open(r'c:\Users\kadri\TradeSignal\.cursor\debug.log', 'a') as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"billing.py:225","message":"KeyError caught","data":{"error":str(e),"error_type":type(e).__name__},"timestamp":int(datetime.utcnow().timestamp()*1000)}) + '\n')
-        except: pass
-        logger.error(f"[DEBUG] KeyError in get_usage_stats: {e}", exc_info=True)
-        # #endregion
-        logger.error(f"KeyError in get_usage_stats: {e}", exc_info=True)
+        logger.error(
+            "KeyError in get_usage_stats",
+            exc_info=True,
+            extra={"user_id": current_user.id, "error": str(e)}
+        )
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Configuration error: {str(e)}")
     except HTTPException:
         # Re-raise HTTP exceptions as-is
         raise
     except Exception as e:
-        # #region agent log
-        try:
-            with open(r'c:\Users\kadri\TradeSignal\.cursor\debug.log', 'a') as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"B,C,D","location":"billing.py:232","message":"Exception caught","data":{"error":str(e),"error_type":type(e).__name__},"timestamp":int(datetime.utcnow().timestamp()*1000)}) + '\n')
-        except: pass
-        logger.error(f"[DEBUG] Exception in get_usage_stats: {type(e).__name__}: {e}", exc_info=True)
-        # #endregion
+        logger.error(
+            "Exception in get_usage_stats",
+            exc_info=True,
+            extra={"user_id": current_user.id, "error": str(e)}
+        )
         logger.error(f"Error in get_usage_stats: {e}", exc_info=True)
         
         # Check if it's a database connection issue
