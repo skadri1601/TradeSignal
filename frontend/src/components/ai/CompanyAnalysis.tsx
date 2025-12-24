@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { patternsApi, PatternAnalysis } from '../../api/patterns';
+import { aiApi, PricePredictionResponse } from '../../api/ai';
 import AISkeleton from '../common/AISkeleton';
 import CompanyAutocomplete from '../common/CompanyAutocomplete';
-import { BarChart2, TrendingUp, AlertCircle, TrendingDown, MinusCircle } from 'lucide-react';
+import PricePredictionCard from './PricePredictionCard';
+import { BarChart2, TrendingUp, AlertCircle, TrendingDown, MinusCircle, Sparkles } from 'lucide-react';
 
 export default function CompanyAnalysis() {
   const [ticker, setTicker] = useState('');
@@ -11,6 +13,7 @@ export default function CompanyAnalysis() {
   const [analysis, setAnalysis] = useState<PatternAnalysis | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMessage, setProcessingMessage] = useState<string | null>(null);
+  const [showPredictions, setShowPredictions] = useState(false);
 
   const analyzeMutation = useMutation({
     mutationFn: ({ ticker, daysBack }: { ticker: string; daysBack: number }) =>
@@ -40,8 +43,17 @@ export default function CompanyAnalysis() {
     setIsProcessing(false);
     setProcessingMessage(null);
     setAnalysis(null); // Clear previous analysis
+    setShowPredictions(false); // Reset predictions
     analyzeMutation.mutate({ ticker: ticker.toUpperCase(), daysBack });
   };
+
+  // Price prediction query (only fetch when showPredictions is true and we have a ticker)
+  const { data: pricePrediction, isLoading: predictionLoading, error: predictionError } = useQuery({
+    queryKey: ['price-prediction', ticker],
+    queryFn: () => aiApi.getPricePrediction(ticker.toUpperCase()),
+    enabled: showPredictions && !!ticker && !!analysis, // Only fetch when button clicked and analysis exists
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
 
   const getTrendColor = (trend: string) => {
     if (trend === 'BULLISH') return 'text-green-400';
@@ -246,6 +258,70 @@ export default function CompanyAnalysis() {
                  </p>
                </div>
             </div>
+          </div>
+
+          {/* Price Prediction Section */}
+          <div className="space-y-4">
+            {/* Prediction Toggle Button */}
+            {!showPredictions && (
+              <div className="text-center">
+                <button
+                  onClick={() => setShowPredictions(true)}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-500 hover:to-emerald-500 transition-all duration-300 shadow-lg shadow-green-500/20 font-semibold"
+                >
+                  <Sparkles className="w-5 h-5" />
+                  Generate LUNA Price Predictions
+                </button>
+                <p className="mt-2 text-xs text-gray-500">
+                  Get AI-powered price targets with technical, fundamental, and sentiment analysis
+                </p>
+              </div>
+            )}
+
+            {/* Price Prediction Loading State */}
+            {showPredictions && predictionLoading && (
+              <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
+                <AISkeleton message={`LUNA is analyzing ${ticker} with comprehensive market data...`} />
+                <div className="mt-4 space-y-3">
+                  <div className="h-20 bg-white/5 rounded-xl animate-pulse"></div>
+                  <div className="h-20 bg-white/5 rounded-xl animate-pulse"></div>
+                  <div className="h-20 bg-white/5 rounded-xl animate-pulse"></div>
+                </div>
+              </div>
+            )}
+
+            {/* Price Prediction Error State */}
+            {showPredictions && predictionError && (
+              <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-xl p-6 flex items-start">
+                <AlertCircle className="h-5 w-5 text-yellow-400 mt-0.5 mr-3 flex-shrink-0" />
+                <div>
+                  <h3 className="text-sm font-medium text-yellow-300">Price Predictions Unavailable</h3>
+                  <p className="text-sm text-yellow-400/80 mt-1">
+                    {predictionError instanceof Error
+                      ? predictionError.message
+                      : 'Price prediction feature may not be enabled. Contact support for access.'}
+                  </p>
+                  <button
+                    onClick={() => setShowPredictions(false)}
+                    className="mt-3 text-sm text-yellow-300 hover:text-yellow-200 underline"
+                  >
+                    Hide
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Price Prediction Card */}
+            {showPredictions && pricePrediction && pricePrediction.price_predictions && (
+              <PricePredictionCard
+                ticker={pricePrediction.ticker}
+                currentPrice={undefined} // Could fetch from technical data if available
+                predictions={pricePrediction.price_predictions}
+                recommendation={pricePrediction.recommendation}
+                riskLevel={pricePrediction.risk_level}
+                disclaimer={pricePrediction.disclaimer}
+              />
+            )}
           </div>
 
           {/* Info Footer */}

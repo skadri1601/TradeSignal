@@ -43,7 +43,7 @@ class InsiderPatternAnalyzer:
         """
         cutoff_date = datetime.utcnow() - timedelta(days=days_back)
 
-        # Get all trades for the company
+        # Get all trades for the company, excluding $0 and undisclosed values
         result = await self.db.execute(
             select(Trade, Insider, Company)
             .join(Company, Trade.company_id == Company.id)
@@ -51,6 +51,10 @@ class InsiderPatternAnalyzer:
             .where(
                 Company.ticker == ticker.upper(),
                 Trade.filing_date >= cutoff_date,
+                Trade.total_value.is_not(None),
+                Trade.total_value > 0,
+                Trade.price_per_share.is_not(None),
+                Trade.price_per_share > 0,
             )
             .order_by(Trade.filing_date.desc())
         )

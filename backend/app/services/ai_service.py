@@ -787,44 +787,132 @@ class AIService:
     async def _generate_company_analysis(
         self, company_name: str, ticker: str, trade_summary: str, days_back: int
     ) -> Dict[str, Any]:
-        """Generate deep AI-powered analysis for a company."""
-        system_prompt = (
-            "You are LUNA, TradeSignal's senior financial analyst and insider trading expert "
-            "with deep market knowledge.\n\n"
-            "Provide a comprehensive analysis with:\n"
-            "1. **Analysis**: 3-4 sentence analytical summary going beyond "
-            "surface-level observations. Identify patterns, anomalies, and "
-            "implications.\n\n"
-            "2. **Sentiment**: BULLISH, BEARISH, or NEUTRAL based on "
-            "holistic assessment\n\n"
-            "3. **Key Insights** (4-6 bullet points):\n"
-            "   - Identify specific patterns (clustering, timing, unusual "
-            "behavior)\n"
-            "   - Highlight significant insiders and their roles\n"
-            "   - Compare transaction sizes to historical norms if notable\n"
-            "   - Note any coordinated activity or changes in behavior\n"
-            "   - Assess potential motivations (tax planning, liquidity needs, "
-            "conviction)\n"
-            "   - Provide actionable intelligence for investors\n\n"
-            "Be analytical, not descriptive. Focus on \"why\" and \"what it "
-            "means\", not just \"what happened\".\n"
-            "Consider the broader context: insider roles, transaction sizes, "
-            "timing, patterns, and market implications.\n\n"
-            "Respond ONLY in this exact JSON format:\n"
-            "{\n"
-            '  "analysis": "your detailed analytical summary",\n'
-            '  "sentiment": "BULLISH|BEARISH|NEUTRAL",\n'
-            '  "insights": ["insight 1", "insight 2", "insight 3", '
-            '"insight 4"]\n'
-            "}"
-        )
+        """
+        Generate comprehensive AI-powered analysis for a company.
 
-        user_prompt = (
-            f"Provide a deep analysis of insider trading activity for {company_name} "
-            f"({ticker}) over the past {days_back} days:\n\n{trade_summary}\n\n"
-            "Remember: Be analytical and insightful, not just descriptive. "
-            "What do these trades really tell us?"
-        )
+        Integrates multiple data sources when enabled:
+        - Insider trading patterns (always)
+        - Technical analysis (if enabled)
+        - Fundamental analysis (if enabled)
+        - News sentiment (if enabled)
+        - Analyst ratings (if enabled)
+        """
+        # Gather all available data sources
+        technical_data = await self._get_technical_context(ticker)
+        fundamental_data = await self._get_fundamental_context(ticker)
+        news_data = await self._get_news_context(ticker)
+        analyst_data = await self._get_analyst_context(ticker)
+
+        # Check if price predictions are enabled
+        enable_predictions = settings.enable_price_predictions
+
+        # Build enhanced system prompt
+        if enable_predictions and any([technical_data, fundamental_data, analyst_data]):
+            system_prompt = (
+                "You are LUNA, TradeSignal's advanced AI stock analyst with expertise in:\n"
+                "- Insider trading patterns\n"
+                "- Technical analysis\n"
+                "- Fundamental analysis\n"
+                "- Market sentiment\n"
+                "- Quantitative modeling\n\n"
+                "Provide comprehensive analysis synthesizing ALL available data sources.\n\n"
+                "Respond ONLY in this exact JSON format:\n"
+                "{\n"
+                '  "analysis": "3-4 sentence analytical summary synthesizing ALL data sources",\n'
+                '  "sentiment": "BULLISH|BEARISH|NEUTRAL",\n'
+                '  "confidence": "HIGH|MEDIUM|LOW",\n'
+                '  "price_predictions": [\n'
+                '    {"timeframe": "1week", "target_price": 0.00, "upside_pct": 0.0, "probability": 0.0},\n'
+                '    {"timeframe": "1month", "target_price": 0.00, "upside_pct": 0.0, "probability": 0.0},\n'
+                '    {"timeframe": "3months", "target_price": 0.00, "upside_pct": 0.0, "probability": 0.0},\n'
+                '    {"timeframe": "6months", "target_price": 0.00, "upside_pct": 0.0, "probability": 0.0}\n'
+                '  ],\n'
+                '  "recommendation": "BUY|HOLD|SELL",\n'
+                '  "risk_level": "HIGH|MEDIUM|LOW",\n'
+                '  "insights": ["insight 1 combining multiple data sources", "insight 2", "insight 3", "insight 4"],\n'
+                '  "catalysts": ["catalyst 1", "catalyst 2"],\n'
+                '  "risks": ["risk 1", "risk 2"],\n'
+                f'  "disclaimer": "{settings.price_prediction_disclaimer}"\n'
+                "}\n\n"
+                "Be analytical and quantitative. Provide specific price targets with reasoning."
+            )
+        else:
+            # Original prompt for insider-only analysis
+            system_prompt = (
+                "You are LUNA, TradeSignal's senior financial analyst and insider trading expert "
+                "with deep market knowledge.\n\n"
+                "Provide a comprehensive analysis with:\n"
+                "1. **Analysis**: 3-4 sentence analytical summary going beyond "
+                "surface-level observations. Identify patterns, anomalies, and "
+                "implications.\n\n"
+                "2. **Sentiment**: BULLISH, BEARISH, or NEUTRAL based on "
+                "holistic assessment\n\n"
+                "3. **Key Insights** (4-6 bullet points):\n"
+                "   - Identify specific patterns (clustering, timing, unusual "
+                "behavior)\n"
+                "   - Highlight significant insiders and their roles\n"
+                "   - Compare transaction sizes to historical norms if notable\n"
+                "   - Note any coordinated activity or changes in behavior\n"
+                "   - Assess potential motivations (tax planning, liquidity needs, "
+                "conviction)\n"
+                "   - Provide actionable intelligence for investors\n\n"
+                "Be analytical, not descriptive. Focus on \"why\" and \"what it "
+                "means\", not just \"what happened\".\n"
+                "Consider the broader context: insider roles, transaction sizes, "
+                "timing, patterns, and market implications.\n\n"
+                "Respond ONLY in this exact JSON format:\n"
+                "{\n"
+                '  "analysis": "your detailed analytical summary",\n'
+                '  "sentiment": "BULLISH|BEARISH|NEUTRAL",\n'
+                '  "insights": ["insight 1", "insight 2", "insight 3", '
+                '"insight 4"]\n'
+                "}"
+            )
+
+        # Build comprehensive user prompt with all available data
+        prompt_parts = [
+            f"Analyze {company_name} ({ticker}) over the past {days_back} days.\n"
+        ]
+
+        # Always include insider trading data
+        prompt_parts.append(f"**INSIDER TRADING DATA:**\n{trade_summary}\n")
+
+        # Add technical data if available
+        if technical_data:
+            prompt_parts.append(
+                f"**TECHNICAL ANALYSIS:**\n{json.dumps(technical_data, indent=2)}\n"
+            )
+
+        # Add fundamental data if available
+        if fundamental_data:
+            prompt_parts.append(
+                f"**FUNDAMENTAL ANALYSIS:**\n{json.dumps(fundamental_data, indent=2)}\n"
+            )
+
+        # Add news data if available
+        if news_data:
+            prompt_parts.append(
+                f"**NEWS & SENTIMENT:**\n{json.dumps(news_data, indent=2)}\n"
+            )
+
+        # Add analyst data if available
+        if analyst_data:
+            prompt_parts.append(
+                f"**ANALYST RATINGS:**\n{json.dumps(analyst_data, indent=2)}\n"
+            )
+
+        if enable_predictions and any([technical_data, fundamental_data, analyst_data]):
+            prompt_parts.append(
+                "\nProvide comprehensive analysis with specific price predictions for each timeframe. "
+                "Base predictions on ALL available data sources."
+            )
+        else:
+            prompt_parts.append(
+                "\nRemember: Be analytical and insightful, not just descriptive. "
+                "What do these trades really tell us?"
+            )
+
+        user_prompt = "\n".join(prompt_parts)
 
         errors: List[str] = []
 
@@ -1824,6 +1912,82 @@ Provide signals in JSON format."""
             )
 
         return signals
+
+    async def _get_technical_context(self, ticker: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch and format technical analysis data for AI prompt.
+
+        Returns dictionary with technical indicators or None if unavailable.
+        """
+        if not settings.enable_technical_analysis or not settings.yfinance_enabled:
+            return None
+
+        try:
+            from app.services.market_data_service import MarketDataService
+
+            market_service = MarketDataService()
+            technical_data = await market_service.get_technical_indicators(ticker)
+            return technical_data
+        except Exception as e:
+            logger.warning(f"Failed to fetch technical data for {ticker}: {e}")
+            return None
+
+    async def _get_fundamental_context(self, ticker: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch and format fundamental data for AI prompt.
+
+        Returns dictionary with fundamental metrics or None if unavailable.
+        """
+        if not settings.enable_fundamental_analysis or not settings.yfinance_enabled:
+            return None
+
+        try:
+            from app.services.market_data_service import MarketDataService
+
+            market_service = MarketDataService()
+            fundamental_data = await market_service.get_fundamental_data(ticker)
+            return fundamental_data
+        except Exception as e:
+            logger.warning(f"Failed to fetch fundamental data for {ticker}: {e}")
+            return None
+
+    async def _get_analyst_context(self, ticker: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch and format analyst ratings for AI prompt.
+
+        Returns dictionary with analyst consensus or None if unavailable.
+        """
+        if not settings.enable_analyst_ratings:
+            return None
+
+        try:
+            from app.services.market_data_service import MarketDataService
+
+            market_service = MarketDataService()
+            analyst_data = await market_service.get_analyst_ratings(ticker)
+            return analyst_data
+        except Exception as e:
+            logger.warning(f"Failed to fetch analyst ratings for {ticker}: {e}")
+            return None
+
+    async def _get_news_context(self, ticker: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch and format news sentiment for AI prompt.
+
+        Returns dictionary with news and sentiment or None if unavailable.
+        """
+        if not settings.enable_news_sentiment:
+            return None
+
+        try:
+            from app.services.market_data_service import MarketDataService
+
+            market_service = MarketDataService()
+            news_data = await market_service.get_news_sentiment(ticker)
+            return news_data
+        except Exception as e:
+            logger.warning(f"Failed to fetch news sentiment for {ticker}: {e}")
+            return None
 
     def _calculate_signal(self, buy_ratio: float) -> str:
         """Calculate signal from buy ratio."""

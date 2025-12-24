@@ -273,6 +273,81 @@ async def get_trading_signals(
     return result
 
 
+@router.get(
+    "/predict/{ticker}",
+    response_model=CompanyAnalysisResponse,
+    summary="Generate AI price predictions",
+    dependencies=[Depends(check_ai_availability)],
+)
+@limiter.limit("3/hour")  # More restrictive - predictions are expensive
+async def predict_stock_price(
+    request: Request,
+    ticker: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Generate AI price predictions for a stock.
+
+    Combines multiple data sources for comprehensive analysis:
+    - Insider trading patterns (SEC Form 4)
+    - Technical indicators (moving averages, RSI, MACD, Bollinger Bands)
+    - Fundamental metrics (P/E, market cap, revenue, margins)
+    - News sentiment (recent headlines and sentiment scores)
+    - Analyst ratings (buy/hold/sell consensus, price targets)
+
+    Returns price targets for multiple timeframes (1 week, 1 month, 3 months, 6 months)
+    with confidence levels, BUY/HOLD/SELL recommendations, risk assessment, and disclaimers.
+
+    - **ticker**: Company ticker symbol (e.g., NVDA, TSLA)
+
+    **Requires:**
+    - Price predictions feature enabled (ENABLE_PRICE_PREDICTIONS=true)
+    - At least one market data source enabled (technical, fundamental, analyst, or news)
+    - AI provider API key configured
+
+    **Returns:**
+    - Comprehensive analysis with price predictions, recommendations, risks, and catalysts
+    - Educational disclaimers (not investment advice)
+    """
+    # Check if price predictions enabled
+    if not settings.enable_price_predictions:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Price predictions feature not enabled. Set ENABLE_PRICE_PREDICTIONS=true in .env",
+        )
+
+    # Check tier limit (expensive operation)
+    await TierService.check_ai_limit(current_user.id, db)
+
+    # Generate prediction using enhanced analysis
+    service = AIService(db)
+    result = await service.analyze_company(ticker.upper(), days_back=90)
+
+    # Increment usage counter
+    await TierService.increment_ai_usage(current_user.id, db)
+
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI service unavailable",
+        )
+
+    if "error" in result and result.get("ticker") is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=result["error"]
+        )
+
+    # Ensure predictions are present
+    if "price_predictions" not in result or not result["price_predictions"]:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Insufficient market data available for predictions. Enable technical or fundamental analysis.",
+        )
+
+    return result
+
+
 @router.get("/diagnostics", summary="Get AI insights diagnostic information")
 @limiter.limit("10/minute")
 async def get_ai_diagnostics(

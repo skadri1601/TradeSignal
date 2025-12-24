@@ -123,6 +123,28 @@ export interface TradingSignalsResponse {
   };
 }
 
+export interface PricePrediction {
+  timeframe: string;
+  target_price: number;
+  upside_pct: number;
+  probability: number;
+}
+
+export interface PricePredictionResponse {
+  ticker: string;
+  company_name: string;
+  analysis: string;
+  sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  price_predictions: PricePrediction[];
+  recommendation: 'BUY' | 'HOLD' | 'SELL' | 'STRONG_BUY' | 'STRONG_SELL';
+  risk_level: 'HIGH' | 'MEDIUM' | 'LOW';
+  insights: string[];
+  catalysts?: string[];
+  risks?: string[];
+  disclaimer: string;
+}
+
 export const aiApi = {
   /**
    * Check AI service status and availability
@@ -167,6 +189,19 @@ export const aiApi = {
    */
   async getTradingSignals(): Promise<TradingSignalsResponse> {
     const response = await apiClient.get<TradingSignalsResponse>(`${AI_BASE}/signals`);
+    return response.data;
+  },
+
+  /**
+   * Get AI price predictions for a stock
+   *
+   * Combines insider trading patterns, technical indicators, fundamental metrics,
+   * news sentiment, and analyst ratings for comprehensive stock prediction
+   */
+  async getPricePrediction(ticker: string): Promise<PricePredictionResponse> {
+    const response = await apiClient.get<PricePredictionResponse>(
+      `${AI_BASE}/predict/${ticker}`
+    );
     return response.data;
   },
 };
