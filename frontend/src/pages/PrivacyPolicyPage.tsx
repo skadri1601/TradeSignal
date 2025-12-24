@@ -5,12 +5,17 @@ import Section from '../components/legal/Section';
 const PrivacyPolicyPage = () => {
   return (
     <>
-      <LegalHeroSection 
-        title="Privacy Policy" 
-        intro="At TradeSignal, your privacy matters. This policy outlines how we collect, use, and protect your information when you use our services." 
+      <LegalHeroSection
+        title="Privacy Policy"
+        intro="TradeSignal is a real-time insider trading intelligence platform that tracks SEC Form 4 filings, congressional trades, and market-moving transactions. Your privacy matters. This policy outlines how we collect, use, and protect your information when you use our services."
       />
       <LegalContentSection>
         <Section title="1. Information We Collect">
+          <p className="mb-4">
+            TradeSignal processes financial data from public sources including SEC EDGAR filings,
+            STOCK Act congressional disclosures, and market data feeds. The personal information
+            we collect is used solely to provide our service and improve your experience.
+          </p>
           <ul className="list-disc ml-6 space-y-2">
             <li><strong>Personal Information:</strong> Email address, username, payment details (processed securely by Stripe).</li>
             <li><strong>Trading Data:</strong> Watchlists, alert configurations, and user preferences.</li>
@@ -22,7 +27,7 @@ const PrivacyPolicyPage = () => {
 
         <Section title="2. How We Use Your Information">
           <ul className="list-disc ml-6 space-y-2">
-            <li>To provide and maintain our insider trading intelligence platform (Alpha release).</li>
+            <li>To provide and maintain TradeSignal, our real-time insider trading intelligence platform tracking SEC Form 4 filings, congressional trades (STOCK Act), and institutional flows (Alpha release).</li>
             <li>To process your subscription payments and manage your account status via Stripe.</li>
             <li>To send you real-time trade alerts via email, push notifications, Discord, Slack, SMS, and webhooks.</li>
             <li>To provide AI-powered insights and analysis (Beta feature, requires API key configuration).</li>

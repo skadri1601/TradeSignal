@@ -1,6 +1,6 @@
 import { useState, useContext } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Briefcase, MapPin, Clock, Plus, Trash2, FileText, Send, X, TrendingUp, Users, Globe } from 'lucide-react';
+import { Briefcase, MapPin, Clock, Plus, Trash2, FileText, Send, X, TrendingUp, Users, Globe, Shield } from 'lucide-react';
 import { jobsApi, type Job, type JobCreate, type JobApplicationCreate } from '../api/jobs';
 import { AuthContext } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -395,7 +395,9 @@ export default function CareersPage() {
             </span>
           </h1>
           <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-10">
-            We're building the future of financial intelligence. Help us democratize insider trading data for everyone.
+            Join us in democratizing financial intelligence. TradeSignal is building the future of
+            insider trading transparency—tracking 15 million+ SEC filings with LUNA, our advanced AI.
+            Help us level the playing field for retail investors worldwide.
           </p>
           
           {isSuperAdmin && (
@@ -418,7 +420,7 @@ export default function CareersPage() {
             {
               icon: <TrendingUp className="w-6 h-6" />,
               title: "Mission-Driven",
-              desc: "We're democratizing access to financial intelligence. Help us train LUNA, our advanced AI, to give retail investors the same edge as institutions."
+              desc: "We're on a mission to democratize access to financial intelligence. Our tagline: 'Decode the Smart Money.' Help us train LUNA, our advanced AI (92% sentiment accuracy), to give retail investors the same edge as institutions. Financial transparency shouldn't be a luxury—it should be a standard."
             },
             {
               icon: <Globe className="w-6 h-6" />,
@@ -439,6 +441,40 @@ export default function CareersPage() {
               <p className="text-gray-400 leading-relaxed">{item.desc}</p>
             </div>
           ))}
+        </div>
+
+        {/* Company Values */}
+        <div className="bg-gradient-to-br from-purple-900/10 to-blue-900/10 border border-white/10 rounded-3xl p-12">
+          <h2 className="text-3xl font-bold text-white mb-8 text-center">Our Core Values</h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Globe className="w-8 h-8 text-blue-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3">Radical Transparency</h3>
+              <p className="text-gray-400 leading-relaxed">
+                We believe in democratizing access to financial data. What the insiders know, you should know too.
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <TrendingUp className="w-8 h-8 text-purple-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3">Data-Driven Precision</h3>
+              <p className="text-gray-400 leading-relaxed">
+                No noise, just signal. LUNA filters out the fluff to deliver high-confidence, actionable insights.
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Shield className="w-8 h-8 text-green-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3">Security First</h3>
+              <p className="text-gray-400 leading-relaxed">
+                Your data and privacy are paramount. We employ bank-level encryption to keep your strategies safe.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Perks & Benefits */}

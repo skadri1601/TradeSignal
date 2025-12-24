@@ -5,19 +5,24 @@ import Section from '../components/legal/Section';
 const TermsOfServicePage = () => {
   return (
     <>
-      <LegalHeroSection 
-        title="Terms & Conditions" 
-        intro="Welcome to TradeSignal. By accessing or using our website, products, or services, you agree to these Terms & Conditions. Please read them carefully." 
+      <LegalHeroSection
+        title="Terms & Conditions"
+        intro="TradeSignal provides real-time insider trading intelligence by tracking SEC Form 4 filings, congressional trades, and market-moving transactions with LUNA AI. By accessing or using our website, products, or services, you agree to these Terms & Conditions. Please read them carefully."
       />
       <LegalContentSection>
         <Section title="1. Acceptance of Terms">
           <p>By accessing or using TradeSignal ("the Service"), you agree to be bound by these Terms. If you disagree with any part of the terms, you may not access the Service.</p>
+          <p className="mt-4">
+            TradeSignal is a financial intelligence platform that aggregates and analyzes data from
+            SEC EDGAR (Form 4 filings), Capitol Hill (STOCK Act disclosures), and other public sources.
+            We use LUNA, our proprietary AI engine, to provide sentiment analysis and pattern detection.
+          </p>
           <p className="mt-4">You must be at least 18 years old to use this Service.</p>
         </Section>
 
         <Section title="2. Use of Services">
            <ul className="list-disc ml-6 space-y-2">
-            <li><strong>Service Status:</strong> TradeSignal is currently in Alpha release (v1.0.0-alpha). Some features are in Beta or Experimental stages. See our <a href="/docs/RELEASE_NOTES_ALPHA_v1.0.0.md" className="text-blue-600 hover:underline">Release Notes</a> for details on feature availability and limitations.</li>
+            <li><strong>Service Description:</strong> TradeSignal provides real-time insider trading intelligence, tracking SEC Form 4 filings, congressional trades, and institutional flows. We process 15 million+ filings with LUNA, our advanced AI engine (92% sentiment accuracy). The platform is currently in Alpha release (v1.0.0-alpha). Some features are in Beta or Experimental stages. See our <a href="/docs/RELEASE_NOTES_ALPHA_v1.0.0.md" className="text-blue-600 hover:underline">Release Notes</a> for details on feature availability and limitations.</li>
             <li><strong>Informational Purposes Only:</strong> TradeSignal provides financial data and AI insights (Beta) for educational and informational purposes only. We are <strong>NOT</strong> financial advisors, and nothing on this site constitutes investment advice, financial advice, or trading recommendations.</li>
             <li><strong>Data Accuracy:</strong> While we strive for accuracy, data may be delayed, incomplete, or contain errors. SEC Form 4 filings are updated every 6 hours. Congressional trades and AI insights may have additional delays or require API keys. See Release Notes for data source status.</li>
             <li><strong>No Automated Scraping:</strong> You agree not to use automated bots, scrapers, or spiders to access or extract data from our Service without express written permission. Violation may result in account termination and legal action.</li>

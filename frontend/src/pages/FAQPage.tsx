@@ -70,6 +70,22 @@ const faqs: FAQItem[] = [
     question: 'Do limits reset daily or monthly?',
     answer: 'AI request limits reset daily at midnight UTC. Alert limits and company tracking limits are based on your subscription tier and do not reset - they are maximum concurrent limits.',
   },
+  // Platform & Features
+  {
+    category: 'Platform & Features',
+    question: 'What is TradeSignal and who is it for?',
+    answer: 'TradeSignal is a real-time insider trading intelligence platform designed for retail investors, day traders, and financial analysts. We track SEC Form 4 filings, congressional trades (STOCK Act), and institutional flows with LUNA, our advanced AI. Our mission is to level the playing field by giving you the same data institutional investors use to make decisions.',
+  },
+  {
+    category: 'Platform & Features',
+    question: 'What makes TradeSignal different from other platforms?',
+    answer: 'Unlike traditional screeners, TradeSignal uses LUNA, our proprietary AI engine based on Google Gemini and OpenAI architectures. LUNA analyzes sentiment, detects anomalies, and identifies high-conviction patterns that raw data charts miss. We process 15 million+ filings with 92% sentiment accuracy.',
+  },
+  {
+    category: 'Platform & Features',
+    question: 'What is LUNA AI and how does it work?',
+    answer: 'LUNA (Large Understanding Network for Analysis) is our custom-tuned Large Language Model engine. It reads thousands of SEC filings to parse text, context, and footnotes, identifying non-standard transaction codes and sentiment that traditional screeners miss. LUNA assigns "Bullish" or "Bearish" sentiment scores to complex transaction patterns with 92% accuracy.',
+  },
   // Data & Technology
   {
     category: 'Data & Technology',
@@ -138,8 +154,13 @@ export default function FAQPage() {
               Questions
             </span>
           </h1>
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+          <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-8">
             Find answers to common questions about billing, payments, refunds, and features.
+          </p>
+          <p className="text-gray-400 max-w-3xl mx-auto text-center">
+            TradeSignal provides real-time insider trading intelligence by tracking SEC Form 4 filings,
+            congressional trades, and market-moving transactions with LUNA, our advanced AI engine.
+            Below are answers to common questions about our service.
           </p>
         </div>
       </section>

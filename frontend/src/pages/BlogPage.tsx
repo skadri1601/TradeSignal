@@ -52,14 +52,41 @@ const BlogPage = () => {
           >
             Market <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">Insights</span>
           </motion.h1>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
             className="text-xl text-gray-400 max-w-2xl mx-auto"
           >
-            Educational resources, feature deep-dives, and analysis to help you trade with institutional confidence.
+            Learn how to decode the smart money. TradeSignal tracks SEC Form 4 filings, congressional
+            trades, and institutional flows with LUNA AI. Explore educational resources, feature deep-dives,
+            and analysis to trade with institutional confidence.
           </motion.p>
+        </div>
+      </section>
+
+      {/* Platform Introduction */}
+      <section className="py-12 px-6 border-b border-white/10">
+        <div className="max-w-4xl mx-auto text-center">
+          <p className="text-gray-400 leading-relaxed mb-6">
+            TradeSignal is a real-time insider trading intelligence platform designed for retail investors,
+            day traders, and financial analysts. We process 15 million+ filings with 92% sentiment accuracy
+            using LUNA, our advanced AI engine.
+          </p>
+          <div className="flex flex-wrap justify-center gap-4 text-sm">
+            <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full">
+              <span className="w-2 h-2 bg-blue-400 rounded-full"></span>
+              <span className="text-gray-300">SEC Form 4 Tracking</span>
+            </div>
+            <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full">
+              <span className="w-2 h-2 bg-purple-400 rounded-full"></span>
+              <span className="text-gray-300">Congressional Trades</span>
+            </div>
+            <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full">
+              <span className="w-2 h-2 bg-green-400 rounded-full"></span>
+              <span className="text-gray-300">LUNA AI Insights</span>
+            </div>
+          </div>
         </div>
       </section>
 

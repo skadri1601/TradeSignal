@@ -53,7 +53,19 @@ export default function PublicContactPage() {
               </span>
             </h1>
             <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              Get in touch with our team and we'll respond to you as soon as possible.
+              TradeSignal helps retail investors, day traders, and financial analysts track insider trading
+              intelligence in real-time. We're here to answer your questions about our platform, pricing,
+              or data sources. Get in touch and we'll respond as soon as possible.
+            </p>
+          </div>
+
+          {/* Mission Statement Section */}
+          <div className="max-w-3xl mx-auto mb-12 bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-white/10 rounded-3xl p-8 text-center relative z-10">
+            <h2 className="text-2xl font-bold text-white mb-3">Our Mission</h2>
+            <p className="text-gray-400 leading-relaxed">
+              We believe financial transparency shouldn't be a luxury—it should be a standard.
+              TradeSignal democratizes access to insider trading data by tracking SEC Form 4 filings,
+              congressional trades, and institutional flows with LUNA, our advanced AI engine.
             </p>
           </div>
 
