@@ -6,6 +6,13 @@ import CompanyAutocomplete from '../common/CompanyAutocomplete';
 import PricePredictionCard from './PricePredictionCard';
 import { BarChart2, TrendingUp, AlertCircle, TrendingDown, MinusCircle, Sparkles } from 'lucide-react';
 
+/**
+ * Render the LUNA forensic analysis UI that lets users submit a ticker and time window, triggers an AI company analysis, and displays loading, queued, error, and result states.
+ *
+ * The component includes a ticker autocomplete, days-to-analyze selector, submit control, visual feedback while the analysis runs or is queued, and detailed forensic results (summary, insights, and optional price predictions) when available.
+ *
+ * @returns The rendered React element containing the search form, stateful feedback (loading/processing/error), and analysis results.
+ */
 export default function CompanyAnalysis() {
   const [ticker, setTicker] = useState('');
   const [daysBack, setDaysBack] = useState(30);
