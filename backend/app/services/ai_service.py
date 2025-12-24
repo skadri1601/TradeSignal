@@ -37,6 +37,18 @@ class AIService:
     """
 
     def __init__(self, db: AsyncSession):
+        """
+        Initialize the service with a database session and configure available AI provider clients.
+        
+        Stores the provided AsyncSession on the instance and sets the primary provider from settings. If configured, attempts to initialize:
+        - Gemini standard (Flash) client and a Gemini reasoning (Pro) client; model names are normalized by prefixing "models/" when needed.
+        - OpenAI AsyncOpenAI client as a fallback.
+        
+        On failure to initialize a provider client the corresponding attribute remains None and an error is logged.
+        
+        Parameters:
+            db (AsyncSession): Asynchronous SQLAlchemy session used by the service.
+        """
         self.db = db
         self.provider = settings.ai_provider.lower()
         self.gemini_client = None
@@ -132,9 +144,30 @@ class AIService:
         self, ticker: str, days_back: int = 30
     ) -> Optional[Dict[str, Any]]:
         """
-        LUNA MASTER ANALYSIS:
-        Performs a comprehensive forensic analysis using the Reasoning Model (Pro).
-        Fetches Earnings, Technicals, Fundamentals, and News to build a unified context.
+        Run a comprehensive LUNA Master Analysis for a company using insider trades and fused market context.
+        
+        Fetches the company by ticker and up to the most recent 100 insider trades within the given lookback period; augments that data with earnings, technical indicators, fundamentals, and news; builds a master prompt and requests a structured JSON forensic analysis from the reasoning-capable AI (with provider fallbacks); parses and returns the resulting analysis.
+        
+        Parameters:
+            ticker (str): Ticker symbol of the target company (case-insensitive).
+            days_back (int): Number of days of historical insider activity to include (default 30).
+        
+        Returns:
+            dict | None: On success, a dictionary containing at minimum:
+                - ticker: requested ticker (str)
+                - company_name: company display name (str)
+                - days_analyzed: lookback window used (int)
+                - total_trades: number of trades included (int)
+                - timestamp: ISO timestamp of the analysis (str)
+                - provider: label of the AI provider used (str)
+                - analysis: forensic summary (str)
+                - sentiment: one of "BULLISH", "BEARISH", or "NEUTRAL" (str)
+                - confidence: one of "HIGH", "MEDIUM", or "LOW" (str)
+                - pattern_detected: detected pattern name or "NONE" (str)
+                - price_prediction: object with `1_week_target`, `1_month_target`, and `reasoning`
+                - insights: list of concise insight strings
+            If AI insights are globally disabled or no provider is available, returns None.
+            On failure, returns a dict with an "error" key describing the problem.
         """
         if not self._check_availability():
             return None
@@ -272,7 +305,31 @@ class AIService:
             return {"error": str(e)}
 
     async def generate_daily_summary(self) -> Optional[Dict[str, Any]]:
-        """Generate news-feed style summary of recent insider trades."""
+        """
+        Generate a concise, news-feed style summary of recent insider trades for the configured period.
+        
+        Collects insider trades from the database for the configured lookback period (settings.ai_insights_days_back, default 7 days), aggregates activity by company, and produces a top-companies summary plus a short AI-generated overview.
+        
+        Returns:
+            A dict containing:
+                - ai_overview (str): Short AI-written overview of the period (may be empty or omitted if generation failed).
+                - company_summaries (List[Dict]): List of per-company summaries with keys:
+                    - ticker (str)
+                    - company_name (str)
+                    - summary (str): Short human-readable sentence describing activity.
+                    - total_value (float): Sum of trade values for the period.
+                    - trade_count (int)
+                    - buy_count (int)
+                    - sell_count (int)
+                    - insider_count (int)
+                    - latest_date (str, ISO format)
+                - total_trades (int): Total number of trades considered.
+                - generated_at (str): ISO-formatted timestamp when the summary was produced.
+                - period (str): Human-readable period string e.g. "last 7 days".
+            If no trades are found, returns a dict with an empty company_summaries list, total_trades = 0, generated_at, and period.
+            Returns None if AI insights are globally unavailable.
+            On error returns a dict with an "error" key describing the failure.
+        """
         if not self._check_availability():
             return None
 
@@ -376,7 +433,19 @@ class AIService:
             return {"error": str(e)}
 
     async def generate_daily_summary_material_only(self) -> Optional[Dict[str, Any]]:
-        """Generate daily summary filtering for material trades only."""
+        """
+        Create a minimal daily summary that reports insider trades from the last 24 hours filtered to only material trades.
+        
+        The summary considers a trade material if its total value is at least 50,000 or its share count is at least 10,000. If no material trades are found the result contains a message indicating that; on success the result includes counts for all retrieved trades and for material trades plus the covered period.
+        
+        Returns:
+            dict: On success, a dictionary with keys:
+                - "total_trades" (int): Number of trades retrieved from the last 24 hours.
+                - "material_trades" (int): Number of trades meeting the materiality thresholds.
+                - "period" (str): Human-readable period covered, e.g. "last 24 hours".
+              If no material trades are found, returns {"message": "No material trades found."}.
+              On error, returns {"error": "<error message>"}.
+        """
         # Logic is similar to generate_daily_summary but with filters
         # Simplified for brevity in rewrite, but preserving core structure
         if not self._check_availability():
@@ -415,7 +484,22 @@ class AIService:
             return {"error": str(e)}
 
     async def _generate_daily_overview(self, top_companies: List[Dict], total_trade_count: int) -> str:
-        """Generate a single AI overview for the entire day's activity."""
+        """
+        Create a short, punchy three-sentence AI-written overview of the day's insider-trade activity.
+        
+        Parameters:
+            top_companies (List[Dict]): List of company summary dicts used to build context. Each dict is expected to include the keys:
+                - "ticker" (str)
+                - "company_name" (str)
+                - "total_value" (numeric)
+                - "buy_count" (int)
+                - "sell_count" (int)
+                - "insiders" (List[str])
+            total_trade_count (int): Total number of trades in the period covered.
+        
+        Returns:
+            overview (str): A concise (three-sentence) overview suitable for a financial news-feed.
+        """
         context_lines = []
         for c in top_companies[:5]:
             insiders_str = ", ".join(c["insiders"][:3])
@@ -430,8 +514,12 @@ class AIService:
 
     async def ask_question(self, question: str) -> Optional[Dict[str, Any]]:
         """
-        Answer natural language questions about insider trades.
-        Uses Reasoning Model (Pro) for better context understanding.
+        Answer a natural-language question about recent insider trading activity and return the AI-generated response with metadata.
+        
+        Returns:
+            dict: Contains 'question' (str), 'answer' (str), 'timestamp' (ISO 8601 str), and 'response_metadata' (provider/response details);
+            None if no AI provider is available;
+            on internal error returns a dict with an 'error' key describing the failure.
         """
         if not self._check_availability():
             return None
@@ -453,8 +541,32 @@ class AIService:
 
     async def generate_trading_signals(self) -> Optional[Dict[str, Any]]:
         """
-        Generate AI-powered trading signals based on insider activity.
-        Uses Flash model for speed.
+        Aggregate recent insider trades and produce per-company trading signals.
+        
+        Collects insider trade activity over the configured lookback period and returns AI- or rule-derived signals for the most active companies.
+        
+        Returns:
+            dict: Result object containing one of the following shapes:
+                - Success:
+                    {
+                        "signals": List[dict],              # Generated signal entries; each typically contains keys like
+                                                           # "ticker", "name", "signal", "strength", "trade_count",
+                                                           # "buy_ratio", "total_value", and a short reasoning note.
+                        "generated_at": str,               # ISO 8601 timestamp when signals were generated.
+                        "period": str                      # Human-readable lookback period (e.g., "7 days").
+                    }
+                - No-signals:
+                    {
+                        "signals": [],
+                        "message": str,                    # Short explanation (e.g., "No significant insider trading activity detected.").
+                        "generated_at": str,
+                        "period": str
+                    }
+                - Error:
+                    {
+                        "error": str                       # Error message describing what went wrong.
+                    }
+            Returns None if AI provider availability check fails.
         """
         if not self._check_availability():
             return None
@@ -504,7 +616,17 @@ class AIService:
             return {"error": str(e)}
 
     async def _call_ai_provider(self, system_prompt: str, user_prompt: str, max_tokens: int = 500) -> str:
-        """Helper to call configured AI provider (Standard/Flash)."""
+        """
+        Call the configured AI provider to generate text from the given system and user prompts.
+        
+        Parameters:
+            system_prompt (str): Global/system-level instructions for the model.
+            user_prompt (str): User-level prompt or query to be answered.
+            max_tokens (int): Maximum tokens to request from the provider.
+        
+        Returns:
+            str: The provider's generated text. If no provider is configured returns "AI unavailable". If the call fails returns "AI analysis temporarily unavailable.".
+        """
         try:
             if self.gemini_client:
                 response = await self.gemini_client.generate_content_async(
@@ -526,7 +648,15 @@ class AIService:
 
     @staticmethod
     def _parse_json_response(raw_text: Optional[str]) -> Optional[Dict[str, Any]]:
-        """Parse JSON returned by AI providers, handling fenced blocks."""
+        """
+        Parse an AI provider response and extract JSON content.
+        
+        Parameters:
+            raw_text (Optional[str]): Response text from an AI provider; may contain fenced code blocks (for example ```json ... ```).
+        
+        Returns:
+            Optional[Dict[str, Any]]: The parsed JSON object when extraction and parsing succeed, or `None` if input is empty or invalid.
+        """
         if not raw_text:
             return None
         text = raw_text.strip()
@@ -542,7 +672,16 @@ class AIService:
             return None
 
     async def _get_trade_statistics(self) -> Dict[str, Any]:
-        """Get recent trade statistics for chatbot context."""
+        """
+        Compute 30-day insider-trade counts used to provide context to chatbot responses.
+        
+        Returns:
+            A dictionary with the following keys:
+            - total_trades: total number of trades filed in the last 30 days.
+            - buy_trades: number of trades with transaction_type equal to "BUY" in the last 30 days.
+            - sell_trades: number of trades with transaction_type equal to "SELL" in the last 30 days.
+            - period_days: the lookback period in days (30).
+        """
         cutoff_date = datetime.utcnow() - timedelta(days=30)
         result = await self.db.execute(
             select(
@@ -560,7 +699,17 @@ class AIService:
         }
 
     async def _generate_chatbot_response(self, question: str, stats: Dict[str, Any]) -> tuple[str, Dict[str, Any]]:
-        """Generate intelligent, context-aware chatbot responses."""
+        """
+        Generate a contextual chatbot reply using available reasoning-capable or fallback models.
+        
+        Parameters:
+            question (str): The user's question to answer.
+            stats (Dict[str, Any]): Market statistics (e.g., 30-day totals like 'total_trades' and 'buy_trades') included in the system prompt to provide context.
+        
+        Returns:
+            tuple[str, Dict[str, Any]]: A pair where the first element is the chatbot's reply text and the second is a metadata dictionary.
+                The metadata contains keys such as `"provider"` (e.g., `"gemini-pro"` or `"openai"`) when a provider produced the reply, or `"error"` with an error message if generation failed. 
+        """
         # Simplified context building
         system_prompt = (
             f"You are LUNA, TradeSignal's AI. "
@@ -591,19 +740,38 @@ class AIService:
 
     @staticmethod
     def _get_trade_shares(trade: Trade) -> float:
-        """Return trade shares as float."""
+        """
+        Get the number of shares for a trade as a float.
+        
+        Returns:
+            float: The trade's shares converted to float, or 0.0 if the shares value is missing.
+        """
         shares = getattr(trade, "shares", None)
         return float(shares) if shares is not None else 0.0
 
     async def _get_trade_value(self, trade: Trade) -> float:
-        """Return trade value."""
+        """
+        Get the positive total value for a trade or zero if the value is missing or not greater than zero.
+        
+        Returns:
+            The trade's `total_value` as a float when present and greater than zero, otherwise `0.0`.
+        """
         total_value = getattr(trade, "total_value", None)
         if total_value is not None and total_value > 0:
             return float(total_value)
         return 0.0
 
     async def _format_trades_for_ai(self, trades_with_insiders: List[tuple], company: Company) -> str:
-        """Format trades into a summary for AI analysis."""
+        """
+        Create a compact textual summary of recent insider trades for inclusion in AI prompts.
+        
+        Parameters:
+            trades_with_insiders (List[tuple]): List of (Trade, Insider) tuples to include; only the first 20 entries are used.
+            company (Company): Company object whose name and ticker are used as the summary header.
+        
+        Returns:
+            str: A multi-line string beginning with the company name and ticker, followed by up to 20 lines each containing the trade filing date, insider name, relationship, transaction type, and formatted dollar value.
+        """
         summary = f"Company: {company.name} ({company.ticker})\n"
         for trade, insider in trades_with_insiders[:20]: # Limit context size
             val = await self._get_trade_value(trade)
@@ -611,7 +779,12 @@ class AIService:
         return summary
 
     async def _get_technical_context(self, ticker: str) -> Optional[Dict[str, Any]]:
-        """Fetch technical analysis data."""
+        """
+        Retrieve technical indicators for a given ticker when technical analysis is enabled.
+        
+        Returns:
+            A dict containing technical indicator data for the ticker, or `None` if technical analysis or yfinance is disabled, the market data service is unavailable, or an error occurs while fetching data.
+        """
         if not settings.enable_technical_analysis or not settings.yfinance_enabled:
             return None
         try:
@@ -623,7 +796,15 @@ class AIService:
             return None
 
     async def _get_fundamental_context(self, ticker: str) -> Optional[Dict[str, Any]]:
-        """Fetch fundamental analysis data."""
+        """
+        Retrieve fundamental financial data for a given stock ticker.
+        
+        Parameters:
+            ticker (str): Stock ticker symbol to fetch fundamentals for.
+        
+        Returns:
+            dict: Fundamental metrics and related data keyed by metric names, or `None` if fundamental analysis is disabled, the yfinance integration is unavailable, or data could not be retrieved.
+        """
         if not settings.enable_fundamental_analysis or not settings.yfinance_enabled:
             return None
         try:
@@ -635,7 +816,12 @@ class AIService:
             return None
 
     async def _get_news_context(self, ticker: str) -> Optional[Dict[str, Any]]:
-        """Fetch news sentiment."""
+        """
+        Retrieve news sentiment for the given ticker.
+        
+        Returns:
+            dict: News sentiment data for the ticker (structure varies by provider), or `None` if news sentiment is disabled or cannot be fetched.
+        """
         if not settings.enable_news_sentiment:
             return None
         try:
@@ -647,7 +833,12 @@ class AIService:
             return None
 
     async def _get_analyst_context(self, ticker: str) -> Optional[Dict[str, Any]]:
-        """Fetch analyst ratings."""
+        """
+        Retrieve analyst ratings for the given ticker.
+        
+        Returns:
+            A dictionary of analyst ratings (keys and structure depend on the provider), or `None` if analyst ratings are disabled in settings or could not be obtained.
+        """
         if not settings.enable_analyst_ratings:
             return None
         try:
@@ -659,7 +850,25 @@ class AIService:
             return None
 
     async def _generate_signals(self, companies: List[tuple]) -> List[Dict[str, Any]]:
-        """Generate signals from company data."""
+        """
+        Generate trading signals from aggregated per-company trade metrics.
+        
+        Parameters:
+            companies (List[tuple]): Iterable of DB rows/tuples with aggregated company metrics in the following shape:
+                (company_id, ticker, name, trade_count, buy_volume, sell_volume, buy_value, sell_value)
+                Fields may be accessible as attributes (e.g., row.ticker) or by index.
+        
+        Returns:
+            List[Dict[str, Any]]: A list of signal dictionaries with the keys:
+                - `ticker` (str): Company ticker.
+                - `company_name` (str): Company name.
+                - `signal` (str): One of `"BULLISH"`, `"BEARISH"`, or `"NEUTRAL"`.
+                - `strength` (str): One of `"STRONG"` or `"MODERATE"`.
+                - `trade_count` (int): Number of recent trades used to compute the signal.
+                - `buy_ratio` (float): Buy volume participation as a percentage (0.0–100.0).
+                - `total_value` (float): Sum of buy and sell trade values.
+                - `reasoning` (str): Short human-readable rationale for the signal.
+        """
         signals = []
         # Re-using the logic from original file
         # Convert tuple to dict-like structure for signals
@@ -689,21 +898,68 @@ class AIService:
         return signals
 
     async def _add_ai_reasoning_to_signals(self, companies: List[Dict]) -> List[Dict[str, Any]]:
-        """Stub for AI reasoning on signals - can be expanded later."""
+        """
+        Augments a list of company signal dictionaries with optional AI-generated reasoning metadata.
+        
+        Parameters:
+            companies (List[Dict]): List of company signal objects (each should include keys like `ticker`, `name`, `signal`, `strength`, `trade_count`, and `total_value`).
+        
+        Returns:
+            List[Dict[str, Any]]: The same list of company signal dictionaries enriched with AI reasoning fields (for example `ai_reasoning` or `confidence`) when available; returns the original items unchanged if no reasoning was added.
+        """
         return companies
 
     def _merge_ai_signals_with_data(self, companies: List[Dict], ai_signals: List[Dict]) -> List[Dict]:
+        """
+        Merge AI-generated signals into the provided company records.
+        
+        Parameters:
+            companies (List[Dict]): List of company dictionaries (typically including a 'ticker' key).
+            ai_signals (List[Dict]): List of AI-generated signal dictionaries (typically including a 'ticker' key).
+        
+        Returns:
+            List[Dict]: The original companies list. This implementation is a no-op placeholder and does not modify or merge AI signals into the company records.
+        """
         return companies
 
     def _generate_rule_based_signals(self, companies: List[Dict]) -> List[Dict]:
+        """
+        Apply rule-based signal heuristics to the provided per-company data (currently a passthrough).
+        
+        This function is intended to compute trading signals from raw per-company metrics and return the company records augmented with rule-based signal fields (e.g., `signal`, `strength`, `reasoning`). In the current implementation it returns the input unchanged.
+        
+        Parameters:
+            companies (List[Dict]): List of company data dictionaries produced by upstream queries or processing. Each dictionary is expected to contain metrics such as trade counts, buy/sell volumes, and total value.
+        
+        Returns:
+            List[Dict]: The input list of company dictionaries, intended to be augmented with rule-based signal information; currently returned unchanged.
+        """
         return companies
 
     def _calculate_signal(self, buy_ratio: float) -> str:
+        """
+        Classifies a trading sentiment signal from a buy ratio.
+        
+        Parameters:
+            buy_ratio (float): Proportion of buy activity (0.0–1.0) for the company.
+        
+        Returns:
+            str: `"BULLISH"` if buy_ratio > 0.7, `"BEARISH"` if buy_ratio < 0.3, `"NEUTRAL"` otherwise.
+        """
         if buy_ratio > 0.7: return "BULLISH"
         elif buy_ratio < 0.3: return "BEARISH"
         return "NEUTRAL"
 
     def _calculate_strength(self, buy_ratio: float) -> str:
+        """
+        Classifies the strength of a trading signal based on the buy ratio.
+        
+        Parameters:
+            buy_ratio (float): Proportion of buy volume as a value between 0 and 1.
+        
+        Returns:
+            str: `"STRONG"` if `buy_ratio` > 0.85 or < 0.15, `"MODERATE"` if `buy_ratio` > 0.7 or < 0.3, `"WEAK"` otherwise.
+        """
         if buy_ratio > 0.85 or buy_ratio < 0.15: return "STRONG"
         elif buy_ratio > 0.7 or buy_ratio < 0.3: return "MODERATE"
         return "WEAK"

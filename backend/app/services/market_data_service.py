@@ -256,13 +256,23 @@ class MarketDataService:
 
     async def get_analyst_ratings(self, ticker: str) -> Optional[Dict[str, Any]]:
         """
-        Fetch analyst ratings and price targets.
-
-        Args:
-            ticker: Stock ticker symbol
-
+        Retrieve aggregated analyst recommendations and price targets for a ticker.
+        
         Returns:
-            Dictionary with analyst consensus or None if unavailable
+            A dictionary containing:
+              - `consensus` (str): Consensus classification ("STRONG_BUY", "BUY", "HOLD", "SELL", "STRONG_SELL", or "NO_CONSENSUS").
+              - `buy_count` (int): Sum of buy and strongBuy counts.
+              - `hold_count` (int): Hold count.
+              - `sell_count` (int): Sum of sell and strongSell counts.
+              - `analyst_count` (int): Total number of analyst ratings included.
+              - `period` (str|None): Period string for the latest recommendation entry, if available.
+              - Optional price target fields when available:
+                  - `avg_price_target` (number|None)
+                  - `high_target` (number|None)
+                  - `low_target` (number|None)
+                  - `median_target` (number|None)
+        
+            `None` if the Finnhub client is not configured or data cannot be fetched.
         """
         if not self.finnhub_client:
             logger.warning("Finnhub not configured, skipping analyst ratings")
@@ -328,13 +338,19 @@ class MarketDataService:
 
     async def get_earnings_data(self, ticker: str) -> Optional[Dict[str, Any]]:
         """
-        Fetch earnings data (upcoming dates and recent surprises).
-
-        Args:
-            ticker: Stock ticker symbol
-
+        Retrieve upcoming earnings and recent earnings surprises for a given ticker.
+        
+        Queries Finnhub for the next earnings event within the coming 90 days and the most recent earnings surprises (up to four quarters).
+        
+        Parameters:
+            ticker (str): Stock ticker symbol to query.
+        
         Returns:
-            Dictionary with earnings context or None if unavailable
+            dict: A dictionary with the following keys:
+                - next_earnings (dict | None): Next earnings event with keys `date` (YYYY-MM-DD), `quarter`, `year`, and `estimate` (EPS estimate), or `None` if no upcoming event is found.
+                - recent_surprises (list[dict]): List of recent earnings surprise entries, each with `date` (period), `actual`, `estimate`, `surprise`, and `surprise_percent`.
+                - last_updated (str): ISO 8601 UTC timestamp of when the data was fetched.
+            None: If the Finnhub client is not configured or an error occurs while fetching data.
         """
         if not self.finnhub_client:
             logger.warning("Finnhub not configured, skipping earnings data")
@@ -396,14 +412,23 @@ class MarketDataService:
         self, ticker: str, days_back: int = 7
     ) -> Optional[Dict[str, Any]]:
         """
-        Fetch recent news and sentiment.
-
-        Args:
-            ticker: Stock ticker symbol
-            days_back: Number of days to look back
-
+        Fetch recent company news for a ticker and provide basic sentiment metadata.
+        
+        Parameters:
+            ticker (str): Stock ticker symbol to fetch news for.
+            days_back (int): Number of days in the past to include in the news window.
+        
         Returns:
-            Dictionary with news and sentiment or None if unavailable
+            dict: {
+                "recent_headlines": List[dict] — up to 10 most recent headlines, each with keys
+                    "title" (str), "source" (str), "url" (str), "date" (YYYY-MM-DD str), and
+                    "sentiment" (None currently, placeholder for future sentiment),
+                "overall_sentiment": str — aggregated sentiment label (defaults to "NEUTRAL"),
+                "sentiment_score": float — aggregated sentiment score between 0 and 1 (defaults to 0.5),
+                "news_count": int — total number of news items returned by the provider,
+                "days_analyzed": int — number of days covered (matches `days_back`)
+            }
+            or None if the Finnhub client is not configured or news cannot be retrieved.
         """
         if not self.finnhub_client:
             logger.warning("Finnhub not configured, skipping news sentiment")
