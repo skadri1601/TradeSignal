@@ -41,7 +41,7 @@ class Settings(BaseSettings):
         default="HS256", description="JWT signing algorithm", alias="JWT_ALGORITHM"
     )
     jwt_expiration_hours: int = Field(
-        default=24,
+        default=4,
         description="JWT token expiration in hours",
         alias="JWT_EXPIRATION_HOURS",
     )
@@ -440,6 +440,57 @@ class Settings(BaseSettings):
         alias="ENABLE_PUSH_NOTIFICATIONS",
     )
 
+    # LUNA AI Enhancement - Market Data Features
+    enable_technical_analysis: bool = Field(
+        default=False,
+        description="Enable technical analysis features (charts, RSI, MACD, moving averages)",
+        alias="ENABLE_TECHNICAL_ANALYSIS",
+    )
+    enable_fundamental_analysis: bool = Field(
+        default=False,
+        description="Enable fundamental analysis features (P/E, financials, ratios)",
+        alias="ENABLE_FUNDAMENTAL_ANALYSIS",
+    )
+    enable_news_sentiment: bool = Field(
+        default=False,
+        description="Enable news sentiment analysis (requires Finnhub API)",
+        alias="ENABLE_NEWS_SENTIMENT",
+    )
+    enable_analyst_ratings: bool = Field(
+        default=False,
+        description="Enable analyst ratings and price targets (requires Finnhub API)",
+        alias="ENABLE_ANALYST_RATINGS",
+    )
+
+    # LUNA AI Enhancement - Price Prediction Features
+    enable_price_predictions: bool = Field(
+        default=False,
+        description="Enable AI-powered price predictions with timeframes",
+        alias="ENABLE_PRICE_PREDICTIONS",
+    )
+    prediction_timeframes: str = Field(
+        default="1week,1month,3months,6months",
+        description="Comma-separated prediction timeframes",
+        alias="PREDICTION_TIMEFRAMES",
+    )
+    price_prediction_disclaimer: str = Field(
+        default="This analysis is for educational and informational purposes only. It does not constitute investment advice. Past performance is not indicative of future results. Always consult with a licensed financial advisor before making investment decisions.",
+        description="Legal disclaimer for price predictions",
+        alias="PRICE_PREDICTION_DISCLAIMER",
+    )
+
+    # Market Data Sources
+    yfinance_enabled: bool = Field(
+        default=True,
+        description="Enable yfinance for market data (technical indicators, fundamentals)",
+        alias="YFINANCE_ENABLED",
+    )
+    newsapi_key: Optional[str] = Field(
+        default=None,
+        description="NewsAPI key for news sentiment analysis (optional)",
+        alias="NEWSAPI_KEY",
+    )
+
     # Proxy & Load Balancer Configuration
     trust_proxy_headers: bool = Field(
         default=True,
@@ -640,6 +691,19 @@ class Settings(BaseSettings):
     def refresh_token_expire_days(self) -> int:
         """Get refresh token expiration in days."""
         return 30  # Default to 30 days for refresh tokens
+
+    @property
+    def prediction_timeframes_list(self) -> list[str]:
+        """
+        Get prediction timeframes as a list.
+
+        Converts comma-separated string to list of timeframes.
+        """
+        return [
+            timeframe.strip()
+            for timeframe in self.prediction_timeframes.split(",")
+            if timeframe.strip()
+        ]
 
 
 # Global settings instance
