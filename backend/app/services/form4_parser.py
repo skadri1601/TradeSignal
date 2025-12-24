@@ -225,6 +225,31 @@ class Form4Parser:
             logger.warning(f"Invalid shares/price: {shares_str}/{price_str}")
             return None
 
+        # Filter 1: Skip transactions with $0 price
+        if price == Decimal("0"):
+            logger.debug(f"Skipping transaction with $0 price (code: {txn_code})")
+            return None
+
+        # Filter 2: Check for undisclosed price (footnote references)
+        price_element = amounts.find(".//transactionPricePerShare/value")
+        if price_element is not None:
+            parent = amounts.find(".//transactionPricePerShare")
+            if parent is not None:
+                footnote_id = parent.get('footnoteId')
+                if footnote_id:
+                    # Check if footnote indicates undisclosed value
+                    # Note: footnotes are parsed separately, so we check for common patterns
+                    logger.debug(f"Transaction has price footnote {footnote_id}, may indicate undisclosed value")
+                    # Skip if price is 0 and has footnote (typically means undisclosed)
+                    if price == Decimal("0"):
+                        logger.debug(f"Skipping transaction with $0 price and footnote reference")
+                        return None
+
+        # Filter 3: Skip if price data is missing entirely
+        if not price_str or price_str.strip() == "":
+            logger.debug(f"Skipping transaction with missing price data")
+            return None
+
         # Override transaction type based on acquired/disposed
         if acquired_disposed == "A":
             txn_type = "BUY"
@@ -233,6 +258,11 @@ class Form4Parser:
 
         # Calculate total value
         total_value = shares * price if shares and price else None
+
+        # Filter 4: Skip if calculated total value is $0
+        if total_value is not None and total_value == Decimal("0"):
+            logger.debug(f"Skipping transaction with $0 calculated value")
+            return None
 
         # Data validation: Flag extreme values
         if total_value and total_value > MAX_REASONABLE_TRADE_VALUE:

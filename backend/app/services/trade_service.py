@@ -117,6 +117,12 @@ class TradeService:
         Returns:
             Filtered query
         """
+        # Base filters: Always exclude $0 and NULL value trades
+        query = query.where(Trade.total_value.is_not(None))
+        query = query.where(Trade.total_value > 0)
+        query = query.where(Trade.price_per_share.is_not(None))
+        query = query.where(Trade.price_per_share > 0)
+
         if filters.company_id:
             query = query.where(Trade.company_id == filters.company_id)
 
@@ -163,7 +169,7 @@ class TradeService:
         db: AsyncSession, days: int = 7, limit: int = 100
     ) -> List[Trade]:
         """
-        Get recent trades.
+        Get recent trades, excluding $0 and undisclosed values.
 
         Args:
             db: Database session
@@ -178,7 +184,13 @@ class TradeService:
         result = await db.execute(
             select(Trade)
             .options(selectinload(Trade.company), selectinload(Trade.insider))
-            .where(Trade.filing_date >= cutoff_date)
+            .where(
+                Trade.filing_date >= cutoff_date,
+                Trade.total_value.is_not(None),
+                Trade.total_value > 0,
+                Trade.price_per_share.is_not(None),
+                Trade.price_per_share > 0,
+            )
             .order_by(desc(Trade.filing_date), desc(Trade.id))  # Secondary sort by id for consistency
             .limit(limit)
         )
