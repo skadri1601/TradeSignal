@@ -27,7 +27,7 @@ from app.routers import (
     data_health,
     notifications,
     ai,
-    patterns,
+    # REMOVED: patterns (file was deleted by Gemini along with pattern_analysis_service)
     tickets,
     alerts,
 )
@@ -55,7 +55,7 @@ __all__ = [
     "data_health",
     "notifications",
     "ai",
-    "patterns",
+    # REMOVED: "patterns" (file was deleted by Gemini)
     "tickets",
     "alerts",
 ]
