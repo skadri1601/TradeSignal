@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, desc
 
 from app.models import Trade
-from app.services.pattern_analysis_service import PatternAnalysisService
+# REMOVED: from app.services.pattern_analysis_service import PatternAnalysisService (service was deleted)
 from app.services.trade_value_estimation_service import TradeValueEstimationService
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ class AlertPrioritizationService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
-        self.pattern_service = PatternAnalysisService(db)
+        # REMOVED: self.pattern_service = PatternAnalysisService(db) (unused, service was deleted)
         self.value_service = TradeValueEstimationService(db)
 
     async def filter_significant_trades(

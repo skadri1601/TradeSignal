@@ -8,7 +8,8 @@ from app.tasks.alert_tasks import send_discord_alert_task, send_slack_alert_task
     send_webhook_notification_task, send_test_webhook_notification_task, send_email_notification_task, \
     send_subscription_confirmation_email_task, send_test_email_notification_task, send_push_notification_task, send_test_push_notification_task
 from app.tasks.enrichment_tasks import enrich_company_profile_task, enrich_all_companies_profile_task
-from app.tasks.analysis_tasks import analyze_company_patterns_task, analyze_all_active_companies_patterns_task, precompute_top_patterns_task
+# REMOVED: Broken tasks that depend on deleted PatternAnalysisService
+# from app.tasks.analysis_tasks import analyze_company_patterns_task, analyze_all_active_companies_patterns_task, precompute_top_patterns_task
 from app.tasks.ai_tasks import generate_daily_ai_summary_task, cache_ai_insights_task
 from app.tasks.ivt_tasks import calculate_ivt_for_company_task, batch_process_ivt_calculations_task
 from app.tasks.ts_score_tasks import calculate_ts_score_for_company_task, batch_update_ts_scores_task
@@ -47,9 +48,7 @@ __all__ = [
     "send_test_push_notification_task",
     "enrich_company_profile_task",
     "enrich_all_companies_profile_task",
-    "analyze_company_patterns_task",
-    "analyze_all_active_companies_patterns_task",
-    "precompute_top_patterns_task",
+    # REMOVED: Broken tasks - "analyze_company_patterns_task", "analyze_all_active_companies_patterns_task", "precompute_top_patterns_task"
     "generate_daily_ai_summary_task",
     "cache_ai_insights_task",
     "calculate_ivt_for_company_task",
