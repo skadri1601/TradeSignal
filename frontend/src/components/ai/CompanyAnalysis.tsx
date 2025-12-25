@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { aiApi, CompanyAnalysisResponse } from '../../api/ai'; 
+import { aiApi, type CompanyAnalysis, type PricePredictionResponse } from '../../api/ai'; 
 import AISkeleton from '../common/AISkeleton';
 import CompanyAutocomplete from '../common/CompanyAutocomplete';
 import PricePredictionCard from './PricePredictionCard';
@@ -9,7 +9,7 @@ import { BarChart2, TrendingUp, AlertCircle, TrendingDown, MinusCircle, Sparkles
 export default function CompanyAnalysis() {
   const [ticker, setTicker] = useState('');
   const [daysBack, setDaysBack] = useState(30);
-  const [analysis, setAnalysis] = useState<CompanyAnalysisResponse | null>(null);
+  const [analysis, setAnalysis] = useState<CompanyAnalysis & Partial<PricePredictionResponse> | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMessage, setProcessingMessage] = useState<string | null>(null);
 
@@ -25,7 +25,7 @@ export default function CompanyAnalysis() {
       } else {
         setIsProcessing(false);
         setProcessingMessage(null);
-        setAnalysis(data as CompanyAnalysisResponse);
+        setAnalysis(data as CompanyAnalysis & Partial<PricePredictionResponse>);
       }
     },
     onError: () => {
@@ -158,7 +158,7 @@ export default function CompanyAnalysis() {
                   </span>
                 </div>
                 <p className="text-sm text-gray-300">
-                  Analysis over {analysis.days_analyzed ?? 0} days • Provider: {analysis.provider || 'Gemini Pro'}
+                  Analysis over {analysis.days_analyzed ?? 0} days • Provider: {(analysis as any).provider || 'Gemini Pro'}
                 </p>
               </div>
               <div className="flex items-center gap-3 bg-black/20 p-3 rounded-xl border border-white/5">
@@ -181,7 +181,7 @@ export default function CompanyAnalysis() {
             {/* Insights List */}
             {analysis.insights && analysis.insights.length > 0 && (
               <div className="mt-6 space-y-2">
-                {analysis.insights.map((insight, idx) => (
+                {analysis.insights.map((insight: string, idx: number) => (
                   <div key={idx} className="flex items-start gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-purple-500 mt-2 flex-shrink-0" />
                     <p className="text-gray-400 text-sm">{insight}</p>
