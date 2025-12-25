@@ -77,6 +77,11 @@ class Settings(BaseSettings):
         description="Gemini model to use (e.g., gemini-2.5-flash, gemini-2.0-flash)",
         alias="GEMINI_MODEL",
     )
+    gemini_reasoning_model: str = Field(
+        default="gemini-2.5-pro",
+        description="High-intelligence model for LUNA deep analysis (e.g., gemini-2.5-pro, gemini-1.5-pro)",
+        alias="GEMINI_REASONING_MODEL",
+    )
 
     # Shared AI Settings
     ai_max_tokens: int = Field(

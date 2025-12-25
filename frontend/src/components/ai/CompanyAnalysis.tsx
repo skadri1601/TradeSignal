@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { patternsApi, PatternAnalysis } from '../../api/patterns';
-import { aiApi, PricePredictionResponse } from '../../api/ai';
+import { useMutation } from '@tanstack/react-query';
+import { aiApi, type CompanyAnalysis, type PricePredictionResponse } from '../../api/ai'; 
 import AISkeleton from '../common/AISkeleton';
 import CompanyAutocomplete from '../common/CompanyAutocomplete';
 import PricePredictionCard from './PricePredictionCard';
@@ -10,25 +9,23 @@ import { BarChart2, TrendingUp, AlertCircle, TrendingDown, MinusCircle, Sparkles
 export default function CompanyAnalysis() {
   const [ticker, setTicker] = useState('');
   const [daysBack, setDaysBack] = useState(30);
-  const [analysis, setAnalysis] = useState<PatternAnalysis | null>(null);
+  const [analysis, setAnalysis] = useState<CompanyAnalysis & Partial<PricePredictionResponse> | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMessage, setProcessingMessage] = useState<string | null>(null);
-  const [showPredictions, setShowPredictions] = useState(false);
 
   const analyzeMutation = useMutation({
     mutationFn: ({ ticker, daysBack }: { ticker: string; daysBack: number }) =>
-      patternsApi.analyzeCompany(ticker, daysBack),
+      aiApi.analyzeCompany(ticker, daysBack),
     onSuccess: (data: any) => {
-      // Check if API returned processing status
+      // Check if API returned processing status (if backend still does async queueing)
       if (data && data.status === 'processing') {
         setIsProcessing(true);
-        setProcessingMessage(data.message || `Analysis for ${data.ticker || ticker} has been queued. Please check back shortly.`);
-        setAnalysis(null); // Clear any previous analysis
+        setProcessingMessage(data.message);
+        setAnalysis(null);
       } else {
-        // Valid analysis data
         setIsProcessing(false);
         setProcessingMessage(null);
-        setAnalysis(data as PatternAnalysis);
+        setAnalysis(data as CompanyAnalysis & Partial<PricePredictionResponse>);
       }
     },
     onError: () => {
@@ -42,28 +39,19 @@ export default function CompanyAnalysis() {
     if (!ticker.trim()) return;
     setIsProcessing(false);
     setProcessingMessage(null);
-    setAnalysis(null); // Clear previous analysis
-    setShowPredictions(false); // Reset predictions
+    setAnalysis(null);
     analyzeMutation.mutate({ ticker: ticker.toUpperCase(), daysBack });
   };
 
-  // Price prediction query (only fetch when showPredictions is true and we have a ticker)
-  const { data: pricePrediction, isLoading: predictionLoading, error: predictionError } = useQuery({
-    queryKey: ['price-prediction', ticker],
-    queryFn: () => aiApi.getPricePrediction(ticker.toUpperCase()),
-    enabled: showPredictions && !!ticker && !!analysis, // Only fetch when button clicked and analysis exists
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-  });
-
-  const getTrendColor = (trend: string) => {
-    if (trend === 'BULLISH') return 'text-green-400';
-    if (trend === 'BEARISH') return 'text-red-400';
+  const getTrendColor = (sentiment: string) => {
+    if (sentiment === 'BULLISH') return 'text-green-400';
+    if (sentiment === 'BEARISH') return 'text-red-400';
     return 'text-gray-400';
   };
 
-  const getTrendIcon = (trend: string) => {
-    if (trend === 'BULLISH') return <TrendingUp className="w-5 h-5 text-green-400" />;
-    if (trend === 'BEARISH') return <TrendingDown className="w-5 h-5 text-red-400" />;
+  const getTrendIcon = (sentiment: string) => {
+    if (sentiment === 'BULLISH') return <TrendingUp className="w-5 h-5 text-green-400" />;
+    if (sentiment === 'BEARISH') return <TrendingDown className="w-5 h-5 text-red-400" />;
     return <MinusCircle className="w-5 h-5 text-gray-400" />;
   };
 
@@ -74,7 +62,7 @@ export default function CompanyAnalysis() {
         <div className="flex items-center space-x-2 mb-4">
           <BarChart2 className="w-5 h-5 text-purple-400" />
           <h3 className="text-lg font-bold text-white">
-            Analyze Company Insider Trading
+            LUNA Forensic Analysis
           </h3>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -102,12 +90,8 @@ export default function CompanyAnalysis() {
                 disabled={analyzeMutation.isPending}
               >
                 <option value={7}>Last 7 days</option>
-                <option value={14}>Last 14 days</option>
                 <option value={30}>Last 30 days</option>
-                <option value={60}>Last 60 days</option>
                 <option value={90}>Last 90 days</option>
-                <option value={180}>Last 6 months</option>
-                <option value={365}>Last year</option>
               </select>
             </div>
           </div>
@@ -116,7 +100,7 @@ export default function CompanyAnalysis() {
             disabled={!ticker.trim() || analyzeMutation.isPending}
             className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-500 transition-colors disabled:opacity-50 font-semibold shadow-lg shadow-purple-500/20 w-full md:w-auto"
           >
-            {analyzeMutation.isPending ? 'Analyzing...' : 'Analyze'}
+            {analyzeMutation.isPending ? 'Running Forensic Scan...' : 'Run LUNA Analysis'}
           </button>
         </form>
       </div>
@@ -125,15 +109,7 @@ export default function CompanyAnalysis() {
       {analyzeMutation.isPending && (
         <div className="space-y-6 mt-6 relative z-0">
           <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
-            <AISkeleton message={`LUNA (Gemini 2.5 Flash) is analyzing ${ticker} insider trading patterns...`} />
-          </div>
-          <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-white/10 p-6 space-y-4">
-             <div className="h-8 bg-white/10 rounded w-1/3 animate-pulse"></div>
-             <div className="h-4 bg-white/10 rounded w-1/2 animate-pulse"></div>
-             <div className="grid grid-cols-2 gap-4 pt-4">
-                <div className="h-24 bg-white/5 rounded-xl animate-pulse"></div>
-                <div className="h-24 bg-white/5 rounded-xl animate-pulse"></div>
-             </div>
+            <AISkeleton message={`LUNA (Gemini 2.5 Pro) is synthesizing Earnings, Technicals, and Insider data for ${ticker}...`} />
           </div>
         </div>
       )}
@@ -146,9 +122,6 @@ export default function CompanyAnalysis() {
             <h3 className="text-sm font-medium text-blue-300">Analysis Queued</h3>
             <p className="text-sm text-blue-400/80 mt-1">
               {processingMessage || 'Analysis is being processed. Please check back shortly.'}
-            </p>
-            <p className="text-xs text-blue-500/60 mt-2">
-              The analysis will be available once processing completes. You can refresh the page or try again in a few moments.
             </p>
           </div>
         </div>
@@ -181,160 +154,58 @@ export default function CompanyAnalysis() {
                     {analysis.ticker} - {analysis.company_name}
                   </h2>
                   <span className="px-2 py-0.5 bg-purple-500/20 border border-purple-500/30 rounded text-[10px] font-bold text-purple-300 uppercase tracking-widest">
-                    LUNA AI Enhanced
+                    LUNA Forensic Report
                   </span>
                 </div>
                 <p className="text-sm text-gray-300">
-                  Analysis over {analysis.days_analyzed ?? 0} days • {analysis.total_trades ?? 0} trades analyzed
+                  Analysis over {analysis.days_analyzed ?? 0} days • Provider: {(analysis as any).provider || 'Gemini Pro'}
                 </p>
               </div>
               <div className="flex items-center gap-3 bg-black/20 p-3 rounded-xl border border-white/5">
                 <div className="text-right">
-                  <p className="text-xs text-gray-400 uppercase font-bold">Trend</p>
-                  <p className={`text-lg font-bold ${getTrendColor(analysis.trend)}`}>{analysis.trend}</p>
+                  <p className="text-xs text-gray-400 uppercase font-bold">Sentiment</p>
+                  <p className={`text-lg font-bold ${getTrendColor(analysis.sentiment)}`}>{analysis.sentiment}</p>
                 </div>
-                {getTrendIcon(analysis.trend)}
+                {getTrendIcon(analysis.sentiment)}
               </div>
             </div>
           </div>
 
-          {/* Metrics Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-             <div className="bg-gray-900/50 backdrop-blur-sm p-4 rounded-xl border border-white/10">
-               <p className="text-xs text-gray-500 uppercase font-bold mb-1">Confidence</p>
-               <p className="text-xl font-mono text-white">{((analysis.confidence ?? 0) * 100).toFixed(0)}%</p>
-               <div className="w-full bg-gray-700 h-1.5 rounded-full mt-2 overflow-hidden">
-                 <div className="h-full bg-purple-500" style={{ width: `${(analysis.confidence ?? 0) * 100}%` }} />
-               </div>
-             </div>
-             <div className="bg-gray-900/50 backdrop-blur-sm p-4 rounded-xl border border-white/10">
-               <p className="text-xs text-gray-500 uppercase font-bold mb-1">Buy Ratio</p>
-               <p className="text-xl font-mono text-green-400">{((analysis.buy_ratio ?? 0) * 100).toFixed(1)}%</p>
-             </div>
-             <div className="bg-gray-900/50 backdrop-blur-sm p-4 rounded-xl border border-white/10">
-               <p className="text-xs text-gray-500 uppercase font-bold mb-1">Sell Ratio</p>
-               <p className="text-xl font-mono text-red-400">{((analysis.sell_ratio ?? 0) * 100).toFixed(1)}%</p>
-             </div>
-             <div className="bg-gray-900/50 backdrop-blur-sm p-4 rounded-xl border border-white/10">
-               <p className="text-xs text-gray-500 uppercase font-bold mb-1">Insiders</p>
-               <p className="text-xl font-mono text-white">{analysis.active_insiders ?? 0}</p>
-             </div>
-          </div>
-
-          {/* Main Pattern & Prediction */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Pattern Card */}
-            <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-white/10 p-6 md:col-span-1">
-              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Detected Pattern</h3>
-              <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-                <div className="flex items-center gap-2 mb-2">
-                   <BarChart2 className="w-5 h-5 text-purple-400" />
-                   <h4 className="font-bold text-white text-lg">{analysis.pattern?.replace('_', ' ') ?? 'Unknown Pattern'}</h4>
-                </div>
-                <div className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border ${
-                  analysis.risk_level === 'HIGH' ? 'bg-red-500/20 text-red-300 border-red-500/30' :
-                  analysis.risk_level === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' :
-                  'bg-green-500/20 text-green-300 border-green-500/30'
-                }`}>
-                  {analysis.risk_level} RISK
-                </div>
-              </div>
-              <div className="mt-4 bg-white/5 rounded-xl p-4 border border-white/5">
-                 <p className="text-xs text-gray-500 uppercase font-bold mb-1">Recommendation</p>
-                 <p className={`text-xl font-bold ${
-                   analysis.recommendation?.includes('BUY') ? 'text-green-400' : 
-                   analysis.recommendation?.includes('SELL') ? 'text-red-400' : 'text-gray-300'
-                 }`}>
-                   {analysis.recommendation?.replace('_', ' ') ?? 'No Recommendation'}
-                 </p>
-              </div>
-            </div>
-
-            {/* AI Prediction */}
-            <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-white/10 p-6 md:col-span-2 relative overflow-hidden">
-               <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600/10 blur-[60px] rounded-full pointer-events-none -z-10" />
-               <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-4 flex items-center gap-2">
-                 <span className="w-2 h-2 bg-purple-400 rounded-full animate-pulse" />
-                 AI Market Prediction
-               </h3>
-               <div className="bg-black/20 rounded-xl p-6 border border-white/5">
-                 <p className="text-lg text-gray-200 leading-relaxed font-light">
-                   {analysis.prediction || "No prediction generated."}
-                 </p>
-               </div>
-            </div>
-          </div>
-
-          {/* Price Prediction Section */}
-          <div className="space-y-4">
-            {/* Prediction Toggle Button */}
-            {!showPredictions && (
-              <div className="text-center">
-                <button
-                  onClick={() => setShowPredictions(true)}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-500 hover:to-emerald-500 transition-all duration-300 shadow-lg shadow-green-500/20 font-semibold"
-                >
-                  <Sparkles className="w-5 h-5" />
-                  Generate LUNA Price Predictions
-                </button>
-                <p className="mt-2 text-xs text-gray-500">
-                  Get AI-powered price targets with technical, fundamental, and sentiment analysis
-                </p>
-              </div>
-            )}
-
-            {/* Price Prediction Loading State */}
-            {showPredictions && predictionLoading && (
-              <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
-                <AISkeleton message={`LUNA is analyzing ${ticker} with comprehensive market data...`} />
-                <div className="mt-4 space-y-3">
-                  <div className="h-20 bg-white/5 rounded-xl animate-pulse"></div>
-                  <div className="h-20 bg-white/5 rounded-xl animate-pulse"></div>
-                  <div className="h-20 bg-white/5 rounded-xl animate-pulse"></div>
-                </div>
-              </div>
-            )}
-
-            {/* Price Prediction Error State */}
-            {showPredictions && predictionError && (
-              <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-xl p-6 flex items-start">
-                <AlertCircle className="h-5 w-5 text-yellow-400 mt-0.5 mr-3 flex-shrink-0" />
-                <div>
-                  <h3 className="text-sm font-medium text-yellow-300">Price Predictions Unavailable</h3>
-                  <p className="text-sm text-yellow-400/80 mt-1">
-                    {predictionError instanceof Error
-                      ? predictionError.message
-                      : 'Price prediction feature may not be enabled. Contact support for access.'}
-                  </p>
-                  <button
-                    onClick={() => setShowPredictions(false)}
-                    className="mt-3 text-sm text-yellow-300 hover:text-yellow-200 underline"
-                  >
-                    Hide
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Price Prediction Card */}
-            {showPredictions && pricePrediction && pricePrediction.price_predictions && (
-              <PricePredictionCard
-                ticker={pricePrediction.ticker}
-                currentPrice={undefined} // Could fetch from technical data if available
-                predictions={pricePrediction.price_predictions}
-                recommendation={pricePrediction.recommendation}
-                riskLevel={pricePrediction.risk_level}
-                disclaimer={pricePrediction.disclaimer}
-              />
-            )}
-          </div>
-
-          {/* Info Footer */}
-          <div className="text-center pb-6">
-            <p className="text-xs text-gray-600">
-              Pattern analysis based on SEC Form 4 data from the last {analysis.days_analyzed ?? 0} days
+          {/* Main Analysis Text */}
+          <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
+            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Forensic Summary</h3>
+            <p className="text-gray-300 leading-relaxed text-lg">
+              {analysis.analysis}
             </p>
+            
+            {/* Insights List */}
+            {analysis.insights && analysis.insights.length > 0 && (
+              <div className="mt-6 space-y-2">
+                {analysis.insights.map((insight: string, idx: number) => (
+                  <div key={idx} className="flex items-start gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-purple-500 mt-2 flex-shrink-0" />
+                    <p className="text-gray-400 text-sm">{insight}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+
+          {/* Integrated Price Prediction (Now Automatic) */}
+          {analysis.price_predictions && analysis.price_predictions.length > 0 && (
+            <div className="space-y-4">
+               <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider flex items-center gap-2">
+                 <Sparkles className="w-4 h-4" /> LUNA Price Targets
+               </h3>
+               <PricePredictionCard
+                ticker={analysis.ticker}
+                predictions={analysis.price_predictions}
+                recommendation={analysis.recommendation || analysis.sentiment}
+                riskLevel={analysis.risk_level || 'MEDIUM'}
+                disclaimer={analysis.disclaimer}
+              />
+            </div>
+          )}
         </div>
       )}
 

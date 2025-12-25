@@ -326,6 +326,72 @@ class MarketDataService:
             logger.error(f"Failed to fetch analyst ratings for {ticker}: {e}")
             return None
 
+    async def get_earnings_data(self, ticker: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch earnings data (upcoming dates and recent surprises).
+
+        Args:
+            ticker: Stock ticker symbol
+
+        Returns:
+            Dictionary with earnings context or None if unavailable
+        """
+        if not self.finnhub_client:
+            logger.warning("Finnhub not configured, skipping earnings data")
+            return None
+
+        try:
+            # 1. Get Earnings Calendar (Upcoming)
+            today = datetime.now().date()
+            future_date = today + timedelta(days=90)  # Next 3 months
+            
+            calendar = self.finnhub_client.earnings_calendar(
+                _from=today.strftime("%Y-%m-%d"),
+                to=future_date.strftime("%Y-%m-%d"),
+                symbol=ticker
+            )
+            
+            earnings_calendar = calendar['earningsCalendar'] if calendar and 'earningsCalendar' in calendar else []
+            # Filter specifically for this ticker as endpoint can return others
+            upcoming = [e for e in earnings_calendar if e.get('symbol') == ticker]
+            
+            next_earnings = None
+            if upcoming:
+                # Sort by date
+                upcoming.sort(key=lambda x: x.get('date', '9999-12-31'))
+                next_event = upcoming[0]
+                next_earnings = {
+                    "date": next_event.get("date"),
+                    "quarter": next_event.get("quarter"),
+                    "year": next_event.get("year"),
+                    "estimate": next_event.get("epsEstimate")
+                }
+
+            # 2. Get Earnings Surprises (Historical)
+            # Use company_earnings for historical data (limit to last 4 quarters)
+            historical = self.finnhub_client.company_earnings(ticker, limit=4)
+            
+            surprises = []
+            if historical:
+                for item in historical:
+                    surprises.append({
+                        "date": item.get("period"),
+                        "actual": item.get("actual"),
+                        "estimate": item.get("estimate"),
+                        "surprise": item.get("surprise"),
+                        "surprise_percent": item.get("surprisePercent")
+                    })
+
+            return {
+                "next_earnings": next_earnings,
+                "recent_surprises": surprises,
+                "last_updated": datetime.utcnow().isoformat()
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to fetch earnings data for {ticker}: {e}")
+            return None
+
     async def get_news_sentiment(
         self, ticker: str, days_back: int = 7
     ) -> Optional[Dict[str, Any]]:

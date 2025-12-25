@@ -42,7 +42,7 @@ const AdminDashboard = lazy(() => import('./pages/AdminDashboardPage'));
 const ContactManagementPage = lazy(() => import('./pages/admin/ContactManagementPage'));
 const SupportTicketsPage = lazy(() => import('./pages/admin/SupportTicketsPage')); // New Import
 const AIInsightsPage = lazy(() => import('./pages/AIInsightsPage'));
-const PatternsPage = lazy(() => import('./pages/PatternsPage'));
+// const PatternsPage = lazy(() => import('./pages/PatternsPage')); // TODO: Create this page
 const AlertsPage = lazy(() => import('./pages/AlertsPage'));
 const ResearchDashboard = lazy(() => import('./pages/ResearchDashboard'));
 const ForumPage = lazy(() => import('./pages/ForumPage'));
@@ -107,7 +107,7 @@ function AppContent() {
               <Route path="/fed-calendar" element={<ProtectedRoute redirectAdmin><FedCalendarPage /></ProtectedRoute>} />
               <Route path="/lessons" element={<ProtectedRoute redirectAdmin><LessonsPage /></ProtectedRoute>} />
               <Route path="/strategies" element={<ProtectedRoute redirectAdmin><StrategiesPage /></ProtectedRoute>} />
-              <Route path="/patterns" element={<ProtectedRoute redirectAdmin requireTier="pro"><PatternsPage /></ProtectedRoute>} />
+              {/* <Route path="/patterns" element={<ProtectedRoute redirectAdmin requireTier="pro"><PatternsPage /></ProtectedRoute>} /> */} {/* TODO: Create PatternsPage */}
               <Route path="/ai-insights" element={<ProtectedRoute redirectAdmin requireTier="pro"><AIInsightsPage /></ProtectedRoute>} />
               <Route path="/research" element={<ProtectedRoute redirectAdmin requireTier="pro"><ResearchDashboard /></ProtectedRoute>} />
               <Route path="/alerts" element={<ProtectedRoute redirectAdmin><AlertsPage /></ProtectedRoute>} />
