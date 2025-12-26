@@ -6,16 +6,22 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { brokerageApi } from '../api/brokerage';
 import type { CopyTradeRule } from '../api/brokerage';
 import { Plus, Edit, Trash2, ToggleLeft, ToggleRight, ArrowLeft } from 'lucide-react';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import ConfirmationModal from '../components/common/ConfirmationModal';
 
 export default function CopyTradingRulesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{
+    action: 'toggle' | 'delete' | null;
+    ruleId: number | null;
+  }>({ action: null, ruleId: null });
 
   // Fetch rules
   const { data: rules, isLoading: loadingRules } = useQuery<CopyTradeRule[]>({
@@ -46,15 +52,28 @@ export default function CopyTradingRulesPage() {
       return true;
     }) || [];
 
-  const handleToggle = async (ruleId: number) => {
-    if (window.confirm('Are you sure you want to toggle this rule?')) {
-      await toggleMutation.mutateAsync(ruleId);
-    }
+  const handleToggle = (ruleId: number) => {
+    setConfirmAction({ action: 'toggle', ruleId });
   };
 
-  const handleDelete = async (ruleId: number) => {
-    if (window.confirm('Are you sure you want to delete this rule? This action cannot be undone.')) {
-      await deleteMutation.mutateAsync(ruleId);
+  const handleDelete = (ruleId: number) => {
+    setConfirmAction({ action: 'delete', ruleId });
+  };
+
+  const handleConfirm = async () => {
+    if (!confirmAction.ruleId) return;
+
+    try {
+      if (confirmAction.action === 'toggle') {
+        await toggleMutation.mutateAsync(confirmAction.ruleId);
+        toast.success('Rule toggled successfully');
+      } else if (confirmAction.action === 'delete') {
+        await deleteMutation.mutateAsync(confirmAction.ruleId);
+        toast.success('Rule deleted successfully');
+      }
+      setConfirmAction({ action: null, ruleId: null });
+    } catch (error) {
+      toast.error('Operation failed. Please try again.');
     }
   };
 
@@ -185,7 +204,7 @@ export default function CopyTradingRulesPage() {
                     <button
                       onClick={() => {
                         // TODO: Implement edit modal
-                        alert('Edit functionality coming soon');
+                        toast('Edit functionality coming soon', { icon: 'ℹ️' });
                       }}
                       className="p-2 hover:bg-white/10 rounded transition-colors"
                       title="Edit"
@@ -243,6 +262,22 @@ export default function CopyTradingRulesPage() {
             </div>
           </div>
         )}
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmAction.action !== null}
+        onClose={() => setConfirmAction({ action: null, ruleId: null })}
+        onConfirm={handleConfirm}
+        title={confirmAction.action === 'delete' ? 'Delete Rule' : 'Toggle Rule'}
+        message={
+          confirmAction.action === 'delete'
+            ? 'Are you sure you want to delete this rule? This action cannot be undone.'
+            : 'Are you sure you want to toggle this rule?'
+        }
+        variant={confirmAction.action === 'delete' ? 'danger' : 'warning'}
+        confirmText={confirmAction.action === 'delete' ? 'Delete' : 'Confirm'}
+        isLoading={toggleMutation.isPending || deleteMutation.isPending}
+      />
       </div>
     </div>
   );

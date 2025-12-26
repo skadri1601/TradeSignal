@@ -47,7 +47,7 @@ export default function PricingPage() {
         const sub = await getSubscription();
         setSubscription(sub);
       } catch (error) {
-        console.error('Error fetching subscription:', error);
+        console.error('Failed to load subscription data');
         // Default to free tier on error
         setSubscription({
           tier: 'free',

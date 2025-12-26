@@ -6,16 +6,19 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { brokerageApi } from '../api/brokerage';
 import type { BrokerageAccount, BrokerAccountSummary } from '../api/brokerage';
 import { RefreshCw, Unlink, ArrowLeft, ExternalLink } from 'lucide-react';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import ConfirmationModal from '../components/common/ConfirmationModal';
 
 export default function CopyTradingAccountPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
   const [connectingBroker, setConnectingBroker] = useState<string | null>(null);
+  const [confirmDisconnect, setConfirmDisconnect] = useState<number | null>(null);
 
   // Fetch accounts
   const { data: accounts, isLoading: loadingAccounts } = useQuery<BrokerageAccount[]>({
@@ -55,8 +58,8 @@ export default function CopyTradingAccountPage() {
       // Redirect to OAuth URL
       window.location.href = response.authorization_url;
     } catch (error) {
-      console.error('Failed to initiate connection:', error);
-      alert('Failed to initiate broker connection. Please try again.');
+      console.error('Failed to initiate broker connection');
+      toast.error('Failed to initiate broker connection. Please try again.');
       setConnectingBroker(null);
     }
   };
@@ -65,9 +68,19 @@ export default function CopyTradingAccountPage() {
     await syncMutation.mutateAsync(accountId);
   };
 
-  const handleDisconnect = async (accountId: number) => {
-    if (window.confirm('Are you sure you want to disconnect this account? All associated rules will be deactivated.')) {
-      await disconnectMutation.mutateAsync(accountId);
+  const handleDisconnect = (accountId: number) => {
+    setConfirmDisconnect(accountId);
+  };
+
+  const handleConfirmDisconnect = async () => {
+    if (!confirmDisconnect) return;
+
+    try {
+      await disconnectMutation.mutateAsync(confirmDisconnect);
+      toast.success('Account disconnected successfully');
+      setConfirmDisconnect(null);
+    } catch (error) {
+      toast.error('Failed to disconnect account');
     }
   };
 
@@ -326,6 +339,18 @@ export default function CopyTradingAccountPage() {
           </div>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmDisconnect !== null}
+        onClose={() => setConfirmDisconnect(null)}
+        onConfirm={handleConfirmDisconnect}
+        title="Disconnect Account"
+        message="Are you sure you want to disconnect this account? All associated rules will be deactivated."
+        variant="danger"
+        confirmText="Disconnect"
+        isLoading={disconnectMutation.isPending}
+      />
     </div>
   );
 }

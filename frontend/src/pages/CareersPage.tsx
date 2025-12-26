@@ -1,6 +1,7 @@
 import { useState, useContext } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Briefcase, MapPin, Clock, Plus, Trash2, FileText, Send, X, TrendingUp, Users, Globe, Shield } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { jobsApi, type Job, type JobCreate, type JobApplicationCreate } from '../api/jobs';
 import { AuthContext } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -25,12 +26,12 @@ function JobApplicationModal({ isOpen, onClose, job }: JobApplicationModalProps)
     mutationFn: (data: JobApplicationCreate) => jobsApi.applyToJob(job!.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
-      alert('Application submitted successfully! We\'ll be in touch soon.');
+      toast.success('Application submitted successfully! We\'ll be in touch soon.');
       setFormData({ applicant_name: '', applicant_email: '', applicant_phone: '', cover_letter: '' });
       onClose();
     },
     onError: (error: any) => {
-      alert(error.response?.data?.detail || 'Failed to submit application. Please try again.');
+      toast.error(error.response?.data?.detail || 'Failed to submit application. Please try again.');
     },
   });
 
@@ -154,16 +155,16 @@ function JobFormModal({ isOpen, onClose, job }: JobFormModalProps) {
     mutationFn: (data: JobCreate) => jobsApi.createJob(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs-admin'] });
-      alert('Job created successfully!');
+      toast.success('Job created successfully!');
       onClose();
     },
     onError: (error: any) => {
       console.error('Error creating job:', error);
       const errorMessage = error?.response?.data?.error || 
                           error?.response?.data?.detail || 
-                          error?.message || 
+                          error?.message ||
                           'Failed to create job. Please try again.';
-      alert(`Error: ${errorMessage}`);
+      toast.error(errorMessage);
     },
   });
 
@@ -171,16 +172,16 @@ function JobFormModal({ isOpen, onClose, job }: JobFormModalProps) {
     mutationFn: (data: JobCreate) => jobsApi.updateJob(job!.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs-admin'] });
-      alert('Job updated successfully!');
+      toast.success('Job updated successfully!');
       onClose();
     },
     onError: (error: any) => {
       console.error('Error updating job:', error);
       const errorMessage = error?.response?.data?.error || 
                           error?.response?.data?.detail || 
-                          error?.message || 
+                          error?.message ||
                           'Failed to update job. Please try again.';
-      alert(`Error: ${errorMessage}`);
+      toast.error(errorMessage);
     },
   });
 
@@ -351,7 +352,7 @@ export default function CareersPage() {
     mutationFn: (jobId: number) => jobsApi.deleteJob(jobId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs-admin'] });
-      alert('Job deleted successfully!');
+      toast.success('Job deleted successfully!');
     },
   });
 

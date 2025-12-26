@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import LegalHeroSection from '../components/legal/LegalHeroSection';
 import LegalContentSection from '../components/legal/LegalContentSection';
 import Section from '../components/legal/Section';
@@ -22,7 +23,7 @@ const TermsOfServicePage = () => {
 
         <Section title="2. Use of Services">
            <ul className="list-disc ml-6 space-y-2">
-            <li><strong>Service Description:</strong> TradeSignal provides real-time insider trading intelligence, tracking SEC Form 4 filings, congressional trades, and institutional flows. We process 15 million+ filings with LUNA, our advanced AI engine (92% sentiment accuracy). The platform is currently in Alpha release (v1.0.0-alpha). Some features are in Beta or Experimental stages. See our <a href="/docs/RELEASE_NOTES_ALPHA_v1.0.0.md" className="text-blue-600 hover:underline">Release Notes</a> for details on feature availability and limitations.</li>
+            <li><strong>Service Description:</strong> TradeSignal provides real-time insider trading intelligence, tracking SEC Form 4 filings, congressional trades, and institutional flows. We process 15 million+ filings with LUNA, our advanced AI engine (92% sentiment accuracy). The platform is currently in Alpha release (v1.0.0-alpha). Some features are in Beta or Experimental stages. See our <Link to="/release-notes" className="text-purple-400 hover:text-purple-300 underline">Release Notes</Link> for details on feature availability and limitations.</li>
             <li><strong>Informational Purposes Only:</strong> TradeSignal provides financial data and AI insights (Beta) for educational and informational purposes only. We are <strong>NOT</strong> financial advisors, and nothing on this site constitutes investment advice, financial advice, or trading recommendations.</li>
             <li><strong>Data Accuracy:</strong> While we strive for accuracy, data may be delayed, incomplete, or contain errors. SEC Form 4 filings are updated every 6 hours. Congressional trades and AI insights may have additional delays or require API keys. See Release Notes for data source status.</li>
             <li><strong>No Automated Scraping:</strong> You agree not to use automated bots, scrapers, or spiders to access or extract data from our Service without express written permission. Violation may result in account termination and legal action.</li>
