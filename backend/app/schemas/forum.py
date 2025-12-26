@@ -86,7 +86,7 @@ class ForumPostResponse(BaseModel):
     content: str
     author_id: int
     author_name: str
-    tags: List[str]
+    tags: List[str] = Field(default_factory=list)  # Tags feature not yet implemented in model
     upvotes: int
     downvotes: int
     vote_count: int  # upvotes - downvotes

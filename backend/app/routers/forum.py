@@ -27,7 +27,7 @@ from app.schemas.forum import (
     ForumModerationLogResponse,
 )
 
-router = APIRouter(prefix="/api/v1/forum", tags=["forum"])
+router = APIRouter(tags=["forum"])  # Prefix added in main.py registration
 
 # Constants
 POST_NOT_FOUND = "Post not found"
@@ -160,7 +160,6 @@ async def get_posts(
                 content=post.content,
                 author_id=post.author_id,
                 author_name=author_name,
-                tags=post.tags or [],
                 upvotes=post.upvotes,
                 downvotes=post.downvotes,
                 vote_count=post.upvotes - post.downvotes,
@@ -239,7 +238,6 @@ async def get_post(
         content=post.content,
         author_id=post.author_id,
         author_name=author_name,
-        tags=post.tags or [],
         upvotes=post.upvotes,
         downvotes=post.downvotes,
         vote_count=post.upvotes - post.downvotes,
@@ -275,7 +273,6 @@ async def create_post(
         title=post_data.title,
         content=post_data.content,
         author_id=current_user.id,
-        tags=post_data.tags,
     )
 
     # Get author name
@@ -344,8 +341,7 @@ async def update_post(
         post.title = post_data.title
     if post_data.content is not None:
         post.content = post_data.content
-    if post_data.tags is not None:
-        post.tags = post_data.tags
+    # Tags not yet implemented in model
 
     post.updated_at = datetime.now(timezone.utc)
 
