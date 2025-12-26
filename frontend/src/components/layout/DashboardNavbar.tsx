@@ -67,7 +67,7 @@ const DashboardNavbar = () => {
           setSubscription(sub);
           setUsageStats(stats);
         } catch (error) {
-           console.error("Failed to fetch user stats", error);
+           console.error("Failed to fetch dashboard stats");
         }
       }
     };
@@ -122,12 +122,11 @@ const DashboardNavbar = () => {
           { name: 'Strategies', path: '/strategies', icon: Search },
         ]
       },
-      { 
-        name: 'Signals', 
+      {
+        name: 'Signals',
         path: '/ai-insights',
         dropdown: [
           { name: 'AI Insights', path: '/ai-insights', icon: Zap },
-          { name: 'Chart Patterns', path: '/patterns', icon: Activity },
           { name: 'Alerts', path: '/alerts', icon: Bell },
         ]
       }

@@ -37,10 +37,10 @@ export function ProtectedRoute({
   // Show loading state while checking authentication
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 via-gray-900 to-black">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
+          <Loader2 className="w-12 h-12 text-purple-500 animate-spin mx-auto mb-4" />
+          <p className="text-gray-400">Loading...</p>
         </div>
       </div>
     );
@@ -54,20 +54,20 @@ export function ProtectedRoute({
   // Check for verified user requirement
   if (requireVerified && user && !user.is_verified) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
-          <div className="bg-yellow-100 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 via-gray-900 to-black px-4">
+        <div className="max-w-md w-full bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-2xl shadow-2xl p-8 text-center border border-gray-700/50 backdrop-blur-sm">
+          <div className="bg-yellow-500/20 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4 border border-yellow-500/30">
             <span className="text-3xl">⚠️</span>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          <h2 className="text-2xl font-bold text-white mb-4">
             Email Verification Required
           </h2>
-          <p className="text-gray-600 mb-6">
+          <p className="text-gray-400 mb-6">
             Please verify your email address to access this feature.
           </p>
           <button
             onClick={() => window.location.href = '/profile'}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+            className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
           >
             Go to Profile
           </button>
@@ -79,23 +79,23 @@ export function ProtectedRoute({
   // Check for superuser requirement
   if (requireSuperuser && user) {
     const isAdmin = user.is_superuser || user.role === 'super_admin' || user.role === 'support';
-    
+
     if (!isAdmin) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-          <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
-            <div className="bg-red-100 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 via-gray-900 to-black px-4">
+          <div className="max-w-md w-full bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-2xl shadow-2xl p-8 text-center border border-gray-700/50 backdrop-blur-sm">
+            <div className="bg-red-500/20 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4 border border-red-500/30">
               <span className="text-3xl">🚫</span>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            <h2 className="text-2xl font-bold text-white mb-4">
               Access Denied
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-400 mb-6">
               You don't have permission to access this page. Admin privileges are required.
             </p>
             <button
               onClick={() => window.location.href = '/'}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+              className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
             >
               Go to Dashboard
             </button>
@@ -113,15 +113,15 @@ export function ProtectedRoute({
 
     if (userLevel < requiredLevel) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-          <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
-            <div className="bg-purple-100 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 via-gray-900 to-black px-4">
+          <div className="max-w-md w-full bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-2xl shadow-2xl p-8 text-center border border-gray-700/50 backdrop-blur-sm">
+            <div className="bg-purple-500/20 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4 border border-purple-500/30">
               <span className="text-3xl">💎</span>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            <h2 className="text-2xl font-bold text-white mb-4">
               Premium Feature
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-400 mb-6">
               This feature requires a {requireTier.toUpperCase()} subscription.
               Please upgrade your plan to access this page.
             </p>
@@ -134,7 +134,7 @@ export function ProtectedRoute({
               </button>
               <button
                 onClick={() => window.location.href = '/dashboard'}
-                className="w-full bg-gray-100 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
+                className="w-full bg-gray-800 text-gray-300 px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors border border-gray-700"
               >
                 Back to Dashboard
               </button>
