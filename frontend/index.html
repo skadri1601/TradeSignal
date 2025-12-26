@@ -34,8 +34,25 @@
       })();
     </script>
   </head>
-  <body style="background-color: #0a0a0a; color: white;">
-    <div id="root"></div>
+  <body style="background-color: #0a0a0a; color: white; margin: 0; font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;">
+    <div id="root">
+      <!-- Initial loading spinner before React loads -->
+      <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background-color: #0a0a0a;">
+        <div style="text-align: center;">
+          <svg style="width: 48px; height: 48px; margin: 0 auto 16px; animation: spin 1s linear infinite;" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="#6366f1" stroke-width="4" stroke-linecap="round" stroke-dasharray="60" stroke-dashoffset="10" opacity="0.25"/>
+            <path d="M12 2a10 10 0 0 1 10 10" stroke="#a855f7" stroke-width="4" stroke-linecap="round"/>
+          </svg>
+          <p style="color: #9ca3af; font-size: 14px; margin: 0;">Loading...</p>
+        </div>
+      </div>
+      <style>
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      </style>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

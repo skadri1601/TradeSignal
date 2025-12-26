@@ -27,6 +27,7 @@ const PublicContactPage = lazy(() => import('./pages/PublicContactPage'));
 const CareersPage = lazy(() => import('./pages/CareersPage'));
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
+const ReleaseNotesPage = lazy(() => import('./pages/ReleaseNotesPage'));
 const PricingPage = lazy(() => import('./pages/PricingPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
@@ -52,6 +53,12 @@ const CopyTradingPage = lazy(() => import('./pages/CopyTradingPage'));
 const CopyTradingRulesPage = lazy(() => import('./pages/CopyTradingRulesPage'));
 const CopyTradingAccountPage = lazy(() => import('./pages/CopyTradingAccountPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+
+// Feature Landing Pages
+const InsiderTradesFeature = lazy(() => import('./pages/features/InsiderTradesFeature'));
+const CongressTradingFeature = lazy(() => import('./pages/features/CongressTradingFeature'));
+const AIInsightsFeature = lazy(() => import('./pages/features/AIInsightsFeature'));
+const AlertsFeature = lazy(() => import('./pages/features/AlertsFeature'));
 
 // Loading skeleton component
 const PageLoader = () => (
@@ -86,9 +93,16 @@ function AppContent() {
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />
+          <Route path="/release-notes" element={<ReleaseNotesPage />} />
           <Route path="/contact" element={<PublicContactPage />} />
           <Route path="/faq" element={<FAQPage />} />
           <Route path="/careers" element={<CareersPage />} />
+
+          {/* Feature Landing Pages */}
+          <Route path="/features/insider-trades" element={<InsiderTradesFeature />} />
+          <Route path="/features/congress-trading" element={<CongressTradingFeature />} />
+          <Route path="/features/ai-insights" element={<AIInsightsFeature />} />
+          <Route path="/features/alerts" element={<AlertsFeature />} />
         </Route>
 
         {/* All other routes - WITH LAYOUT (Dashboard etc.) */}
@@ -114,9 +128,9 @@ function AppContent() {
               <Route path="/forum" element={<ProtectedRoute redirectAdmin><ForumPage /></ProtectedRoute>} />
               <Route path="/forum/post/:postId" element={<ProtectedRoute redirectAdmin><ForumPostPage /></ProtectedRoute>} />
               <Route path="/forum/create" element={<ProtectedRoute redirectAdmin><ForumCreatePostPage /></ProtectedRoute>} />
-              <Route path="/copy-trading" element={<ProtectedRoute redirectAdmin requireTier="premium"><CopyTradingPage /></ProtectedRoute>} />
-              <Route path="/copy-trading/rules" element={<ProtectedRoute redirectAdmin requireTier="premium"><CopyTradingRulesPage /></ProtectedRoute>} />
-              <Route path="/copy-trading/account" element={<ProtectedRoute redirectAdmin requireTier="premium"><CopyTradingAccountPage /></ProtectedRoute>} />
+              <Route path="/copy-trading" element={<ProtectedRoute redirectAdmin requireTier="plus"><CopyTradingPage /></ProtectedRoute>} />
+              <Route path="/copy-trading/rules" element={<ProtectedRoute redirectAdmin requireTier="plus"><CopyTradingRulesPage /></ProtectedRoute>} />
+              <Route path="/copy-trading/account" element={<ProtectedRoute redirectAdmin requireTier="plus"><CopyTradingAccountPage /></ProtectedRoute>} />
               <Route path="/companies/:ticker" element={<ProtectedRoute redirectAdmin><CompanyPage /></ProtectedRoute>} />
               <Route path="/insiders/:id" element={<ProtectedRoute redirectAdmin><InsiderPage /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />

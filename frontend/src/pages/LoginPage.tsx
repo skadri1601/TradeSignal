@@ -33,14 +33,8 @@ export default function LoginPage() {
         navigate(from, { replace: true });
       }
     } catch (err: any) {
-      // Log full error details for debugging
-      console.error('LoginPage - Login error details:', {
-        error: err,
-        message: err?.message,
-        stack: err?.stack,
-        name: err?.name,
-        email: email // Don't log password
-      });
+      // Log error for debugging (without sensitive data)
+      console.error('Login failed:', err?.message || 'Unknown error');
 
       // Set error message with fallback
       let errorMessage = 'Login failed. Please check your credentials.';
