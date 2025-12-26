@@ -192,7 +192,7 @@ const DashboardNavbar = () => {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute top-full left-0 pt-4 w-60"
+                    className="absolute top-full left-1/2 -translate-x-1/2 pt-4 w-60"
                   >
                     <div className="bg-[#0f0f1a] border border-white/10 rounded-2xl p-2 shadow-xl overflow-hidden ring-1 ring-white/10">
                       <div className="flex flex-col gap-1">
