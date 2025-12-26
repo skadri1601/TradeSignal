@@ -35,7 +35,6 @@ from slowapi.errors import RateLimitExceeded
 from app.config import settings
 from app.database import db_manager
 from app.core.limiter import limiter
-from app.core.observability import setup_observability
 from app.middleware.error_handler import register_error_handlers
 from app.services.cache_service import cache_service
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -126,7 +125,7 @@ def _format_db_error_messages(error_str: str, masked_url: str) -> None:
     logger.error("=" * 80)
     logger.error(f" Database connection check FAILED: {error_str}")
     logger.error(" Possible causes:")
-    
+
     error_lower = error_str.lower()
     if "gaierror" in error_lower or "getaddrinfo failed" in error_lower:
         logger.error("  - DNS resolution failed (cannot resolve database hostname)")
@@ -144,7 +143,7 @@ def _format_db_error_messages(error_str: str, masked_url: str) -> None:
         logger.error("  - Connection timeout (network/firewall issue)")
     else:
         logger.error("  - Check DATABASE_URL format and credentials")
-    
+
     logger.error(f" Database URL: {masked_url}")
     logger.error(" App will start but database operations will fail!")
     logger.error("=" * 80)
@@ -173,7 +172,10 @@ async def _check_database_connection(masked_url: str) -> bool:
                 return True
             else:
                 if attempt < max_retries - 1:
-                    logger.warning(f" Database connection attempt {attempt + 1}/{max_retries} failed, retrying in {retry_delay}s...")
+                    logger.warning(
+                        f" Database connection attempt {attempt + 1}/"
+                        f"{max_retries} failed, retrying in {retry_delay}s..."
+                    )
                     await asyncio.sleep(retry_delay)
                 else:
                     logger.error(" Database connection failed after all retry attempts")
@@ -181,7 +183,10 @@ async def _check_database_connection(masked_url: str) -> bool:
 
         except asyncio.TimeoutError:
             if attempt < max_retries - 1:
-                logger.warning(f" Database connection TIMED OUT on attempt {attempt + 1}/{max_retries}, retrying in {retry_delay}s...")
+                logger.warning(
+                    f" Database connection TIMED OUT on attempt {attempt + 1}/"
+                    f"{max_retries}, retrying in {retry_delay}s..."
+                )
                 await asyncio.sleep(retry_delay)
             else:
                 logger.error("=" * 80)
@@ -202,7 +207,10 @@ async def _check_database_connection(masked_url: str) -> bool:
 
         except Exception as db_error:
             if attempt < max_retries - 1:
-                logger.warning(f" Database connection error on attempt {attempt + 1}/{max_retries}: {db_error}, retrying in {retry_delay}s...")
+                logger.warning(
+                    f" Database connection error on attempt {attempt + 1}/"
+                    f"{max_retries}: {db_error}, retrying in {retry_delay}s..."
+                )
                 await asyncio.sleep(retry_delay)
             else:
                 _format_db_error_messages(str(db_error), masked_url)
@@ -235,7 +243,7 @@ def _log_startup_info(app: FastAPI) -> None:
     """Log startup information including routes and feature flags."""
     logger.info("Application startup complete")
     logger.info("=" * 80)
-    
+
     # Log feature flags
     logger.info(
         f"AI Insights: {'Enabled' if settings.enable_ai_insights else 'Disabled'}"
@@ -249,7 +257,7 @@ def _log_startup_info(app: FastAPI) -> None:
     logger.info(
         f"Push Notifications: {'Enabled' if settings.enable_push_notifications else 'Disabled'}"
     )
-    
+
     # Log all registered routes for debugging
     logger.info("Registered Routes:")
     for route in app.routes:
@@ -258,7 +266,7 @@ def _log_startup_info(app: FastAPI) -> None:
         elif hasattr(route, "path"):
             # WebSocket routes don't have methods
             logger.info(f" - {route.path} [WebSocket]")
-    
+
     logger.info("=" * 80)
     logger.info("Server is ready to accept connections")
     logger.info(f"API available at: http://0.0.0.0:8000{settings.api_v1_prefix}/docs")
@@ -331,7 +339,7 @@ async def lifespan(app: FastAPI):
 
     # Track if we're setting up degraded mode due to cancellation
     degraded_mode_due_to_cancellation = False
-    
+
     try:
         # Check if DATABASE_URL is configured
         db_url = settings.database_url
@@ -391,7 +399,7 @@ async def lifespan(app: FastAPI):
 
     # Yield control to FastAPI - server starts here
     yield
-    
+
     # This point is reached during shutdown
     logger.info("Lifespan yield returned - starting shutdown sequence")
     await _shutdown_application()
@@ -758,7 +766,6 @@ from app.routers import (  # noqa: E402
     scheduler,
     push,
     stocks,
-    health,
     congressional_trades,
     congresspeople,
     billing,
@@ -860,7 +867,14 @@ app.include_router(
 app.include_router(
     enterprise_api.router, prefix=f"{settings.api_v1_prefix}", tags=["Enterprise API"]
 )
-from app.routers import api_docs, enterprise_research_api, marketing_api, webhook_api, visualization_api, pricing_api, health_api  # noqa: E402
+from app.routers import (  # noqa: E402
+    api_docs,
+    enterprise_research_api,
+    marketing_api,
+    webhook_api,
+    visualization_api,
+    pricing_api,
+)
 
 app.include_router(
     api_docs.router, prefix=f"{settings.api_v1_prefix}", tags=["API Documentation"]
@@ -905,7 +919,7 @@ if __name__ == "__main__":
     # Configure uvicorn logging to use our logger
     uvicorn_logger = logging.getLogger("uvicorn")
     uvicorn_logger.setLevel(getattr(logging, settings.log_level))
-    
+
     # Run with uvicorn when executed directly
     # For production, use: uvicorn app.main:app --host 0.0.0.0 --port 8000
     logger.info("=" * 80)
@@ -914,7 +928,7 @@ if __name__ == "__main__":
     logger.info(f"Reload: {settings.debug}")
     logger.info(f"Log Level: {settings.log_level.lower()}")
     logger.info("=" * 80)
-    
+
     try:
         # Use app object directly to avoid any import delays or issues
         # This ensures the app is fully loaded before uvicorn starts

@@ -101,10 +101,11 @@ export default function EditAlertModal({
         <h2 className="text-2xl font-bold mb-4">Edit Alert</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label htmlFor="edit-alert-name" className="block text-sm font-medium text-gray-700">
               Name
             </label>
             <input
+              id="edit-alert-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -113,10 +114,11 @@ export default function EditAlertModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label htmlFor="edit-alert-type" className="block text-sm font-medium text-gray-700">
               Alert Type
             </label>
             <select
+              id="edit-alert-type"
               value={alertType}
               onChange={(e) => setAlertType(e.target.value as AlertType)}
               className="input"
@@ -127,10 +129,11 @@ export default function EditAlertModal({
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label htmlFor="edit-alert-ticker" className="block text-sm font-medium text-gray-700">
               Ticker
             </label>
             <input
+              id="edit-alert-ticker"
               type="text"
               value={ticker}
               onChange={(e) => setTicker(e.target.value)}
@@ -138,10 +141,11 @@ export default function EditAlertModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label htmlFor="edit-alert-min-value" className="block text-sm font-medium text-gray-700">
               Minimum Value ($)
             </label>
             <input
+              id="edit-alert-min-value"
               type="number"
               value={minValue}
               onChange={(e) => setMinValue(e.target.value)}
@@ -149,10 +153,11 @@ export default function EditAlertModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label htmlFor="edit-alert-transaction-type" className="block text-sm font-medium text-gray-700">
               Transaction Type
             </label>
             <select
+              id="edit-alert-transaction-type"
               value={transactionType}
               onChange={(e) =>
                 setTransactionType(e.target.value as "BUY" | "SELL" | "")
@@ -165,9 +170,9 @@ export default function EditAlertModal({
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="block text-sm font-medium text-gray-700 mb-2">
               Notification Channels
-            </label>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               {/* Email */}
               <label className="flex items-center p-2 border rounded hover:bg-gray-50 cursor-pointer">
@@ -276,8 +281,9 @@ export default function EditAlertModal({
           </div>
           {notificationChannels.includes("email") && (
             <div>
-              <label className="block text-sm font-medium text-gray-700">Email Address</label>
+              <label htmlFor="edit-alert-email" className="block text-sm font-medium text-gray-700">Email Address</label>
               <input
+                id="edit-alert-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -289,13 +295,14 @@ export default function EditAlertModal({
           )}
           {notificationChannels.includes("discord") && (
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label htmlFor="edit-alert-discord-webhook" className="block text-sm font-medium text-gray-700">
                 <div className="flex items-center gap-1">
                   <Hash className="h-4 w-4 text-indigo-600" />
                   Discord Webhook URL
                 </div>
               </label>
               <input
+                id="edit-alert-discord-webhook"
                 type="url"
                 value={discordWebhookUrl}
                 onChange={(e) => setDiscordWebhookUrl(e.target.value)}
@@ -310,13 +317,14 @@ export default function EditAlertModal({
           )}
           {notificationChannels.includes("slack") && (
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label htmlFor="edit-alert-slack-webhook" className="block text-sm font-medium text-gray-700">
                 <div className="flex items-center gap-1">
                   <MessageSquare className="h-4 w-4 text-green-600" />
                   Slack Webhook URL
                 </div>
               </label>
               <input
+                id="edit-alert-slack-webhook"
                 type="url"
                 value={slackWebhookUrl}
                 onChange={(e) => setSlackWebhookUrl(e.target.value)}
@@ -331,13 +339,14 @@ export default function EditAlertModal({
           )}
           {notificationChannels.includes("sms") && (
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label htmlFor="edit-alert-sms-phone" className="block text-sm font-medium text-gray-700">
                 <div className="flex items-center gap-1">
                   <Smartphone className="h-4 w-4 text-blue-600" />
                   Phone Number
                 </div>
               </label>
               <input
+                id="edit-alert-sms-phone"
                 type="tel"
                 value={smsPhoneNumber}
                 onChange={(e) => setSmsPhoneNumber(e.target.value)}
@@ -352,8 +361,9 @@ export default function EditAlertModal({
           )}
           {notificationChannels.includes("webhook") && (
             <div>
-              <label className="block text-sm font-medium text-gray-700">Custom Webhook URL</label>
+              <label htmlFor="edit-alert-webhook-url" className="block text-sm font-medium text-gray-700">Custom Webhook URL</label>
               <input
+                id="edit-alert-webhook-url"
                 type="url"
                 value={webhookUrl}
                 onChange={(e) => setWebhookUrl(e.target.value)}

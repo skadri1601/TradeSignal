@@ -11,11 +11,11 @@
       // In development (localhost), allow localhost connections
       // In production, only allow production domains
       (function() {
-        const isDevelopment = window.location.hostname === 'localhost' || 
-                              window.location.hostname === '127.0.0.1' ||
-                              window.location.hostname.startsWith('192.168.') ||
-                              window.location.hostname.startsWith('10.') ||
-                              window.location.port !== '';
+        const isDevelopment = globalThis.location.hostname === 'localhost' ||
+                              globalThis.location.hostname === '127.0.0.1' ||
+                              globalThis.location.hostname.startsWith('192.168.') ||
+                              globalThis.location.hostname.startsWith('10.') ||
+                              globalThis.location.port !== '';
         
         // Base CSP for production
         let connectSrc = "'self' wss://api.tradesignal.capital https://api.tradesignal.capital https://api.stripe.com https://checkout.stripe.com https://r.stripe.com";

@@ -2,15 +2,15 @@ import { useState } from 'react';
 import { Bold, Italic, Link, Code, Eye, Edit2, X } from 'lucide-react';
 
 export interface CreatePostFormProps {
-  onSubmit: (data: {
+  readonly onSubmit: (data: {
     title: string;
     content: string;
     category: string;
     tags: string[];
   }) => Promise<void>;
-  onCancel: () => void;
-  categories: string[];
-  initialData?: {
+  readonly onCancel: () => void;
+  readonly categories: string[];
+  readonly initialData?: {
     title?: string;
     content?: string;
     category?: string;
@@ -116,15 +116,15 @@ export default function CreatePostForm({
   const renderPreview = (text: string) => {
     // Truncate input to prevent ReDoS attacks
     const safeText = text.length > MAX_PREVIEW_LENGTH ? text.substring(0, MAX_PREVIEW_LENGTH) : text;
-    
+
     // Use negated character classes to prevent catastrophic backtracking
     // These patterns cannot backtrack because [^X]+ matches a specific character class
-    let html = safeText
+    const html = safeText
       .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
       .replace(/\*([^*]+)\*/g, '<em>$1</em>')
       .replace(/`([^`]+)`/g, '<code class="bg-black/30 px-1 py-0.5 rounded text-purple-300">$1</code>')
       .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-purple-400 hover:underline">$1</a>')
-      .replace(/\n/g, '<br />');
+      .replaceAll('\n', '<br />');
     return { __html: html };
   };
 

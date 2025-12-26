@@ -83,8 +83,9 @@ export default function CreateAlertModal({
         <h2 className="text-2xl font-bold mb-4 text-white">Create New Alert</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300">Name</label>
+            <label htmlFor="alert-name" className="block text-sm font-medium text-gray-300">Name</label>
             <input
+              id="alert-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -93,8 +94,9 @@ export default function CreateAlertModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300">Alert Type</label>
+            <label htmlFor="alert-type" className="block text-sm font-medium text-gray-300">Alert Type</label>
             <select
+              id="alert-type"
               value={alertType}
               onChange={(e) => setAlertType(e.target.value as AlertType)}
               className="mt-1 block w-full rounded-md border-gray-700 bg-gray-800 text-white shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm"
@@ -105,8 +107,9 @@ export default function CreateAlertModal({
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300">Ticker</label>
+            <label htmlFor="alert-ticker" className="block text-sm font-medium text-gray-300">Ticker</label>
             <input
+              id="alert-ticker"
               type="text"
               value={ticker}
               onChange={(e) => setTicker(e.target.value)}
@@ -114,8 +117,9 @@ export default function CreateAlertModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300">Minimum Value ($)</label>
+            <label htmlFor="alert-min-value" className="block text-sm font-medium text-gray-300">Minimum Value ($)</label>
             <input
+              id="alert-min-value"
               type="number"
               value={minValue}
               onChange={(e) => setMinValue(e.target.value)}
@@ -123,8 +127,9 @@ export default function CreateAlertModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300">Transaction Type</label>
+            <label htmlFor="alert-transaction-type" className="block text-sm font-medium text-gray-300">Transaction Type</label>
             <select
+              id="alert-transaction-type"
               value={transactionType}
               onChange={(e) =>
                 setTransactionType(e.target.value as "BUY" | "SELL" | "")
@@ -137,7 +142,7 @@ export default function CreateAlertModal({
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Notification Channels</label>
+            <div className="block text-sm font-medium text-gray-300 mb-2">Notification Channels</div>
             <div className="grid grid-cols-2 gap-2 text-gray-300">
               {/* Email */}
               <label className="flex items-center p-2 border border-gray-700 rounded hover:bg-gray-800 cursor-pointer">
@@ -246,8 +251,9 @@ export default function CreateAlertModal({
           </div>
           {notificationChannels.includes("email") && (
             <div>
-              <label className="block text-sm font-medium text-gray-300">Email Address</label>
+              <label htmlFor="alert-email" className="block text-sm font-medium text-gray-300">Email Address</label>
               <input
+                id="alert-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -259,13 +265,14 @@ export default function CreateAlertModal({
           )}
           {notificationChannels.includes("discord") && (
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label htmlFor="alert-discord-webhook" className="block text-sm font-medium text-gray-300">
                 <div className="flex items-center gap-1">
                   <Hash className="h-4 w-4 text-purple-400" />
                   Discord Webhook URL
                 </div>
               </label>
               <input
+                id="alert-discord-webhook"
                 type="url"
                 value={discordWebhookUrl}
                 onChange={(e) => setDiscordWebhookUrl(e.target.value)}
@@ -280,13 +287,14 @@ export default function CreateAlertModal({
           )}
           {notificationChannels.includes("slack") && (
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label htmlFor="alert-slack-webhook" className="block text-sm font-medium text-gray-300">
                 <div className="flex items-center gap-1">
                   <MessageSquare className="h-4 w-4 text-green-400" />
                   Slack Webhook URL
                 </div>
               </label>
               <input
+                id="alert-slack-webhook"
                 type="url"
                 value={slackWebhookUrl}
                 onChange={(e) => setSlackWebhookUrl(e.target.value)}
@@ -301,13 +309,14 @@ export default function CreateAlertModal({
           )}
           {notificationChannels.includes("sms") && (
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label htmlFor="alert-sms-phone" className="block text-sm font-medium text-gray-300">
                 <div className="flex items-center gap-1">
                   <Smartphone className="h-4 w-4 text-blue-400" />
                   Phone Number
                 </div>
               </label>
               <input
+                id="alert-sms-phone"
                 type="tel"
                 value={smsPhoneNumber}
                 onChange={(e) => setSmsPhoneNumber(e.target.value)}
@@ -322,8 +331,9 @@ export default function CreateAlertModal({
           )}
           {notificationChannels.includes("webhook") && (
             <div>
-              <label className="block text-sm font-medium text-gray-300">Custom Webhook URL</label>
+              <label htmlFor="alert-webhook-url" className="block text-sm font-medium text-gray-300">Custom Webhook URL</label>
               <input
+                id="alert-webhook-url"
                 type="url"
                 value={webhookUrl}
                 onChange={(e) => setWebhookUrl(e.target.value)}
