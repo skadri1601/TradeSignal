@@ -124,7 +124,7 @@ export default function CreatePostForm({
       .replace(/\*([^*]+)\*/g, '<em>$1</em>')
       .replace(/`([^`]+)`/g, '<code class="bg-black/30 px-1 py-0.5 rounded text-purple-300">$1</code>')
       .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-purple-400 hover:underline">$1</a>')
-      .replaceAll('\n', '<br />');
+      .replace(/\n/g, '<br />');
     return { __html: html };
   };
 
