@@ -50,6 +50,8 @@ const GlobalFooter = () => {
                <ul className="space-y-3 text-sm text-gray-400">
                  <li><Link to="/" className="hover:text-white transition-colors">Home</Link></li>
                  <li><Link to="/about" className="hover:text-white transition-colors">About</Link></li>
+                 <li><Link to="/use-cases" className="hover:text-white transition-colors">Use Cases</Link></li>
+                 <li><Link to="/testimonials" className="hover:text-white transition-colors">Testimonials</Link></li>
                  <li><Link to="/careers" className="hover:text-white transition-colors">Careers</Link></li>
                  <li><Link to="/blog" className="hover:text-white transition-colors">Blog</Link></li>
                </ul>
@@ -59,25 +61,42 @@ const GlobalFooter = () => {
              <div className="space-y-4">
                <h4 className="font-bold text-white mb-6">Resources</h4>
                <ul className="space-y-3 text-sm text-gray-400">
-                 <li><Link to="/forum" className="hover:text-white transition-colors">Community Forum</Link></li>
-                 <li><Link to="/copy-trading" className="hover:text-white transition-colors">Copy Trading</Link></li>
+                 <li><Link to="/docs" className="hover:text-white transition-colors">Documentation</Link></li>
+                 <li><Link to="/api-docs" className="hover:text-white transition-colors">API Docs</Link></li>
+                 <li><Link to="/public/news" className="hover:text-white transition-colors">News</Link></li>
+                 <li><Link to="/public/support" className="hover:text-white transition-colors">Help Center</Link></li>
+                 <li><Link to="/roadmap" className="hover:text-white transition-colors">Roadmap</Link></li>
                  <li><Link to="/contact" className="hover:text-white transition-colors">Contact Us</Link></li>
                  <li><Link to="/faq" className="hover:text-white transition-colors">FAQ</Link></li>
                  {isAuthenticated && (
                    <>
                      <li><Link to="/settings" className="hover:text-white transition-colors">Settings</Link></li>
-                     <li><Link to="/support" className="hover:text-white transition-colors">Help & Support</Link></li>
+                     <li><Link to="/support" className="hover:text-white transition-colors">Support</Link></li>
                    </>
                  )}
                </ul>
              </div>
 
-             {/* Utility Pages */}
+             {/* Features */}
              <div className="space-y-4">
-               <h4 className="font-bold text-white mb-6">Utility Pages</h4>
+               <h4 className="font-bold text-white mb-6">Features</h4>
+               <ul className="space-y-3 text-sm text-gray-400">
+                 <li><Link to="/features/insider-trades" className="hover:text-white transition-colors">Insider Trades</Link></li>
+                 <li><Link to="/features/congress-trading" className="hover:text-white transition-colors">Congressional Trading</Link></li>
+                 <li><Link to="/features/ai-insights" className="hover:text-white transition-colors">AI Insights</Link></li>
+                 <li><Link to="/features/alerts" className="hover:text-white transition-colors">Alerts</Link></li>
+                 <li><Link to="/pricing" className="hover:text-white transition-colors">Pricing</Link></li>
+               </ul>
+             </div>
+
+             {/* Legal & Trust */}
+             <div className="space-y-4">
+               <h4 className="font-bold text-white mb-6">Legal & Trust</h4>
                <ul className="space-y-3 text-sm text-gray-400">
                  <li><Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
                  <li><Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
+                 <li><Link to="/security" className="hover:text-white transition-colors">Security</Link></li>
+                 <li><Link to="/accessibility" className="hover:text-white transition-colors">Accessibility</Link></li>
                </ul>
              </div>
           </div>

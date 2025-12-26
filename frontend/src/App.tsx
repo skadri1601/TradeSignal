@@ -60,6 +60,17 @@ const CongressTradingFeature = lazy(() => import('./pages/features/CongressTradi
 const AIInsightsFeature = lazy(() => import('./pages/features/AIInsightsFeature'));
 const AlertsFeature = lazy(() => import('./pages/features/AlertsFeature'));
 
+// New Public Pages
+const DocumentationPage = lazy(() => import('./pages/DocumentationPage'));
+const APIDocsPage = lazy(() => import('./pages/APIDocsPage'));
+const RoadmapPage = lazy(() => import('./pages/RoadmapPage'));
+const SecurityPage = lazy(() => import('./pages/SecurityPage'));
+const UseCasesPage = lazy(() => import('./pages/UseCasesPage'));
+const TestimonialsPage = lazy(() => import('./pages/TestimonialsPage'));
+const AccessibilityPage = lazy(() => import('./pages/AccessibilityPage'));
+const PublicNewsPage = lazy(() => import('./pages/public/PublicNewsPage'));
+const PublicSupportPage = lazy(() => import('./pages/public/PublicSupportPage'));
+
 // Loading skeleton component
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
@@ -97,6 +108,17 @@ function AppContent() {
           <Route path="/contact" element={<PublicContactPage />} />
           <Route path="/faq" element={<FAQPage />} />
           <Route path="/careers" element={<CareersPage />} />
+
+          {/* New Public Pages */}
+          <Route path="/docs" element={<DocumentationPage />} />
+          <Route path="/api-docs" element={<APIDocsPage />} />
+          <Route path="/roadmap" element={<RoadmapPage />} />
+          <Route path="/security" element={<SecurityPage />} />
+          <Route path="/use-cases" element={<UseCasesPage />} />
+          <Route path="/testimonials" element={<TestimonialsPage />} />
+          <Route path="/accessibility" element={<AccessibilityPage />} />
+          <Route path="/public/news" element={<PublicNewsPage />} />
+          <Route path="/public/support" element={<PublicSupportPage />} />
 
           {/* Feature Landing Pages */}
           <Route path="/features/insider-trades" element={<InsiderTradesFeature />} />

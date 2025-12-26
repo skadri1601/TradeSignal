@@ -1,5 +1,10 @@
 import { Link } from 'react-router-dom';
 import { TrendingUp, Zap, ChevronRight, ArrowRight, Globe, Activity, Building2 } from 'lucide-react';
+import LiveTicker from '../components/landing/LiveTicker';
+import DashboardPreview from '../components/landing/DashboardPreview';
+import CongressSection from '../components/landing/CongressSection';
+import FeaturesShowcase from '../components/landing/FeaturesShowcase';
+import FinalCTA from '../components/landing/FinalCTA';
 
 const LandingPage = () => {
 
@@ -58,6 +63,9 @@ const LandingPage = () => {
               </svg>
         </div>
       </section>
+
+      {/* Live Ticker */}
+      <LiveTicker />
 
       {/* Features Grid */}
       <section className="py-24 bg-[#0f0f1a]" id="features">
@@ -151,6 +159,12 @@ const LandingPage = () => {
           </div>
         </div>
       </section>
+
+      {/* Dashboard Preview */}
+      <DashboardPreview />
+
+      {/* Congressional Trading Section */}
+      <CongressSection />
 
       {/* Who Uses TradeSignal */}
       <section className="py-24 bg-[#0f0f1a]">
@@ -298,6 +312,12 @@ const LandingPage = () => {
           </div>
         </div>
       </section>
+
+      {/* Features Showcase */}
+      <FeaturesShowcase />
+
+      {/* Final CTA */}
+      <FinalCTA />
 
       {/* CTA Footer Section */}
       <section className="py-32 bg-gradient-to-b from-[#0f0f1a] to-black text-center px-6 relative overflow-hidden">
