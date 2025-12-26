@@ -27,9 +27,19 @@ export default function ForumPostCard({
   const voteCount = post.upvotes - post.downvotes;
   const timeAgo = formatDistanceToNow(new Date(post.created_at), { addSuffix: true });
 
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick();
+    }
+  };
+
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyPress={handleKeyPress}
       className={`
         bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-white/10 p-6
         hover:border-purple-500/30 transition-all duration-200 cursor-pointer

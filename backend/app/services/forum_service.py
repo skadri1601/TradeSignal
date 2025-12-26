@@ -132,68 +132,14 @@ class ForumService:
     ) -> Dict[str, Any]:
         """Cast a vote on a post or comment."""
         try:
-            if not post_id and not comment_id:
-                raise ValueError("Must specify either post_id or comment_id")
-            if post_id and comment_id:
-                raise ValueError("Cannot vote on both post and comment")
+            self._validate_vote_params(post_id, comment_id)
+            target, existing_vote = await self._get_vote_target_and_existing(user_id, post_id, comment_id)
 
-            # Check if vote already exists
-            if post_id:
-                existing = await self.db.execute(
-                    select(ForumVote).where(
-                        ForumVote.user_id == user_id, ForumVote.post_id == post_id
-                    )
-                )
-                target = await self.db.get(ForumPost, post_id)
-            else:
-                existing = await self.db.execute(
-                    select(ForumVote).where(
-                        ForumVote.user_id == user_id, ForumVote.comment_id == comment_id
-                    )
-                )
-                target = await self.db.get(ForumComment, comment_id)
-
-            if not target:
-                raise ValueError("Target not found")
-
-            existing_vote = existing.scalar_one_or_none()
             is_toggle = False
-
             if existing_vote:
-                # Update existing vote
-                if existing_vote.vote_type == vote_type:
-                    # Same vote - remove it (toggle off)
-                    is_toggle = True
-                    await self.db.execute(
-                        delete(ForumVote).where(ForumVote.id == existing_vote.id)
-                    )
-                    if vote_type == "upvote":
-                        target.upvotes = max(0, target.upvotes - 1)
-                    else:
-                        target.downvotes = max(0, target.downvotes - 1)
-                else:
-                    # Change vote
-                    if existing_vote.vote_type == "upvote":
-                        target.upvotes = max(0, target.upvotes - 1)
-                        target.downvotes += 1
-                    else:
-                        target.downvotes = max(0, target.downvotes - 1)
-                        target.upvotes += 1
-                    existing_vote.vote_type = vote_type
+                is_toggle = await self._handle_existing_vote(existing_vote, target, vote_type)
             else:
-                # New vote
-                vote = ForumVote(
-                    user_id=user_id,
-                    post_id=post_id,
-                    comment_id=comment_id,
-                    vote_type=vote_type,
-                )
-                self.db.add(vote)
-
-                if vote_type == "upvote":
-                    target.upvotes += 1
-                else:
-                    target.downvotes += 1
+                self._create_new_vote(user_id, post_id, comment_id, target, vote_type)
 
             await self.db.commit()
             return {"status": "success", "vote_type": vote_type if not is_toggle else None}
@@ -208,6 +154,73 @@ class ForumService:
             await self.db.rollback()
             logger.error(f"Vote operation failed: {str(e)}")
             raise HTTPException(status_code=500, detail="Internal server error")
+
+    def _validate_vote_params(self, post_id: Optional[int], comment_id: Optional[int]) -> None:
+        """Validate vote parameters."""
+        if not post_id and not comment_id:
+            raise ValueError("Must specify either post_id or comment_id")
+        if post_id and comment_id:
+            raise ValueError("Cannot vote on both post and comment")
+
+    async def _get_vote_target_and_existing(self, user_id: int, post_id: Optional[int], comment_id: Optional[int]):
+        """Get the vote target and existing vote if any."""
+        if post_id:
+            existing = await self.db.execute(
+                select(ForumVote).where(ForumVote.user_id == user_id, ForumVote.post_id == post_id)
+            )
+            target = await self.db.get(ForumPost, post_id)
+        else:
+            existing = await self.db.execute(
+                select(ForumVote).where(ForumVote.user_id == user_id, ForumVote.comment_id == comment_id)
+            )
+            target = await self.db.get(ForumComment, comment_id)
+
+        if not target:
+            raise ValueError("Target not found")
+
+        return target, existing.scalar_one_or_none()
+
+    async def _handle_existing_vote(self, existing_vote, target, vote_type: str) -> bool:
+        """Handle updating an existing vote. Returns True if toggled off."""
+        if existing_vote.vote_type == vote_type:
+            # Toggle off
+            await self.db.execute(delete(ForumVote).where(ForumVote.id == existing_vote.id))
+            self._decrement_vote_count(target, vote_type)
+            return True
+        else:
+            # Change vote
+            self._swap_vote_counts(target, existing_vote.vote_type, vote_type)
+            existing_vote.vote_type = vote_type
+            return False
+
+    def _create_new_vote(self, user_id: int, post_id: Optional[int], comment_id: Optional[int], target, vote_type: str) -> None:
+        """Create a new vote."""
+        vote = ForumVote(user_id=user_id, post_id=post_id, comment_id=comment_id, vote_type=vote_type)
+        self.db.add(vote)
+        self._increment_vote_count(target, vote_type)
+
+    def _increment_vote_count(self, target, vote_type: str) -> None:
+        """Increment vote count on target."""
+        if vote_type == "upvote":
+            target.upvotes += 1
+        else:
+            target.downvotes += 1
+
+    def _decrement_vote_count(self, target, vote_type: str) -> None:
+        """Decrement vote count on target."""
+        if vote_type == "upvote":
+            target.upvotes = max(0, target.upvotes - 1)
+        else:
+            target.downvotes = max(0, target.downvotes - 1)
+
+    def _swap_vote_counts(self, target, old_vote_type: str, new_vote_type: str) -> None:
+        """Swap vote counts when changing vote type."""
+        if old_vote_type == "upvote":
+            target.upvotes = max(0, target.upvotes - 1)
+            target.downvotes += 1
+        else:
+            target.downvotes = max(0, target.downvotes - 1)
+            target.upvotes += 1
 
     async def get_posts(
         self,

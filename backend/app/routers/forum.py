@@ -595,11 +595,15 @@ async def create_vote(
     """
     forum_service = ForumService(db)
 
+    # Determine if voting on post or comment
+    post_id = vote_data.target_id if vote_data.target_type == "post" else None
+    comment_id = vote_data.target_id if vote_data.target_type == "comment" else None
+
     # Create or update vote
     await forum_service.vote(
         user_id=current_user.id,
-        target_type=vote_data.target_type,
-        target_id=vote_data.target_id,
+        post_id=post_id,
+        comment_id=comment_id,
         vote_type=vote_data.vote_type,
     )
 
