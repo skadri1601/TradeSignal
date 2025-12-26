@@ -12,8 +12,8 @@ const PublicNavbar = () => {
   const navLinks = [
     { name: 'Home', path: '/' },
     { name: 'About', path: '/about' },
-    { 
-      name: 'Features', 
+    {
+      name: 'Features',
       path: '/features',
       dropdown: [
         { name: 'Insider Trades', path: '/features/insider-trades' },
@@ -23,13 +23,27 @@ const PublicNavbar = () => {
       ]
     },
     { name: 'Pricing', path: '/pricing' },
-    { 
-      name: 'Resources', 
+    {
+      name: 'Resources',
       path: '/resources',
       dropdown: [
+        { name: 'Documentation', path: '/docs' },
+        { name: 'API Docs', path: '/api-docs' },
         { name: 'Blog', path: '/blog' },
-        { name: 'Market News', path: '/news' },
-        { name: 'Help Center', path: '/support' },
+        { name: 'News', path: '/public/news' },
+        { name: 'Help Center', path: '/public/support' },
+        { name: 'Roadmap', path: '/roadmap' },
+      ]
+    },
+    {
+      name: 'Company',
+      path: '/company',
+      dropdown: [
+        { name: 'Use Cases', path: '/use-cases' },
+        { name: 'Testimonials', path: '/testimonials' },
+        { name: 'Careers', path: '/careers' },
+        { name: 'Security', path: '/security' },
+        { name: 'Accessibility', path: '/accessibility' },
       ]
     },
   ];
