@@ -424,18 +424,20 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 register_error_handlers(app)
 
 
-# HTTPS Redirect and Security Headers Middleware (must be added first)
-from app.middleware.https_redirect import HTTPSRedirectMiddleware
-app.add_middleware(HTTPSRedirectMiddleware)
-
-# CORS Middleware Configuration
+# CORS Middleware Configuration (must be added before HTTPS redirect)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all HTTP methods
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],  # Explicit whitelist
+    allow_headers=["Content-Type", "Authorization", "X-API-Key", "Accept"],  # Explicit whitelist
+    expose_headers=["Content-Length", "X-Request-ID"],
+    max_age=600,  # Cache preflight for 10 minutes
 )
+
+# HTTPS Redirect and Security Headers Middleware
+from app.middleware.https_redirect import HTTPSRedirectMiddleware
+app.add_middleware(HTTPSRedirectMiddleware)
 
 
 # Request Logging Middleware

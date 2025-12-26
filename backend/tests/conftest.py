@@ -141,3 +141,46 @@ def mock_redis(monkeypatch):
     mock = MockRedis()
     monkeypatch.setattr("app.core.redis_cache.get_cache", lambda: mock)
     return mock
+
+
+@pytest.fixture(autouse=True)
+def mock_celery(monkeypatch):
+    """Mock Celery tasks for all tests to avoid Redis dependency."""
+    from unittest.mock import Mock
+
+    # Mock the enrich_company_profile_task
+    mock_task = Mock()
+    mock_task.delay = Mock(return_value=Mock(id='mock-task-id'))
+    mock_task.apply_async = Mock(return_value=Mock(id='mock-task-id'))
+
+    try:
+        monkeypatch.setattr(
+            "app.services.company_enrichment_service.enrich_company_profile_task",
+            mock_task
+        )
+    except (AttributeError, ImportError):
+        # Service might not exist or import might fail - that's okay for tests
+        pass
+
+    return mock_task
+
+
+@pytest.fixture(autouse=True)
+def mock_redis_connection(monkeypatch):
+    """Mock Redis connections for health checks."""
+    from unittest.mock import Mock
+
+    mock_redis_instance = Mock()
+    mock_redis_instance.ping = Mock(return_value=True)
+    mock_redis_instance.info = Mock(return_value={'redis_version': '7.0.0'})
+
+    # Mock redis.Redis class
+    mock_redis_class = Mock(return_value=mock_redis_instance)
+
+    try:
+        monkeypatch.setattr("redis.Redis", mock_redis_class)
+    except (AttributeError, ImportError):
+        # Redis might not be imported - that's okay
+        pass
+
+    return mock_redis_instance
