@@ -1,5 +1,7 @@
 # TradeSignal Backend
 
+> **⚠️ LEGACY STATUS**: This Python backend is in **maintenance-only mode**. All new features are being developed in the TypeScript backend (Next.js). See [../legacysystem.md](../legacysystem.md) for architecture details.
+
 FastAPI-based backend service for the TradeSignal platform. Provides RESTful APIs for insider trading intelligence, congressional trades, user authentication, billing, research analytics, and real-time notifications.
 
 ## Architecture
@@ -101,6 +103,74 @@ backend/
 ├── Dockerfile
 └── .env.example
 ```
+
+## Development Philosophy
+
+### Maintenance-Only Mode
+
+This Python backend is **frozen for new feature development**:
+
+- **No new features** will be added to this codebase
+- **Bug fixes only** for critical production issues
+- **Security updates** will continue to be applied
+- **Existing features** remain fully functional and supported
+- **All new development** happens in the TypeScript backend
+
+### What Stays in Python
+
+Python remains the foundation for computationally intensive and data-centric operations:
+
+| Category | Components | Why Python? |
+|----------|-----------|-------------|
+| **AI/ML Services** | LUNA Engine, Gemini 2.5 Flash/Pro, OpenAI integration, Predictive modeling | Python's AI/ML ecosystem is unmatched (numpy, pandas, scikit-learn, native Gemini SDK) |
+| **Data Pipelines** | SEC Form 4 scraping, Congressional trades scraping | Robust XML parsing with lxml recovery mode for malformed SEC filings |
+| **Financial Calculations** | DCF models, IVT calculations, TS Score computation | Native Decimal type for arbitrary precision (critical for financial data) |
+| **Background Tasks** | Celery workers, Beat scheduler, Async job processing | Mature distributed task queue ecosystem with priority routing |
+| **Technical Analysis** | RSI, MACD, Bollinger Bands, Feature extraction | Scientific computing optimized with numpy/pandas |
+| **Data Processing** | Insider pattern analysis, Multi-table joins, Feature extraction | SQLAlchemy ORM with complex relationship management |
+
+**Total Investment**: 48,184 lines of working, tested, production-stable code.
+
+### What Moves to TypeScript
+
+All new user-facing features and business logic:
+
+- ❌ New API endpoints
+- ❌ New business logic
+- ❌ New user-facing features
+- ❌ New third-party integrations
+- ❌ New real-time features
+
+**Rationale**: TypeScript provides compile-time safety, optimized for AI-driven development (Claude Code, Cursor, Gemini, Kilo Code), with faster iteration cycles and reduced testing burden.
+
+### Current Production Status (December 2025)
+
+#### Recent Fixes
+
+- ✅ **Forum API endpoints** - Fixed double prefix bug in [forum.py:30](app/routers/forum.py#L30) causing `/api/v1/api/v1/forum` 404 errors
+- ✅ **CORS middleware ordering** - Moved CORS before HTTPS redirect in [main.py:427-438](app/main.py#L427-L438) to prevent request blocking
+- ✅ **Import errors** - Removed orphaned `pattern_analysis_service` references from LUNA migration cleanup
+- ✅ **Health checks** - All endpoints passing on Render.com production environment
+
+#### Active Services
+
+- ✅ FastAPI server running on Render.com (production)
+- ✅ Celery workers processing background tasks
+- ✅ Celery Beat scheduler running automated SEC scraping (every 2 hours at 0, 4, 8, 12, 16, 20)
+- ✅ **32,000+ insider trades** tracked across **151 companies**
+- ✅ LUNA AI Engine analyzing trades with Gemini 2.5 Flash & Pro
+- ✅ Redis caching layer operational
+- ✅ PostgreSQL database (Supabase) healthy
+
+#### Metrics (as of Dec 2025)
+
+- **Codebase**: 48,184 LOC across 201 Python files
+- **API Endpoints**: 246 endpoints across 38 routers
+- **Database Models**: 40 SQLAlchemy models with sophisticated relationships
+- **Services**: 62 business logic services
+- **Background Tasks**: 173 Celery task references
+- **External APIs**: 10+ integrations (SEC EDGAR, Finnhub, Alpha Vantage, FRED, Gemini, OpenAI, Stripe, etc.)
+- **Type Coverage**: ~85% with mypy type hints
 
 ## API Endpoints (25+ Routers)
 

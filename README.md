@@ -30,6 +30,28 @@ TradeSignal is a comprehensive financial intelligence platform that aggregates a
 - **Supabase** - Managed PostgreSQL database
 - **Grafana** - Metrics visualization (optional)
 
+## Legacy System Architecture
+
+TradeSignal uses a **hybrid multi-language architecture** following enterprise patterns used by major technology companies:
+
+- **Python Backend (Legacy)** - 🔒 Maintenance-only mode
+  - All existing 48,184 LOC AI/ML services (LUNA Engine, Gemini integration)
+  - Data pipelines (SEC scraping, congressional trades, Form 4 parsing)
+  - Financial calculations with Decimal precision
+  - Celery background tasks and scheduled jobs
+  - **Status**: Frozen - No new features, bug fixes only
+
+- **TypeScript Backend (New)** - 🚀 Active development
+  - Framework: Next.js API routes
+  - All NEW features and business logic
+  - All NEW API endpoints
+  - Communication: REST APIs + Shared PostgreSQL database
+  - **Status**: All future development happens here
+
+**Rationale**: Optimized for AI-driven development team (Claude Code, Cursor, Gemini, Kilo Code). TypeScript provides compile-time safety, better AI code generation, and faster iteration cycles.
+
+See **[legacysystem.md](legacysystem.md)** for detailed architecture documentation, decision rationale, and development workflows.
+
 ## Key Features
 
 ### Backend Services (25+ API Routers)
@@ -122,6 +144,39 @@ TradeSignal is a comprehensive financial intelligence platform that aggregates a
 | API Access | - | - | Limited | Full |
 | Webhooks | - | - | - | ✓ |
 | Priority Support | - | - | ✓ | ✓ |
+
+## Current Status (December 2025)
+
+### Production Fixes Completed ✅
+
+**Backend Fixes**:
+- Fixed Forum API double prefix bug causing 404 errors ([forum.py:30](backend/app/routers/forum.py#L30))
+- Corrected CORS middleware ordering to prevent request blocking ([main.py:427-438](backend/app/main.py#L427-L438))
+- Removed orphaned pattern_analysis_service imports (legacy LUNA migration cleanup)
+- Backend health checks passing on Render.com production environment
+
+**Frontend Fixes**:
+- Removed Chart Patterns from navigation (feature deprecated during LUNA migration)
+- Created Release Notes page with full version history
+- Fixed AI dialog dark theme styling (all ProtectedRoute dialogs)
+- Fixed Dashboard font consistency to match Landing page dark theme aesthetic
+- Updated stat cards to use opacity backgrounds with borders
+
+### Active Development 🔄
+
+- Setting up TypeScript backend infrastructure (Next.js API routes)
+- Planning REST API communication layer between Python and TypeScript services
+- Designing shared database access patterns
+- Configuring Render.com deployment for multi-service architecture
+
+### Known Issues 🔧
+
+**Requiring Environment Configuration**:
+- Fed Calendar 503 errors - Need `FRED_API_KEY` configured on Render.com
+- Stale insider trades data - Celery Beat scheduler verification needed
+- CORS origins - Verify `CORS_ORIGINS` environment variable includes all production domains
+
+See [RENDER_ENV_SETUP.md](RENDER_ENV_SETUP.md) for environment variable configuration guide.
 
 ## Quick Start
 
@@ -316,8 +371,9 @@ See [backend/README.md](backend/README.md) and [frontend/README.md](frontend/REA
 
 ## Documentation
 
-- **[Backend README](backend/README.md)** - Backend setup and development
-- **[Frontend README](frontend/README.md)** - Frontend setup and development
+- **[Legacy System Architecture](legacysystem.md)** - Multi-language architecture (Python + TypeScript)
+- **[Backend README](backend/README.md)** - Python backend setup (maintenance mode)
+- **[Frontend README](frontend/README.md)** - React frontend setup and development
 - **[Docs/](Docs/)** - Additional documentation
 - **API Documentation** - Interactive API docs at `http://localhost:8000/docs`
 

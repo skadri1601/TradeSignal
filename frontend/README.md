@@ -14,6 +14,94 @@ React-based frontend application for TradeSignal. Provides a modern, responsive 
 - **React Query** - Server state management
 - **Axios** - HTTP client for API communication
 
+## Architecture Evolution
+
+TradeSignal is evolving to a **multi-language backend architecture** while maintaining the same React frontend. This follows enterprise patterns used by major technology companies.
+
+### Current State (December 2025)
+
+```
+┌─────────────────────────┐
+│  Frontend               │
+│  React 18 + TypeScript  │
+└──────────┬──────────────┘
+           │
+           ▼
+┌──────────────────────────┐
+│  Python Backend          │
+│  (FastAPI)               │
+│  - AI/ML (LUNA Engine)   │
+│  - Data pipelines        │
+│  - All current features  │
+│  Status: MAINTENANCE     │
+└──────────────────────────┘
+```
+
+### Future State (In Progress)
+
+```
+┌─────────────────────────┐
+│  Frontend               │
+│  React 18 + TypeScript  │
+│  (No changes)           │
+└──────────┬──────────────┘
+           │
+    ┌──────┴──────┐
+    ▼             ▼
+┌────────────┐ ┌────────────────┐
+│ TypeScript │ │ Python Backend │
+│ Backend    │ │ (FastAPI)      │
+│ (Next.js)  │ │                │
+│            │ │ - AI/ML only   │
+│ NEW        │ │ - Data only    │
+│ features   │ │ - Frozen       │
+│            │ │                │
+│ Status:    │ │ Status:        │
+│ ACTIVE     │ │ MAINTENANCE    │
+└────────────┘ └────────────────┘
+```
+
+**Key Points**:
+- **Frontend unchanged** - Same React 18 + TypeScript + Vite stack
+- **Python backend frozen** - Maintenance-only, no new features
+- **TypeScript backend added** - All NEW features built with Next.js API routes
+- **Communication** - REST APIs between services + shared PostgreSQL database
+
+**Rationale**: Optimized for AI-driven development team (Claude Code, Cursor, Gemini, Kilo Code). TypeScript provides compile-time safety, better AI code generation, and faster iteration cycles.
+
+See **[../legacysystem.md](../legacysystem.md)** for detailed architecture documentation.
+
+## Recent Updates (December 2025)
+
+### Dark Theme Consistency Fixes
+
+Fixed visual inconsistencies to match Landing page dark theme aesthetic:
+
+- ✅ **Dashboard page** - Fixed font weights and colors ([Dashboard.tsx:151-241](src/pages/Dashboard.tsx#L151-L241))
+  - Changed heading from "Dashboard" to "Overview" with `text-white`
+  - Updated stat card labels from `text-gray-600` to `text-gray-400`
+  - Changed stat numbers from `text-gray-900` to `text-white`
+  - Updated colored numbers to lighter shades (`text-green-400`, `text-red-400`)
+  - Changed icon backgrounds from light (`bg-blue-100`) to dark with opacity (`bg-blue-500/20`) with borders
+
+- ✅ **ProtectedRoute dialogs** - All 4 dialog states converted to dark theme ([ProtectedRoute.tsx](src/components/ProtectedRoute.tsx))
+  - Loading state: Dark gradient background with purple spinner
+  - Premium upgrade dialog: Dark glass-morphism with purple accents
+  - Tier restriction dialog: Dark theme with upgrade CTAs
+  - Unauthenticated redirect: Consistent dark styling
+
+### Navigation Updates
+
+- ✅ **Removed Chart Patterns** - Link removed from navigation ([DashboardNavbar.tsx:125-132](src/components/layout/DashboardNavbar.tsx#L125-L132))
+  - Feature deprecated during LUNA Engine migration
+  - Signals dropdown now contains: AI Insights, Alerts
+
+- ✅ **Added Release Notes page** - New page with version history ([ReleaseNotesPage.tsx](src/pages/ReleaseNotesPage.tsx))
+  - Detailed changelog for v2.1.0, v2.0.0, v1.5.0, v1.0.0
+  - Documents LUNA Engine introduction, Forensic Reports, production fixes
+  - Linked from Terms of Service page
+  - Route added: `/release-notes`
+
 ## Project Structure
 
 ```
