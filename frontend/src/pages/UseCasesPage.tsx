@@ -20,16 +20,6 @@ const UseCasesPage = () => {
         "Congressional trading dashboard showing what politicians are buying",
         "Custom watchlists that track insiders at companies you care about"
       ],
-      results: [
-        { metric: "92%", label: "Prediction accuracy on 30-day price movements" },
-        { metric: "4.2x", label: "Average ROI improvement vs market index" },
-        { metric: "< 2min", label: "Alert delivery time after SEC filing" }
-      ],
-      testimonial: {
-        quote: "I discovered a cluster of insider buying at a mid-cap tech company through TradeSignal. The stock jumped 34% in three weeks. This platform gives me an edge I never had before.",
-        author: "Michael R.",
-        role: "Retail Investor, CA"
-      },
       gradient: "from-blue-400 to-purple-400"
     },
     {
@@ -49,16 +39,6 @@ const UseCasesPage = () => {
         "Integration with Discord and trading platforms via webhooks",
         "Advanced screener with 50+ filters including transaction size and frequency"
       ],
-      results: [
-        { metric: "32,000+", label: "Insider trades tracked across 151 companies" },
-        { metric: "2-hour", label: "SEC EDGAR scraping interval for fresh data" },
-        { metric: "535", label: "Congress members tracked in real-time" }
-      ],
-      testimonial: {
-        quote: "The real-time alerts are a game-changer. I got notified about a CEO buying $2M of his own stock before it hit Twitter. I was in the trade 10 minutes later. Up 18% in two days.",
-        author: "Sarah T.",
-        role: "Day Trader, TX"
-      },
       gradient: "from-green-400 to-blue-400"
     },
     {
@@ -73,21 +53,11 @@ const UseCasesPage = () => {
         "Require audit trails and compliance-ready reporting"
       ],
       solutions: [
-        "Enterprise API with 2,000 req/hour for programmatic access",
+        "Enterprise API with programmatic access",
         "CSV/Excel exports with historical data and technical indicators",
-        "LUNA AI provides conviction scores and price predictions",
+        "LUNA AI provides conviction scores and insights",
         "White-label reports with your firm's branding"
       ],
-      results: [
-        { metric: "15min", label: "Report generation time (vs 4+ hours manual)" },
-        { metric: "100%", label: "API uptime SLA with 24/7 monitoring" },
-        { metric: "SOC 2", label: "Type II certified for enterprise security" }
-      ],
-      testimonial: {
-        quote: "We replaced our manual process of tracking Form 4 filings with TradeSignal's API. It saves our team 20+ hours per week and the AI insights add real value to our client reports.",
-        author: "David L.",
-        role: "Senior Analyst, Hedge Fund"
-      },
       gradient: "from-purple-400 to-pink-400"
     },
     {
@@ -107,16 +77,6 @@ const UseCasesPage = () => {
         "Research badges (IVT, TS Score) for due diligence reports",
         "Client-facing dashboards with white-label branding"
       ],
-      results: [
-        { metric: "67%", label: "Client retention increase with differentiated insights" },
-        { metric: "$8.4M", label: "AUM protected by early insider selling alerts" },
-        { metric: "4.1/5", label: "Client satisfaction rating for data-driven advice" }
-      ],
-      testimonial: {
-        quote: "Our clients love the insider activity reports we now include in quarterly reviews. It shows we're going beyond the basics, and it's helped us win 12 new accounts this year alone.",
-        author: "Jennifer K.",
-        role: "Wealth Manager, NY"
-      },
       gradient: "from-orange-400 to-red-400"
     }
   ];
@@ -131,13 +91,13 @@ const UseCasesPage = () => {
             <span className="text-sm text-blue-300">Use Cases</span>
           </div>
           <h1 className="text-5xl font-bold mb-6">
-            Who Uses
+            How TradeSignal
             <span className="block bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 bg-clip-text text-transparent mt-2">
-              TradeSignal?
+              Helps Traders
             </span>
           </h1>
           <p className="text-xl text-gray-400 max-w-3xl mx-auto">
-            From retail investors to institutional analysts, see how traders at every level use insider intelligence to gain an edge
+            Discover how TradeSignal provides insider trading intelligence and tools for different types of traders
           </p>
         </div>
       </section>
@@ -189,37 +149,6 @@ const UseCasesPage = () => {
                   </ul>
                 </div>
               </div>
-
-              {/* Results */}
-              <div className={`bg-gradient-to-br ${useCase.gradient} bg-opacity-10 border border-white/10 rounded-2xl p-8 mb-8`}>
-                <h3 className="text-xl font-bold mb-6 text-center">Measurable Results</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {useCase.results.map((result, rIndex) => (
-                    <div key={rIndex} className="text-center">
-                      <div className={`text-4xl font-bold bg-gradient-to-r ${useCase.gradient} bg-clip-text text-transparent mb-2`}>
-                        {result.metric}
-                      </div>
-                      <div className="text-sm text-gray-400">{result.label}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Testimonial */}
-              <div className="bg-[#0f0f1a] border border-white/10 rounded-2xl p-8">
-                <div className="flex items-start gap-4">
-                  <div className={`bg-gradient-to-br ${useCase.gradient} rounded-full w-12 h-12 flex items-center justify-center text-2xl flex-shrink-0`}>
-                    {useCase.testimonial.author[0]}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-gray-300 italic mb-4">"{useCase.testimonial.quote}"</p>
-                    <div>
-                      <div className="font-bold text-white">{useCase.testimonial.author}</div>
-                      <div className="text-sm text-gray-500">{useCase.testimonial.role}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
           ))}
         </div>
@@ -232,7 +161,7 @@ const UseCasesPage = () => {
             <Target className="w-12 h-12 text-purple-400 mx-auto mb-4" />
             <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
             <p className="text-gray-400 mb-8">
-              Join thousands of investors using insider intelligence to trade smarter. Choose the plan that fits your needs.
+              Start tracking insider trades and congressional activity. Choose the plan that fits your needs.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link

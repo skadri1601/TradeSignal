@@ -1,4 +1,4 @@
-import { Shield, Lock, Eye, FileCheck, AlertTriangle, CheckCircle2, Mail, ExternalLink } from 'lucide-react';
+import { Shield, Lock, Eye, FileCheck, CheckCircle2, Mail, ExternalLink, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const SecurityPage = () => {
@@ -35,21 +35,6 @@ const SecurityPage = () => {
     { name: "CCPA", status: "Compliant", year: "2024" },
     { name: "ISO 27001", status: "In Progress", year: "2025" }
   ];
-
-  const vulnerabilityProgram = {
-    scope: [
-      "Web application (tradesignal.com)",
-      "API endpoints (api.tradesignal.com)",
-      "Mobile apps (iOS & Android)",
-      "Infrastructure & cloud services"
-    ],
-    outOfScope: [
-      "Social engineering attacks",
-      "Denial of Service (DoS/DDoS)",
-      "Physical security testing",
-      "Third-party services"
-    ]
-  };
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
@@ -114,99 +99,6 @@ const SecurityPage = () => {
                 </ul>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Bug Bounty Program */}
-      <section className="py-16 px-4 bg-[#0f0f1a]">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <AlertTriangle className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
-            <h2 className="text-3xl font-bold mb-4">Responsible Disclosure Program</h2>
-            <p className="text-gray-400 max-w-2xl mx-auto">
-              We welcome security researchers to help us keep TradeSignal secure. Report vulnerabilities responsibly and earn rewards.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-            {/* In Scope */}
-            <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-8">
-              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-green-400" />
-                In Scope
-              </h3>
-              <ul className="space-y-2">
-                {vulnerabilityProgram.scope.map((item, index) => (
-                  <li key={index} className="flex items-start gap-2 text-sm text-gray-300">
-                    <span className="text-green-400 mt-0.5">✓</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Out of Scope */}
-            <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-8">
-              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-red-400" />
-                Out of Scope
-              </h3>
-              <ul className="space-y-2">
-                {vulnerabilityProgram.outOfScope.map((item, index) => (
-                  <li key={index} className="flex items-start gap-2 text-sm text-gray-300">
-                    <span className="text-red-400 mt-0.5">✗</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          {/* Reward Tiers */}
-          <div className="bg-gradient-to-br from-purple-500/10 to-blue-500/10 border border-purple-500/20 rounded-2xl p-8">
-            <h3 className="text-xl font-bold mb-6">Reward Tiers</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-red-400 mb-1">$5,000</div>
-                <div className="text-sm text-gray-400">Critical</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-orange-400 mb-1">$2,500</div>
-                <div className="text-sm text-gray-400">High</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-yellow-400 mb-1">$1,000</div>
-                <div className="text-sm text-gray-400">Medium</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-green-400 mb-1">$250</div>
-                <div className="text-sm text-gray-400">Low</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Disclosure Guidelines */}
-          <div className="mt-8 bg-[#0a0a0a] border border-white/10 rounded-2xl p-8">
-            <h3 className="text-xl font-bold mb-4">Disclosure Guidelines</h3>
-            <ul className="space-y-3 text-sm text-gray-300">
-              <li className="flex items-start gap-3">
-                <span className="bg-purple-500/20 text-purple-400 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-xs font-bold mt-0.5">1</span>
-                <span>Report vulnerabilities to <a href="mailto:security@tradesignal.com" className="text-purple-400 hover:text-purple-300">security@tradesignal.com</a> with detailed reproduction steps</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="bg-purple-500/20 text-purple-400 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-xs font-bold mt-0.5">2</span>
-                <span>Allow us 90 days to investigate and resolve before public disclosure</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="bg-purple-500/20 text-purple-400 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-xs font-bold mt-0.5">3</span>
-                <span>Do not access, modify, or delete user data during testing</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="bg-purple-500/20 text-purple-400 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-xs font-bold mt-0.5">4</span>
-                <span>Act in good faith and avoid privacy violations or service disruption</span>
-              </li>
-            </ul>
           </div>
         </div>
       </section>
