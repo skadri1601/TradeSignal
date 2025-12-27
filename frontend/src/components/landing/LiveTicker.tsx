@@ -1,42 +1,20 @@
-import { useEffect, useState } from 'react';
-import { TrendingUp, TrendingDown, Clock } from 'lucide-react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 
-interface Trade {
-  id: number;
-  ticker: string;
-  insider_name: string;
-  transaction_type: string;
-  shares: number;
-  value: number;
-  filed_at: string;
-  company_name?: string;
-}
+// Static demo data for portfolio showcase
+const staticTrades = [
+  { id: 1, ticker: 'NVDA', insider_name: 'CEO (Demo)', transaction_type: 'Buy', value: 8200000 },
+  { id: 2, ticker: 'AAPL', insider_name: 'CFO (Demo)', transaction_type: 'Buy', value: 3400000 },
+  { id: 3, ticker: 'MSFT', insider_name: 'Director (Demo)', transaction_type: 'Buy', value: 2100000 },
+  { id: 4, ticker: 'GOOGL', insider_name: 'Officer (Demo)', transaction_type: 'Sell', value: 5600000 },
+  { id: 5, ticker: 'TSLA', insider_name: 'Director (Demo)', transaction_type: 'Buy', value: 4200000 },
+  { id: 6, ticker: 'META', insider_name: 'CFO (Demo)', transaction_type: 'Sell', value: 7800000 },
+  { id: 7, ticker: 'AMZN', insider_name: 'Officer (Demo)', transaction_type: 'Buy', value: 1900000 },
+  { id: 8, ticker: 'AMD', insider_name: 'CEO (Demo)', transaction_type: 'Buy', value: 3100000 },
+];
 
 const LiveTicker = () => {
-  const [trades, setTrades] = useState<Trade[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchTrades = async () => {
-      try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/trades?limit=20&sort=recent`);
-        if (response.ok) {
-          const data = await response.json();
-          // Duplicate the array to ensure smooth infinite scroll
-          setTrades([...data, ...data]);
-        }
-      } catch (error) {
-        console.error('Failed to fetch trades:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchTrades();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchTrades, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  // Duplicate for seamless scroll animation
+  const trades = [...staticTrades, ...staticTrades];
 
   const formatValue = (value: number) => {
     if (value >= 1000000) {
@@ -47,43 +25,15 @@ const LiveTicker = () => {
     return `$${value.toFixed(0)}`;
   };
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return `${diffDays}d ago`;
-  };
-
-  if (isLoading) {
-    return (
-      <div className="bg-[#0f0f1a] border-y border-white/10 py-3 overflow-hidden">
-        <div className="flex items-center gap-2 text-gray-500">
-          <Clock className="w-4 h-4 animate-spin" />
-          <span className="text-sm">Loading live trades...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (trades.length === 0) {
-    return null;
-  }
-
   return (
     <div className="bg-[#0f0f1a] border-y border-white/10 py-3 overflow-hidden relative">
-      {/* Live indicator */}
+      {/* Demo indicator */}
       <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 z-10 bg-[#0f0f1a] pr-4">
         <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
         </span>
-        <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Live Trades</span>
+        <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Demo Trades</span>
       </div>
 
       {/* Scrolling container */}
@@ -119,12 +69,6 @@ const LiveTicker = () => {
                 {/* Value */}
                 <span className="text-purple-400 font-semibold text-sm">
                   {formatValue(trade.value)}
-                </span>
-
-                {/* Time */}
-                <span className="text-gray-500 text-xs flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  {formatTime(trade.filed_at)}
                 </span>
               </div>
             );

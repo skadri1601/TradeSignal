@@ -1,82 +1,16 @@
-import { useEffect, useState } from 'react';
 import { Building2, TrendingUp, TrendingDown, ArrowRight, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-interface CongressTrade {
-  id: number;
-  ticker: string;
-  representative: string;
-  state: string;
-  transaction_type: string;
-  amount: string;
-  filed_at: string;
-  party?: string;
-}
+// Static demo data for portfolio showcase (generic titles, not real people)
+const staticCongressTrades = [
+  { id: 1, ticker: 'NVDA', representative: 'Representative A (Demo)', state: 'CA', transaction_type: 'Purchase', amount: '$1M - $5M', party: 'Democrat' },
+  { id: 2, ticker: 'MSFT', representative: 'Senator B (Demo)', state: 'TX', transaction_type: 'Purchase', amount: '$500K - $1M', party: 'Republican' },
+  { id: 3, ticker: 'TSLA', representative: 'Representative C (Demo)', state: 'NY', transaction_type: 'Sale', amount: '$250K - $500K', party: 'Democrat' },
+  { id: 4, ticker: 'AAPL', representative: 'Senator D (Demo)', state: 'FL', transaction_type: 'Purchase', amount: '$100K - $250K', party: 'Republican' },
+];
 
 const CongressSection = () => {
-  const [congressTrades, setCongressTrades] = useState<CongressTrade[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchCongressTrades = async () => {
-      try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/congressional-trades?limit=4`);
-        if (response.ok) {
-          const data = await response.json();
-          setCongressTrades(data);
-        }
-      } catch (error) {
-        console.error('Failed to fetch congressional trades:', error);
-        // Use mock data as fallback
-        setCongressTrades([
-          {
-            id: 1,
-            ticker: 'NVDA',
-            representative: 'Nancy Pelosi',
-            state: 'CA',
-            transaction_type: 'Purchase',
-            amount: '$1M - $5M',
-            filed_at: new Date().toISOString(),
-            party: 'Democrat'
-          },
-          {
-            id: 2,
-            ticker: 'MSFT',
-            representative: 'Tommy Tuberville',
-            state: 'AL',
-            transaction_type: 'Purchase',
-            amount: '$500K - $1M',
-            filed_at: new Date().toISOString(),
-            party: 'Republican'
-          },
-          {
-            id: 3,
-            ticker: 'TSLA',
-            representative: 'Josh Gottheimer',
-            state: 'NJ',
-            transaction_type: 'Sale',
-            amount: '$250K - $500K',
-            filed_at: new Date().toISOString(),
-            party: 'Democrat'
-          },
-          {
-            id: 4,
-            ticker: 'AAPL',
-            representative: 'Dan Crenshaw',
-            state: 'TX',
-            transaction_type: 'Purchase',
-            amount: '$100K - $250K',
-            filed_at: new Date().toISOString(),
-            party: 'Republican'
-          }
-        ]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchCongressTrades();
-  }, []);
+  const congressTrades = staticCongressTrades;
 
   const getInitials = (name: string) => {
     return name
@@ -103,22 +37,7 @@ const CongressSection = () => {
           {/* Right Side: Content (appears first on mobile) */}
           <div className="order-2 lg:order-1">
             {/* Trades List */}
-            {isLoading ? (
-              <div className="space-y-4">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="bg-[#0f0f1a] border border-white/10 rounded-2xl p-6 animate-pulse">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 bg-white/10 rounded-full"></div>
-                      <div className="flex-1 space-y-2">
-                        <div className="h-4 bg-white/10 rounded w-3/4"></div>
-                        <div className="h-3 bg-white/10 rounded w-1/2"></div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-4">
+            <div className="space-y-4">
                 {congressTrades.map((trade) => {
                   const isPurchase = trade.transaction_type.toLowerCase().includes('purchase') ||
                                     trade.transaction_type.toLowerCase().includes('buy');
@@ -155,8 +74,7 @@ const CongressSection = () => {
                     </div>
                   );
                 })}
-              </div>
-            )}
+            </div>
 
             {/* View All Button */}
             <div className="mt-6">
