@@ -44,7 +44,7 @@ _background_tasks = set()
 
 # Health check cache (to prevent connection pool exhaustion from frequent health checks)
 _health_check_cache: Optional[Tuple[bool, datetime]] = None
-_HEALTH_CHECK_CACHE_TTL = 15  # seconds
+_HEALTH_CHECK_CACHE_TTL = 60  # seconds (increased from 15s)
 
 
 # Configure logging (Phase 5.4: Structured JSON logging in production)
@@ -694,9 +694,9 @@ async def health_check() -> dict[str, Any]:
                 return response
 
         # Cache miss or expired - perform actual database check
-        # Timeout and retry logic is handled in database.py (10s timeout, 3 retries)
+        # Use fast mode (3s timeout, 1 retry) to reduce connection pool pressure
         try:
-            db_healthy = await db_manager.check_connection()
+            db_healthy = await db_manager.check_connection(fast=True)
         except asyncio.CancelledError:
             # Don't suppress cancellation - let it propagate
             raise

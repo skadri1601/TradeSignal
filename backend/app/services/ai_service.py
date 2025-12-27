@@ -26,8 +26,7 @@ class AIService:
     Service for AI-powered trade analysis and insights.
 
     Supports multiple AI providers with tiered architecture:
-    - Google Gemini 2.5 Flash (Standard): Cheap, fast, for summaries and simple signals.
-    - Google Gemini 2.5 Pro (Reasoning): Smart, for LUNA forensic analysis and predictions.
+    - Google Gemini 2.5 Flash (Standard & Reasoning): Fast, cost-effective for all AI features including LUNA analysis.
     - OpenAI GPT-4o-mini (Fallback): Reliable backup.
 
     Features:
@@ -57,8 +56,8 @@ class AIService:
                 self.gemini_client = genai.GenerativeModel(gemini_model_name)
                 logger.info(f"Gemini Standard initialized: {gemini_model_name}")
 
-                # Reasoning Client (Pro) - for LUNA
-                reasoning_model = getattr(settings, 'gemini_reasoning_model', 'gemini-1.5-pro')
+                # Reasoning Client (Flash) - for LUNA
+                reasoning_model = getattr(settings, 'gemini_reasoning_model', 'gemini-2.5-flash')
                 if reasoning_model and not reasoning_model.startswith("models/"):
                     reasoning_model = f"models/{reasoning_model}"
                 self.gemini_reasoning_client = genai.GenerativeModel(reasoning_model)

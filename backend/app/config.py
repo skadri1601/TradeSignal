@@ -78,8 +78,8 @@ class Settings(BaseSettings):
         alias="GEMINI_MODEL",
     )
     gemini_reasoning_model: str = Field(
-        default="gemini-2.5-pro",
-        description="High-intelligence model for LUNA deep analysis (e.g., gemini-2.5-pro, gemini-1.5-pro)",
+        default="gemini-2.5-flash",
+        description="Model for LUNA deep analysis (using Flash for cost efficiency)",
         alias="GEMINI_REASONING_MODEL",
     )
 

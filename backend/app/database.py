@@ -370,8 +370,13 @@ class DatabaseManager:
         self._database_available = False
         return False
 
-    async def _test_connection_with_timeout(self, engine: AsyncEngine) -> bool:
-        """Test database connection with timeout protection and retry logic."""
+    async def _test_connection_with_timeout(self, engine: AsyncEngine, fast: bool = False) -> bool:
+        """Test database connection with timeout protection and retry logic.
+        
+        Args:
+            fast: If True, use shorter timeout (3s) and fewer retries (1) for health checks.
+                 If False, use normal timeout (10s) and retries (3) for startup.
+        """
         async def _connect_and_test():
             conn = None
             try:
@@ -383,10 +388,15 @@ class DatabaseManager:
                 if conn:
                     await conn.close()
 
-        # Retry configuration: 3 attempts with exponential backoff (1s, 2s, 4s)
-        max_retries = 3
-        base_delay = 1.0
-        connection_timeout = 10.0  # Reduced from 30s - faster failure detection
+        # Retry configuration: Fast mode for health checks, normal mode for startup
+        if fast:
+            max_retries = 1
+            base_delay = 0.5
+            connection_timeout = 3.0  # Fast mode: 3s timeout, 1 retry
+        else:
+            max_retries = 3
+            base_delay = 1.0
+            connection_timeout = 10.0  # Normal mode: 10s timeout, 3 retries
 
         for attempt in range(max_retries):
             try:
@@ -422,9 +432,13 @@ class DatabaseManager:
             logger.info("Invalidating cached DNS resolution - will re-resolve on next attempt")
             self._resolved_database_url = None
 
-    async def check_connection(self) -> bool:
+    async def check_connection(self, fast: bool = False) -> bool:
         """
         Test database connectivity.
+
+        Args:
+            fast: If True, use fast mode (3s timeout, 1 retry) for health checks.
+                 If False, use normal mode (10s timeout, 3 retries) for startup.
 
         Returns:
             bool: True if connection successful, False otherwise
@@ -440,7 +454,7 @@ class DatabaseManager:
 
         try:
             engine = self.get_engine()
-            result = await self._test_connection_with_timeout(engine)
+            result = await self._test_connection_with_timeout(engine, fast=fast)
             if not result:
                 # Connection failed after retries - invalidate DNS cache
                 self._invalidate_dns_cache()
