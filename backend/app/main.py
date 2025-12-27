@@ -694,15 +694,12 @@ async def health_check() -> dict[str, Any]:
                 return response
 
         # Cache miss or expired - perform actual database check
+        # Timeout and retry logic is handled in database.py (10s timeout, 3 retries)
         try:
-            # Add timeout at endpoint level (25s, less than database.py's 30s timeout)
-            db_healthy = await asyncio.wait_for(
-                db_manager.check_connection(),
-                timeout=25.0
-            )
-        except asyncio.TimeoutError:
-            logger.warning("Health check: Database connection check timed out after 25s")
-            db_healthy = False
+            db_healthy = await db_manager.check_connection()
+        except asyncio.CancelledError:
+            # Don't suppress cancellation - let it propagate
+            raise
         except Exception as db_error:
             logger.error(
                 f"Health check: Database connection check failed: {db_error}",

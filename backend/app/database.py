@@ -371,7 +371,7 @@ class DatabaseManager:
         return False
 
     async def _test_connection_with_timeout(self, engine: AsyncEngine) -> bool:
-        """Test database connection with timeout protection."""
+        """Test database connection with timeout protection and retry logic."""
         async def _connect_and_test():
             conn = None
             try:
@@ -382,19 +382,45 @@ class DatabaseManager:
             finally:
                 if conn:
                     await conn.close()
-        
-        try:
-            result = await asyncio.wait_for(_connect_and_test(), timeout=30.0)
-            if result:
-                logger.info("Database connection check: OK")
-                self._database_available = True
-            else:
-                self._database_available = False
-            return result
-        except asyncio.TimeoutError:
-            logger.warning("Database connection check timed out after 30s")
-            self._database_available = False
-            return False
+
+        # Retry configuration: 3 attempts with exponential backoff (1s, 2s, 4s)
+        max_retries = 3
+        base_delay = 1.0
+        connection_timeout = 10.0  # Reduced from 30s - faster failure detection
+
+        for attempt in range(max_retries):
+            try:
+                result = await asyncio.wait_for(_connect_and_test(), timeout=connection_timeout)
+                if result:
+                    if attempt > 0:
+                        logger.info(f"Database connection check: OK (succeeded on attempt {attempt + 1})")
+                    else:
+                        logger.info("Database connection check: OK")
+                    self._database_available = True
+                    return True
+            except asyncio.TimeoutError:
+                delay = base_delay * (2 ** attempt)
+                if attempt < max_retries - 1:
+                    logger.warning(f"Database connection attempt {attempt + 1} timed out after {connection_timeout}s, retrying in {delay}s...")
+                    await asyncio.sleep(delay)
+                else:
+                    logger.warning(f"Database connection check failed after {max_retries} attempts (timeout)")
+            except Exception as e:
+                delay = base_delay * (2 ** attempt)
+                if attempt < max_retries - 1:
+                    logger.warning(f"Database connection attempt {attempt + 1} failed: {e}, retrying in {delay}s...")
+                    await asyncio.sleep(delay)
+                else:
+                    logger.warning(f"Database connection check failed after {max_retries} attempts: {e}")
+
+        self._database_available = False
+        return False
+
+    def _invalidate_dns_cache(self) -> None:
+        """Clear cached DNS resolution to force re-resolution on next attempt."""
+        if self._resolved_database_url is not None:
+            logger.info("Invalidating cached DNS resolution - will re-resolve on next attempt")
+            self._resolved_database_url = None
 
     async def check_connection(self) -> bool:
         """
@@ -405,6 +431,7 @@ class DatabaseManager:
 
         Used by health check endpoint to verify database status.
         Updates the _database_available flag based on connection status.
+        Invalidates DNS cache on failure to allow recovery from stale DNS.
 
         Note: Uses raw SQL execution without prepared statements to avoid
         DuplicatePreparedStatementError with pgbouncer in transaction mode.
@@ -413,16 +440,24 @@ class DatabaseManager:
 
         try:
             engine = self.get_engine()
-            return await self._test_connection_with_timeout(engine)
+            result = await self._test_connection_with_timeout(engine)
+            if not result:
+                # Connection failed after retries - invalidate DNS cache
+                self._invalidate_dns_cache()
+            return result
         except asyncio.CancelledError:
             logger.warning("Database connection check was cancelled")
             self._database_available = False
+            self._invalidate_dns_cache()
             raise
         except (DNSResolutionError, socket.gaierror) as dns_error:
+            self._invalidate_dns_cache()
             return self._handle_dns_error(dns_error)
         except SQLAlchemyError as e:
+            self._invalidate_dns_cache()
             return self._handle_sqlalchemy_error(e)
         except Exception as e:
+            self._invalidate_dns_cache()
             return self._handle_connection_exception(e)
 
     async def close(self) -> None:
