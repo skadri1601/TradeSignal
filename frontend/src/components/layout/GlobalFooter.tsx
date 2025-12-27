@@ -50,9 +50,7 @@ const GlobalFooter = () => {
                <ul className="space-y-3 text-sm text-gray-400">
                  <li><Link to="/" className="hover:text-white transition-colors">Home</Link></li>
                  <li><Link to="/about" className="hover:text-white transition-colors">About</Link></li>
-                 <li><Link to="/use-cases" className="hover:text-white transition-colors">Use Cases</Link></li>
-                 <li><Link to="/testimonials" className="hover:text-white transition-colors">Testimonials</Link></li>
-                 <li><Link to="/careers" className="hover:text-white transition-colors">Careers</Link></li>
+                 {/* PORTFOLIO MODE: Removed Use Cases, Testimonials, Careers (business pages) */}
                  <li><Link to="/blog" className="hover:text-white transition-colors">Blog</Link></li>
                </ul>
              </div>
@@ -85,7 +83,7 @@ const GlobalFooter = () => {
                  <li><Link to="/features/congress-trading" className="hover:text-white transition-colors">Congressional Trading</Link></li>
                  <li><Link to="/features/ai-insights" className="hover:text-white transition-colors">AI Insights</Link></li>
                  <li><Link to="/features/alerts" className="hover:text-white transition-colors">Alerts</Link></li>
-                 <li><Link to="/pricing" className="hover:text-white transition-colors">Pricing</Link></li>
+                 {/* PORTFOLIO MODE: Removed Pricing link */}
                </ul>
              </div>
 

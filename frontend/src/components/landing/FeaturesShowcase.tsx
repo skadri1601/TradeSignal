@@ -167,11 +167,12 @@ const FeaturesShowcase = () => {
             >
               Start Free Trial
             </Link>
+            {/* PORTFOLIO MODE: Changed from pricing to about */}
             <Link
-              to="/pricing"
+              to="/about"
               className="inline-flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white px-8 py-4 rounded-full font-bold hover:bg-white/10 transition-all"
             >
-              Compare Plans
+              Learn More
             </Link>
           </div>
         </div>

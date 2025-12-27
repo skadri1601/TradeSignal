@@ -24,11 +24,10 @@ const FedCalendarPage = lazy(() => import('./pages/FedCalendarPage'));
 const OrderHistoryPage = lazy(() => import('./pages/OrderHistoryPage'));
 const FAQPage = lazy(() => import('./pages/FAQPage'));
 const PublicContactPage = lazy(() => import('./pages/PublicContactPage'));
-const CareersPage = lazy(() => import('./pages/CareersPage'));
+// PORTFOLIO MODE: Removed business pages (Careers, Pricing)
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
 const ReleaseNotesPage = lazy(() => import('./pages/ReleaseNotesPage'));
-const PricingPage = lazy(() => import('./pages/PricingPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
@@ -65,8 +64,7 @@ const DocumentationPage = lazy(() => import('./pages/DocumentationPage'));
 const APIDocsPage = lazy(() => import('./pages/APIDocsPage'));
 const RoadmapPage = lazy(() => import('./pages/RoadmapPage'));
 const SecurityPage = lazy(() => import('./pages/SecurityPage'));
-const UseCasesPage = lazy(() => import('./pages/UseCasesPage'));
-const TestimonialsPage = lazy(() => import('./pages/TestimonialsPage'));
+// PORTFOLIO MODE: Removed UseCasesPage and TestimonialsPage (business pages)
 const AccessibilityPage = lazy(() => import('./pages/AccessibilityPage'));
 const PublicNewsPage = lazy(() => import('./pages/public/PublicNewsPage'));
 const PublicSupportPage = lazy(() => import('./pages/public/PublicSupportPage'));
@@ -101,21 +99,23 @@ function AppContent() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/blog" element={<BlogPage />} />
-          <Route path="/pricing" element={<PricingPage />} />
+          {/* PORTFOLIO MODE: Redirect pricing to home */}
+          <Route path="/pricing" element={<Navigate to="/" replace />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />
           <Route path="/release-notes" element={<ReleaseNotesPage />} />
           <Route path="/contact" element={<PublicContactPage />} />
           <Route path="/faq" element={<FAQPage />} />
-          <Route path="/careers" element={<CareersPage />} />
+          {/* PORTFOLIO MODE: Redirect removed business pages to home */}
+          <Route path="/careers" element={<Navigate to="/" replace />} />
+          <Route path="/use-cases" element={<Navigate to="/" replace />} />
+          <Route path="/testimonials" element={<Navigate to="/" replace />} />
 
-          {/* New Public Pages */}
+          {/* Public Pages */}
           <Route path="/docs" element={<DocumentationPage />} />
           <Route path="/api-docs" element={<APIDocsPage />} />
           <Route path="/roadmap" element={<RoadmapPage />} />
           <Route path="/security" element={<SecurityPage />} />
-          <Route path="/use-cases" element={<UseCasesPage />} />
-          <Route path="/testimonials" element={<TestimonialsPage />} />
           <Route path="/accessibility" element={<AccessibilityPage />} />
           <Route path="/public/news" element={<PublicNewsPage />} />
           <Route path="/public/support" element={<PublicSupportPage />} />
@@ -162,7 +162,6 @@ function AppContent() {
               <Route path="/billing/success" element={<ProtectedRoute><BillingSuccessPage /></ProtectedRoute>} />
               <Route path="/billing/cancel" element={<ProtectedRoute><BillingCancelPage /></ProtectedRoute>} />
               <Route path="/faq" element={<FAQPage />} />
-              <Route path="/careers" element={<CareersPage />} />
 
               {/* Redirect 404s to global 404 page */}
               <Route path="*" element={<Navigate to="/404" replace />} />

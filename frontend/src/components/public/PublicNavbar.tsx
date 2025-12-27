@@ -9,6 +9,7 @@ const PublicNavbar = () => {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
 
+  // PORTFOLIO MODE: Removed Pricing and business pages (Use Cases, Testimonials, Careers)
   const navLinks = [
     { name: 'Home', path: '/' },
     { name: 'About', path: '/about' },
@@ -22,7 +23,6 @@ const PublicNavbar = () => {
         { name: 'Alerts & Notifications', path: '/features/alerts' },
       ]
     },
-    { name: 'Pricing', path: '/pricing' },
     {
       name: 'Resources',
       path: '/resources',
@@ -39,9 +39,6 @@ const PublicNavbar = () => {
       name: 'Company',
       path: '/company',
       dropdown: [
-        { name: 'Use Cases', path: '/use-cases' },
-        { name: 'Testimonials', path: '/testimonials' },
-        { name: 'Careers', path: '/careers' },
         { name: 'Security', path: '/security' },
         { name: 'Accessibility', path: '/accessibility' },
       ]
