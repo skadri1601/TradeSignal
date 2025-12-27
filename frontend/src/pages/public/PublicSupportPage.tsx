@@ -16,7 +16,7 @@ const PublicSupportPage = () => {
     },
     {
       question: "What is LUNA AI and how does it work?",
-      answer: "LUNA is our proprietary AI engine powered by Google's Gemini 2.5 Pro and Flash models. It analyzes millions of insider trades, congressional transactions, and market data to identify patterns, clusters, and anomalies. LUNA provides actionable insights with conviction scores and price predictions."
+      answer: "LUNA is our proprietary AI engine built with advanced machine learning technology. It analyzes millions of insider trades, congressional transactions, and market data to identify patterns, clusters, and anomalies. LUNA provides actionable insights with conviction scores and price predictions."
     },
     {
       question: "What's the difference between subscription tiers?",

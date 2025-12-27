@@ -10,7 +10,7 @@ const RoadmapPage = () => {
         { title: "Advanced Portfolio Tracking", description: "Track your holdings alongside insider activity", status: "in-progress", votes: 1243, completedDate: undefined as string | undefined },
         { title: "Mobile App (iOS & Android)", description: "Native mobile apps with push notifications", status: "in-progress", votes: 2156, completedDate: undefined as string | undefined },
         { title: "Options Trading Analysis", description: "Track insider options grants and exercises", status: "in-progress", votes: 892, completedDate: undefined as string | undefined },
-        { title: "Enhanced LUNA AI Models", description: "Improved prediction accuracy with Gemini 2.5 Pro", status: "planned", votes: 1567, completedDate: undefined as string | undefined }
+        { title: "Enhanced LUNA AI Models", description: "Improved prediction accuracy with advanced AI architecture", status: "planned", votes: 1567, completedDate: undefined as string | undefined }
       ]
     },
     {
@@ -37,7 +37,7 @@ const RoadmapPage = () => {
       quarter: "Recently Completed",
       status: "Completed",
       items: [
-        { title: "LUNA AI Engine Launch", description: "Unified AI analysis with Gemini 2.5 Pro + Flash", status: "completed", votes: undefined as number | undefined, completedDate: "Dec 2024" },
+        { title: "LUNA AI Engine Launch", description: "Unified AI analysis with proprietary dual-model architecture", status: "completed", votes: undefined as number | undefined, completedDate: "Dec 2024" },
         { title: "Congressional Trading Dashboard", description: "Real-time tracking of all 535 Congress members", status: "completed", votes: undefined as number | undefined, completedDate: "Nov 2024" },
         { title: "Enterprise API v1", description: "RESTful API with 2,000 req/hour rate limits", status: "completed", votes: undefined as number | undefined, completedDate: "Oct 2024" },
         { title: "Discord Alerts Integration", description: "Send trade alerts directly to Discord channels", status: "completed", votes: undefined as number | undefined, completedDate: "Sep 2024" },

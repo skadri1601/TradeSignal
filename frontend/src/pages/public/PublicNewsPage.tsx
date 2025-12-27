@@ -52,7 +52,7 @@ const PublicNewsPage = () => {
     {
       id: 6,
       title: "TradeSignal Launches LUNA AI Engine",
-      excerpt: "New unified AI analysis platform combines Gemini 2.5 Pro and Flash for institutional-grade insights...",
+      excerpt: "New unified AI analysis platform delivers institutional-grade insights powered by proprietary technology...",
       category: "Product Update",
       date: "2025-12-08",
       source: "TradeSignal",

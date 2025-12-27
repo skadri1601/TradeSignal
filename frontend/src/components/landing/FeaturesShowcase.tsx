@@ -18,7 +18,7 @@ const FeaturesShowcase = () => {
     {
       icon: Brain,
       title: "Analyze",
-      description: "LUNA AI powered by Gemini 2.5 Pro & Flash",
+      description: "LUNA AI - TradeSignal's proprietary intelligence engine",
       details: [
         "92% prediction accuracy",
         "Cluster detection algorithms",

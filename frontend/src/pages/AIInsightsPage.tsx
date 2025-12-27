@@ -38,11 +38,11 @@ export default function AIInsightsPage() {
           </h1>
           <div className="space-y-4">
             <p className="text-gray-300">
-              AI-powered insights are currently unavailable. This feature requires:
+              TradeSignal Intelligence™ is currently unavailable. Backend configuration required:
             </p>
             <ul className="list-disc list-inside space-y-2 text-gray-400">
               <li>
-                <strong>Gemini API Key</strong> (recommended - free 1500 requests/day)
+                <strong>AI Provider API Key</strong> (Google Gemini recommended - free 1500 requests/day)
                 <br />
                 <a
                   href="https://makersuite.google.com/app/apikey"
@@ -50,11 +50,11 @@ export default function AIInsightsPage() {
                   rel="noopener noreferrer"
                   className="text-blue-400 hover:text-blue-300 hover:underline ml-6"
                 >
-                  Get free Gemini API key →
+                  Get API key →
                 </a>
               </li>
               <li>
-                <strong>Or OpenAI API Key</strong> (paid)
+                <strong>Or OpenAI API</strong> (alternative provider)
                 <br />
                 <a
                   href="https://platform.openai.com/api-keys"
@@ -62,7 +62,7 @@ export default function AIInsightsPage() {
                   rel="noopener noreferrer"
                   className="text-blue-400 hover:text-blue-300 hover:underline ml-6"
                 >
-                  Get OpenAI API key →
+                  Get OpenAI key →
                 </a>
               </li>
             </ul>
@@ -97,7 +97,7 @@ export default function AIInsightsPage() {
             <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 mt-4">
               <h3 className="font-semibold text-blue-300 mb-2">Setup Instructions:</h3>
               <ol className="list-decimal list-inside space-y-1 text-sm text-blue-200">
-                <li>Get a free Gemini API key from the link above</li>
+                <li>Get an AI provider API key from the links above</li>
                 <li>Add <code className="bg-black/50 px-1.5 py-0.5 rounded text-blue-100">GEMINI_API_KEY=your-key</code> to backend/.env</li>
                 <li>Set <code className="bg-black/50 px-1.5 py-0.5 rounded text-blue-100">ENABLE_AI_INSIGHTS=true</code> in backend/.env</li>
                 <li>Restart the backend: <code className="bg-black/50 px-1.5 py-0.5 rounded text-blue-100">docker-compose restart backend</code></li>
@@ -118,7 +118,7 @@ export default function AIInsightsPage() {
         <div>
           <h1 className="text-3xl font-bold text-white">AI-Powered Insights</h1>
           <p className="mt-2 text-gray-400">
-            Advanced analysis powered by {aiStatus.active_provider === 'gemini' ? 'Google Gemini 2.0 Flash' : 'OpenAI GPT-4o-mini'}
+            Advanced analysis powered by TradeSignal Intelligence™
           </p>
         </div>
         <div className="flex items-center space-x-2 text-sm">

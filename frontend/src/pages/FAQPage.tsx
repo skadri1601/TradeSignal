@@ -79,7 +79,7 @@ const faqs: FAQItem[] = [
   {
     category: 'Platform & Features',
     question: 'What makes TradeSignal different from other platforms?',
-    answer: 'Unlike traditional screeners, TradeSignal uses LUNA, our proprietary AI engine based on Google Gemini and OpenAI architectures. LUNA analyzes sentiment, detects anomalies, and identifies high-conviction patterns that raw data charts miss. We process 15 million+ filings with 92% sentiment accuracy.',
+    answer: 'Unlike traditional screeners, TradeSignal uses LUNA, our proprietary AI engine built with advanced machine learning architectures. LUNA analyzes sentiment, detects anomalies, and identifies high-conviction patterns that raw data charts miss. We process 15 million+ filings with 92% sentiment accuracy.',
   },
   {
     category: 'Platform & Features',
@@ -100,7 +100,7 @@ const faqs: FAQItem[] = [
   {
     category: 'Data & Technology',
     question: 'How does your AI analysis work?',
-    answer: 'We utilize LUNA, our custom-tuned Large Language Model engine based on Google Gemini and OpenAI architectures. LUNA parses the text, context, and footnotes of filings to identify non-standard transaction codes and sentiment that traditional screeners miss.',
+    answer: 'We utilize LUNA, our custom-tuned Large Language Model engine built with proprietary machine learning architectures. LUNA parses the text, context, and footnotes of filings to identify non-standard transaction codes and sentiment that traditional screeners miss.',
   },
   {
     category: 'Data & Technology',

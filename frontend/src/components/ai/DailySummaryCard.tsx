@@ -5,6 +5,18 @@ import AISkeleton from '../common/AISkeleton';
 import { formatCurrency } from '../../utils/formatters';
 import { Newspaper, TrendingUp, TrendingDown, RefreshCw, AlertCircle, Clock } from 'lucide-react';
 
+const formatLatestDate = (dateString: string): string => {
+  try {
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) {
+      return 'Unknown';
+    }
+    return date.toLocaleDateString();
+  } catch {
+    return 'Unknown';
+  }
+};
+
 export default function DailySummaryCard() {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['ai-daily-summary'],
@@ -49,8 +61,8 @@ export default function DailySummaryCard() {
   }
 
   if (!data || !data.company_summaries || data.company_summaries.length === 0) {
+    const daysBack = data?.period ?? '7 days';
     const diagnostics = data?.diagnostics;
-    const daysBack = data?.period || '7 days';
     const totalTrades = diagnostics?.total_trades_in_db ?? 0;
     const trades30d = diagnostics?.trades_in_last_30_days ?? 0;
     
@@ -192,7 +204,7 @@ export default function DailySummaryCard() {
                 <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Latest</p>
                 <div className="flex items-center text-white font-mono text-xs mt-0.5">
                   <Clock className="w-3 h-3 mr-1.5 text-gray-600" />
-                  {new Date(company.latest_date).toLocaleDateString()}
+                  {formatLatestDate(company.latest_date)}
                 </div>
               </div>
             </div>

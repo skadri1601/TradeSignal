@@ -50,7 +50,7 @@ const PrivacyPolicyPage = () => {
                 <li><strong>Twilio</strong> - SMS notifications (Pro/Enterprise tiers only)</li>
                 <li><strong>Discord & Slack</strong> - Webhook notifications (Pro/Enterprise tiers only)</li>
                 <li><strong>Market Data Providers</strong> - Finnhub, Alpha Vantage, CoinGecko, FRED API for financial data</li>
-                <li><strong>AI Services</strong> - Google Gemini or OpenAI for AI-powered insights (optional, requires API key)</li>
+                <li><strong>AI Services</strong> - Third-party AI providers for powering TradeSignal Intelligence™ (optional, requires API key)</li>
               </ul>
             </li>
             <li><strong>Legal Requirements:</strong> If required by law, court order, or government regulation.</li>

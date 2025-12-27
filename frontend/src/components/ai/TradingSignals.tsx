@@ -4,6 +4,18 @@ import { aiApi, TradingSignal } from '../../api/ai';
 import AISkeleton from '../common/AISkeleton';
 import { TrendingUp, TrendingDown, MinusCircle, AlertCircle, RefreshCw } from 'lucide-react';
 
+const formatGeneratedDate = (dateString: string): string => {
+  try {
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) {
+      return 'Unknown date';
+    }
+    return date.toLocaleString();
+  } catch {
+    return 'Unknown date';
+  }
+};
+
 export default function TradingSignals() {
   const [showAll, setShowAll] = useState(false);
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -94,8 +106,8 @@ export default function TradingSignals() {
   }
 
   if (!data || data.signals.length === 0) {
+    const period = data?.period ?? '7 days';
     const diagnostics = data?.diagnostics;
-    const period = data?.period || '7 days';
     const totalTrades = diagnostics?.total_trades_in_db ?? 0;
     const companiesWithTrades = diagnostics?.companies_with_trades ?? 0;
     const companiesMeetingCriteria = diagnostics?.companies_meeting_criteria ?? 0;
@@ -164,9 +176,9 @@ export default function TradingSignals() {
 
       {/* Signals Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {displayedSignals.map((signal: TradingSignal, index: number) => (
+        {displayedSignals.map((signal: TradingSignal) => (
           <div
-            key={index}
+            key={signal.ticker}
             className={`rounded-2xl p-6 border-2 transition-all hover:shadow-lg hover:-translate-y-1 ${getSignalBg(signal.signal)}`}
           >
             <div className="flex items-start justify-between mb-6">
@@ -188,7 +200,10 @@ export default function TradingSignals() {
               <div className="bg-black/20 rounded-lg p-3">
                 <span className="text-xs text-gray-500 uppercase tracking-wide">Buy Ratio</span>
                 <p className="text-lg font-mono font-semibold text-white mt-1">
-                  {signal.buy_ratio != null && !isNaN(signal.buy_ratio) 
+                  {signal.buy_ratio != null &&
+                   typeof signal.buy_ratio === 'number' &&
+                   !Number.isNaN(signal.buy_ratio) &&
+                   Number.isFinite(signal.buy_ratio)
                     ? `${Math.min(100, Math.max(0, signal.buy_ratio)).toFixed(1)}%`
                     : 'N/A'}
                 </p>
@@ -196,7 +211,11 @@ export default function TradingSignals() {
               <div className="bg-black/20 rounded-lg p-3">
                 <span className="text-xs text-gray-500 uppercase tracking-wide">Total Value</span>
                 <p className="text-lg font-mono font-semibold text-white mt-1">
-                  {signal.total_value != null && !isNaN(signal.total_value) && signal.total_value > 0
+                  {signal.total_value != null &&
+                   typeof signal.total_value === 'number' &&
+                   !Number.isNaN(signal.total_value) &&
+                   Number.isFinite(signal.total_value) &&
+                   signal.total_value > 0
                     ? `$${(signal.total_value / 1_000_000).toFixed(2)}M`
                     : 'N/A'}
                 </p>
@@ -226,7 +245,7 @@ export default function TradingSignals() {
 
       <div className="text-center">
         <p className="text-xs text-gray-600 mt-8">
-          Signals generated on {new Date(data.timestamp || data.generated_at).toLocaleString()}
+          Signals generated on {formatGeneratedDate(data.generated_at)}
         </p>
       </div>
     </div>

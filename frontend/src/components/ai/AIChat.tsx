@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import axios from 'axios';
 import { aiApi } from '../../api/ai';
 import { ThinkingDots } from '../common/AISkeleton';
 import { Send, Sparkles } from 'lucide-react';
@@ -84,17 +85,37 @@ export default function AIChat() {
         },
       ]);
     },
-    onError: (error: any) => {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const isUnavailable = errorMessage.includes('503') || errorMessage.includes('unavailable') || errorMessage.includes('AI service');
-      
+    onError: (error: unknown) => {
+      let statusCode: number | undefined;
+      let errorMessage = 'Unknown error';
+
+      if (axios.isAxiosError(error)) {
+        statusCode = error.response?.status;
+        errorMessage = error.response?.data?.message ||
+                       error.response?.data?.detail ||
+                       error.message;
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+
+      const isUnavailable = statusCode === 503 || statusCode === 500;
+      const isNotConfigured = statusCode === 501 ||
+                             errorMessage.toLowerCase().includes('not configured');
+
+      let userMessage: string;
+      if (isUnavailable) {
+        userMessage = "I'm sorry, the AI service is temporarily unavailable. Please try again in a moment.";
+      } else if (isNotConfigured) {
+        userMessage = "I'm sorry, the AI service is not configured. Please ensure GEMINI_API_KEY is set in the backend and ENABLE_AI_INSIGHTS is enabled.";
+      } else {
+        userMessage = `I'm sorry, I encountered an error: ${errorMessage}. Please try again.`;
+      }
+
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: isUnavailable 
-            ? "I'm sorry, the AI service is currently unavailable. Please ensure GEMINI_API_KEY is configured in the backend and ENABLE_AI_INSIGHTS is set to true."
-            : `I'm sorry, I encountered an error: ${errorMessage}. Please try again.`,
+          content: userMessage,
           timestamp: new Date(),
         },
       ]);
@@ -144,7 +165,7 @@ export default function AIChat() {
         >
           {messages.map((message, index) => (
             <div
-              key={index}
+              key={`${message.timestamp.getTime()}-${message.role}-${index}`}
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div

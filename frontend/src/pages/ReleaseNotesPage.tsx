@@ -112,12 +112,12 @@ const ReleaseNotesPage = () => {
       version: "2.1.0",
       date: "December 25, 2025",
       features: [
-        "Introduced LUNA AI Engine - Unified Gemini-powered analysis replacing legacy pattern detection",
+        "Introduced LUNA AI Engine - Unified proprietary analysis replacing legacy pattern detection",
         "Added Forensic Company Reports with automatic price predictions",
-        "Implemented dual-model architecture (Gemini 2.5 Pro for deep analysis, Flash for routine tasks)"
+        "Implemented dual-model architecture (advanced AI for deep analysis, optimized model for routine tasks)"
       ],
       improvements: [
-        "Consolidated redundant API calls into single Gemini request for better performance",
+        "Consolidated redundant API calls into single AI request for better performance",
         "Enhanced AI Insights page with real-time forensic analysis",
         "Optimized database queries for faster data retrieval"
       ],

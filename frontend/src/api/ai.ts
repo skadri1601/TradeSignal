@@ -33,6 +33,7 @@ export interface CompanyAnalysis {
   analysis: string;
   sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
   insights: string[];
+  provider?: string;
 }
 
 export interface TopTrade {
@@ -110,7 +111,6 @@ export interface TradingSignalsResponse {
   generated_at: string;
   period: string;
   days_analyzed?: number;
-  timestamp?: string;
   message?: string;
   diagnostics?: {
     total_trades_in_db?: number;

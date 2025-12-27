@@ -1,44 +1,57 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { aiApi, type CompanyAnalysis, type PricePredictionResponse } from '../../api/ai'; 
+import { aiApi, type CompanyAnalysis, type PricePredictionResponse } from '../../api/ai';
 import AISkeleton from '../common/AISkeleton';
 import CompanyAutocomplete from '../common/CompanyAutocomplete';
 import PricePredictionCard from './PricePredictionCard';
 import { BarChart2, TrendingUp, AlertCircle, TrendingDown, MinusCircle, Sparkles } from 'lucide-react';
 
+interface CompanyAnalysisProcessingResponse {
+  status: 'processing';
+  message: string;
+}
+
+type CompanyAnalysisResponse =
+  | CompanyAnalysis
+  | CompanyAnalysisProcessingResponse;
+
 export default function CompanyAnalysis() {
   const [ticker, setTicker] = useState('');
   const [daysBack, setDaysBack] = useState(30);
   const [analysis, setAnalysis] = useState<CompanyAnalysis & Partial<PricePredictionResponse> | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [processingMessage, setProcessingMessage] = useState<string | null>(null);
+  // Backend async processing state (separate from React Query's isPending)
+  // isPending: Frontend waiting for API response
+  // isBackendProcessing: Backend accepted request but still processing (queued job)
+  const [isBackendProcessing, setIsBackendProcessing] = useState(false);
+  const [backendProcessingMessage, setBackendProcessingMessage] = useState<string | null>(null);
 
   const analyzeMutation = useMutation({
     mutationFn: ({ ticker, daysBack }: { ticker: string; daysBack: number }) =>
       aiApi.analyzeCompany(ticker, daysBack),
-    onSuccess: (data: any) => {
+    onSuccess: (data: CompanyAnalysisResponse) => {
       // Check if API returned processing status (if backend still does async queueing)
-      if (data && data.status === 'processing') {
-        setIsProcessing(true);
-        setProcessingMessage(data.message);
+      if ('status' in data && data.status === 'processing') {
+        setIsBackendProcessing(true);
+        setBackendProcessingMessage(data.message);
         setAnalysis(null);
       } else {
-        setIsProcessing(false);
-        setProcessingMessage(null);
+        setIsBackendProcessing(false);
+        setBackendProcessingMessage(null);
         setAnalysis(data as CompanyAnalysis & Partial<PricePredictionResponse>);
       }
     },
-    onError: () => {
-      setIsProcessing(false);
-      setProcessingMessage(null);
+    onError: (error: unknown) => {
+      setIsBackendProcessing(false);
+      setBackendProcessingMessage(null);
+      console.error('Company analysis failed:', error);
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!ticker.trim()) return;
-    setIsProcessing(false);
-    setProcessingMessage(null);
+    setIsBackendProcessing(false);
+    setBackendProcessingMessage(null);
     setAnalysis(null);
     analyzeMutation.mutate({ ticker: ticker.toUpperCase(), daysBack });
   };
@@ -109,19 +122,19 @@ export default function CompanyAnalysis() {
       {analyzeMutation.isPending && (
         <div className="space-y-6 mt-6 relative z-0">
           <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
-            <AISkeleton message={`LUNA (Gemini 2.5 Pro) is synthesizing Earnings, Technicals, and Insider data for ${ticker}...`} />
+            <AISkeleton message={`LUNA AI is synthesizing Earnings, Technicals, and Insider data for ${ticker}...`} />
           </div>
         </div>
       )}
 
       {/* Processing State */}
-      {isProcessing && !analyzeMutation.isPending && (
+      {isBackendProcessing && !analyzeMutation.isPending && (
         <div className="bg-blue-900/20 border border-blue-500/30 rounded-xl p-6 flex items-start mt-6 relative z-0">
           <BarChart2 className="h-5 w-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0 animate-pulse" />
           <div>
             <h3 className="text-sm font-medium text-blue-300">Analysis Queued</h3>
             <p className="text-sm text-blue-400/80 mt-1">
-              {processingMessage || 'Analysis is being processed. Please check back shortly.'}
+              {backendProcessingMessage || 'Analysis is being processed. Please check back shortly.'}
             </p>
           </div>
         </div>
@@ -143,7 +156,7 @@ export default function CompanyAnalysis() {
       )}
 
       {/* Analysis Results */}
-      {analysis && !analyzeMutation.isPending && !isProcessing && (
+      {analysis && !analyzeMutation.isPending && !isBackendProcessing && (
         <div className="space-y-6 mt-6 relative z-0">
           {/* Header Card */}
           <div className="bg-gradient-to-r from-purple-900/40 to-blue-900/40 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
@@ -158,7 +171,7 @@ export default function CompanyAnalysis() {
                   </span>
                 </div>
                 <p className="text-sm text-gray-300">
-                  Analysis over {analysis.days_analyzed ?? 0} days • Provider: {(analysis as any).provider || 'Gemini Pro'}
+                  Analysis over {analysis.days_analyzed ?? 0} days • Powered by TradeSignal AI
                 </p>
               </div>
               <div className="flex items-center gap-3 bg-black/20 p-3 rounded-xl border border-white/5">
@@ -182,7 +195,7 @@ export default function CompanyAnalysis() {
             {analysis.insights && analysis.insights.length > 0 && (
               <div className="mt-6 space-y-2">
                 {analysis.insights.map((insight: string, idx: number) => (
-                  <div key={idx} className="flex items-start gap-2">
+                  <div key={`insight-${idx}-${insight.slice(0, 20)}`} className="flex items-start gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-purple-500 mt-2 flex-shrink-0" />
                     <p className="text-gray-400 text-sm">{insight}</p>
                   </div>
@@ -210,7 +223,7 @@ export default function CompanyAnalysis() {
       )}
 
       {/* Empty State */}
-      {!analysis && !analyzeMutation.isPending && !analyzeMutation.isError && !isProcessing && (
+      {!analysis && !analyzeMutation.isPending && !analyzeMutation.isError && !isBackendProcessing && (
         <div className="bg-gray-900/30 border border-white/10 rounded-2xl p-12 text-center">
           <BarChart2 className="mx-auto h-12 w-12 text-gray-600 mb-4" />
           <h3 className="text-lg font-medium text-white">No Analysis Yet</h3>
