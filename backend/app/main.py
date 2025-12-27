@@ -766,7 +766,6 @@ from app.routers import (  # noqa: E402
     congressional_trades,
     congresspeople,
     billing,
-    fed,
     orders,
     admin,
     contact,
@@ -837,9 +836,6 @@ app.include_router(
     tags=["Congresspeople"],
 )
 app.include_router(billing.router, prefix=f"{settings.api_v1_prefix}", tags=["Billing"])
-app.include_router(
-    fed.router, prefix=f"{settings.api_v1_prefix}", tags=["Federal Reserve"]
-)
 app.include_router(
     orders.router, prefix=f"{settings.api_v1_prefix}/billing", tags=["Orders"]
 )
