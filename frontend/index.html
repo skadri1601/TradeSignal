@@ -24,7 +24,7 @@
                               globalThis.location.port !== '';
         
         // Base CSP for production (include both http and https for API compatibility)
-        let connectSrc = "'self' wss://api.tradesignal.capital ws://api.tradesignal.capital https://api.tradesignal.capital http://api.tradesignal.capital https://api.stripe.com https://checkout.stripe.com https://r.stripe.com";
+        let connectSrc = "'self' wss://api.tradesignal.capital ws://api.tradesignal.capital https://api.tradesignal.capital http://api.tradesignal.capital https://api.stripe.com https://checkout.stripe.com https://r.stripe.com https://vitals.vercel-analytics.com";
         
         // Add localhost origins in development
         if (isDevelopment) {
