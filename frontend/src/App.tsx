@@ -18,6 +18,7 @@ const AboutPage = lazy(() => import('./pages/AboutPage'));
 const CompanyPage = lazy(() => import('./pages/CompanyPage'));
 const InsiderPage = lazy(() => import('./pages/InsiderPage'));
 const NewsPage = lazy(() => import('./pages/NewsPage'));
+const FedCalendarPage = lazy(() => import('./pages/FedCalendarPage'));
 const LessonsPage = lazy(() => import('./pages/LessonsPage'));
 const StrategiesPage = lazy(() => import('./pages/StrategiesPage'));
 const OrderHistoryPage = lazy(() => import('./pages/OrderHistoryPage'));
@@ -138,6 +139,7 @@ function AppContent() {
               <Route path="/congressional-trades" element={<ProtectedRoute redirectAdmin><CongressionalTradesPage /></ProtectedRoute>} />
               <Route path="/market-overview" element={<ProtectedRoute redirectAdmin><MarketOverviewPage /></ProtectedRoute>} />
               <Route path="/news" element={<ProtectedRoute redirectAdmin><NewsPage /></ProtectedRoute>} />
+              <Route path="/fed-calendar" element={<ProtectedRoute redirectAdmin><FedCalendarPage /></ProtectedRoute>} />
               <Route path="/lessons" element={<ProtectedRoute redirectAdmin><LessonsPage /></ProtectedRoute>} />
               <Route path="/strategies" element={<ProtectedRoute redirectAdmin><StrategiesPage /></ProtectedRoute>} />
               {/* <Route path="/patterns" element={<ProtectedRoute redirectAdmin requireTier="pro"><PatternsPage /></ProtectedRoute>} /> */} {/* TODO: Create PatternsPage */}

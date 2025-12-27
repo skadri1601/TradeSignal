@@ -775,7 +775,8 @@ from app.routers import (  # noqa: E402
     data_health,
     notifications,
     ai,
-    # REMOVED: patterns (file was deleted by Gemini along with pattern_analysis_service)
+    patterns,
+    earnings,
     alerts,
     research,
     forum,
@@ -821,10 +822,12 @@ app.include_router(
 app.include_router(
     ai.router, prefix=f"{settings.api_v1_prefix}", tags=["AI Insights"]
 )
-# REMOVED: patterns router (file was deleted by Gemini along with pattern_analysis_service)
-# app.include_router(
-#     patterns.router, prefix=f"{settings.api_v1_prefix}", tags=["Pattern Analysis"]
-# )
+app.include_router(
+    patterns.router, prefix=f"{settings.api_v1_prefix}", tags=["Pattern Analysis"]
+)
+app.include_router(
+    earnings.router, prefix=f"{settings.api_v1_prefix}", tags=["Earnings"]
+)
 app.include_router(
     congressional_trades.router,
     prefix=f"{settings.api_v1_prefix}/congressional-trades",
