@@ -119,16 +119,18 @@ class Subscription(Base):
 
 
 # Tier limits configuration
+# PORTFOLIO MODE: All features unlocked for free tier (for portfolio showcase)
 TIER_LIMITS = {
     SubscriptionTier.FREE.value: {
-        "ai_requests_limit": 1, # Approx 3 per week
-        "alerts_max": 2,
-        "real_time_updates": False,
-        "api_access": False,
-        "companies_tracked": 10,
-        "historical_data_days": 30,
-        "export_enabled": False,
-        "advanced_screening": False,
+        "ai_requests_limit": -1,  # Unlimited (portfolio mode)
+        "alerts_max": -1,  # Unlimited (portfolio mode)
+        "real_time_updates": True,  # Enabled (portfolio mode)
+        "api_access": True,  # Enabled (portfolio mode)
+        "research_api": True,  # Enabled (portfolio mode)
+        "companies_tracked": -1,  # Unlimited (portfolio mode)
+        "historical_data_days": -1,  # Unlimited (portfolio mode)
+        "export_enabled": True,  # Enabled (portfolio mode)
+        "advanced_screening": True,  # Enabled (portfolio mode)
     },
     SubscriptionTier.BASIC.value: { # Legacy/Starter
         "ai_requests_limit": 5,

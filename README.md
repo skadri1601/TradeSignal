@@ -1,6 +1,19 @@
 # TradeSignal
 
-> Real-time insider trading intelligence platform for tracking SEC Form 4 filings, congressional trades, and market-moving transactions with **LUNA**—our proprietary AI-powered insights engine driven by **Gemini 2.5 Flash**.
+> **Live Demo**: [tradesignal.capital](https://tradesignal.capital)
+>
+> Built by [Saad Kadri](https://saadkadri.dev/) | [LinkedIn](https://www.linkedin.com/in/saad-kadri-58b8bb205/) | [GitHub](https://github.com/skadri1601)
+
+![React](https://img.shields.io/badge/React-18.2-61DAFB?style=flat-square&logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.3-3178C6?style=flat-square&logo=typescript)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?style=flat-square&logo=fastapi)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?style=flat-square&logo=postgresql)
+![Redis](https://img.shields.io/badge/Redis-7.0-DC382D?style=flat-square&logo=redis)
+![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker)
+
+Real-time insider trading intelligence platform for tracking SEC Form 4 filings, congressional trades, and market-moving transactions with **LUNA**—an AI-powered insights engine driven by **Google Gemini**.
+
+---
 
 ## Overview
 
@@ -189,7 +202,7 @@ See [RENDER_ENV_SETUP.md](RENDER_ENV_SETUP.md) for environment variable configur
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/TradeSignal.git
+git clone https://github.com/skadri1601/TradeSignal.git
 cd TradeSignal
 ```
 
@@ -380,9 +393,16 @@ See [backend/README.md](backend/README.md) and [frontend/README.md](frontend/REA
 ## Support
 
 - **Documentation:** See [Docs/](Docs/) directory
-- **Email Support:** support@tradesignal.com
 - **Issues:** Create a GitHub issue
+
+## Author
+
+**Saad Kadri** - Full-Stack Developer
+
+- Portfolio: [saadkadri.dev](https://saadkadri.dev/)
+- LinkedIn: [linkedin.com/in/saad-kadri-58b8bb205](https://www.linkedin.com/in/saad-kadri-58b8bb205/)
+- GitHub: [github.com/skadri1601](https://github.com/skadri1601)
 
 ## License
 
-This project is proprietary software. All rights reserved.
+This project is open for viewing as a portfolio showcase. All rights reserved.

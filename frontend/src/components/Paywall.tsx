@@ -1,11 +1,16 @@
 /**
  * Paywall Component
  * Displays a paywall overlay when user tries to access premium features
+ *
+ * PORTFOLIO MODE: Disabled - all features are free for portfolio showcase
  */
 
 import { Link } from 'react-router-dom';
 import { Lock, Sparkles, ArrowRight } from 'lucide-react';
 import { useFeatureAccess } from '../hooks/useFeatureAccess';
+
+// PORTFOLIO MODE: Set to true to disable all paywalls
+const PORTFOLIO_MODE = true;
 
 interface PaywallProps {
   featureName: string;
@@ -22,6 +27,11 @@ export function Paywall({
   onDismiss,
   showComparison = true,
 }: PaywallProps) {
+  // PORTFOLIO MODE: Don't show paywall
+  if (PORTFOLIO_MODE) {
+    return null;
+  }
+
   const { canUpgrade } = useFeatureAccess();
 
   const tierNames: Record<string, string> = {

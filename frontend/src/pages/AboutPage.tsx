@@ -1,4 +1,5 @@
 import { motion, Variants } from 'framer-motion';
+import { Github, Linkedin, Globe } from 'lucide-react';
 
 // Animation Variants
 const fadeInUp: Variants = {
@@ -293,6 +294,63 @@ const ProblemSection = () => (
   </section>
 );
 
+// 6. Built By Section (Portfolio Attribution)
+const BuiltBySection = () => (
+  <section className="py-24 bg-gradient-to-b from-[#0a0a0a] to-black relative">
+    <div className="absolute inset-0 pointer-events-none">
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-purple-600/10 rounded-full blur-[100px]"></div>
+    </div>
+    <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
+      <motion.div
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        variants={fadeInUp}
+      >
+        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+          Built By
+        </h2>
+        <p className="text-xl text-gray-300 mb-2">Saad Kadri</p>
+        <p className="text-gray-500 mb-8">Full-Stack Developer</p>
+
+        <div className="flex justify-center gap-6 mb-8">
+          <a
+            href="https://saadkadri.dev/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 hover:border-purple-500/50 transition-all group"
+          >
+            <Globe className="w-5 h-5 text-purple-400 group-hover:scale-110 transition-transform" />
+            <span className="text-gray-300">Portfolio</span>
+          </a>
+          <a
+            href="https://www.linkedin.com/in/saad-kadri-58b8bb205/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 hover:border-blue-500/50 transition-all group"
+          >
+            <Linkedin className="w-5 h-5 text-blue-400 group-hover:scale-110 transition-transform" />
+            <span className="text-gray-300">LinkedIn</span>
+          </a>
+          <a
+            href="https://github.com/skadri1601"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 hover:border-gray-500/50 transition-all group"
+          >
+            <Github className="w-5 h-5 text-gray-400 group-hover:scale-110 transition-transform" />
+            <span className="text-gray-300">GitHub</span>
+          </a>
+        </div>
+
+        <p className="text-gray-500 text-sm max-w-xl mx-auto">
+          This project showcases full-stack development skills including React, TypeScript, FastAPI, PostgreSQL, Redis, and AI/ML integration with Google Gemini.
+        </p>
+      </motion.div>
+    </div>
+  </section>
+);
+
 // Main Page Component
 const AboutPage = () => {
   return (
@@ -303,6 +361,7 @@ const AboutPage = () => {
       <ImpactSection />
       <MissionSection />
       <DataSection />
+      <BuiltBySection />
     </div>
   );
 };

@@ -1,8 +1,17 @@
+/**
+ * Tier Restriction Banner Component
+ *
+ * PORTFOLIO MODE: Disabled - all features are free for portfolio showcase
+ */
+
 import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, ArrowUpCircle, X } from 'lucide-react';
 import { useState } from 'react';
 import apiClient from '../api/client';
 import { Link } from 'react-router-dom';
+
+// PORTFOLIO MODE: Set to true to disable all restriction banners
+const PORTFOLIO_MODE = true;
 
 interface UsageStats {
   tier: string;
@@ -46,8 +55,13 @@ export function TierRestrictionBanner({
       const response = await apiClient.get('/api/v1/billing/usage');
       return response.data;
     },
-    enabled: !currentUsage || !limit,
+    enabled: !PORTFOLIO_MODE && (!currentUsage || !limit),
   });
+
+  // PORTFOLIO MODE: Don't show restriction banners
+  if (PORTFOLIO_MODE) {
+    return null;
+  }
 
   if (dismissed) return null;
 

@@ -1,11 +1,16 @@
 /**
  * Upgrade CTA Component
  * Displays upgrade call-to-action banners throughout the app
+ *
+ * PORTFOLIO MODE: Disabled - all features are free for portfolio showcase
  */
 
 import { Link } from 'react-router-dom';
 import { ArrowRight, Sparkles, TrendingUp } from 'lucide-react';
 import { useFeatureAccess } from '../hooks/useFeatureAccess';
+
+// PORTFOLIO MODE: Set to true to disable all upgrade CTAs
+const PORTFOLIO_MODE = true;
 
 interface UpgradeCTAProps {
   variant?: 'banner' | 'card' | 'inline';
@@ -24,6 +29,11 @@ export function UpgradeCTA({
   onDismiss,
   className = '',
 }: UpgradeCTAProps) {
+  // PORTFOLIO MODE: Don't show upgrade prompts
+  if (PORTFOLIO_MODE) {
+    return null;
+  }
+
   const { canUpgrade } = useFeatureAccess();
 
   // Don't show if user already has required tier or can't upgrade

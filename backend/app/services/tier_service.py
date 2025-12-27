@@ -13,6 +13,9 @@ from fastapi import HTTPException, status
 from app.models.subscription import Subscription, TIER_LIMITS, SubscriptionTier
 from app.models.usage import UsageTracking
 
+# PORTFOLIO MODE: Set to True to bypass all limit checks (for portfolio showcase)
+PORTFOLIO_MODE = True
+
 
 class TierService:
     """Service for managing subscription tiers and enforcing limits."""
@@ -97,6 +100,10 @@ class TierService:
         Returns:
             True if allowed, raises HTTPException if limit exceeded
         """
+        # PORTFOLIO MODE: Skip all limit checks
+        if PORTFOLIO_MODE:
+            return True
+
         tier = await TierService.get_user_tier(user_id, db)
         limits = await TierService.get_tier_limits(tier)
         usage = await TierService.get_or_create_usage(user_id, db)
@@ -141,6 +148,10 @@ class TierService:
         Returns:
             True if allowed, raises HTTPException if limit exceeded
         """
+        # PORTFOLIO MODE: Skip all limit checks
+        if PORTFOLIO_MODE:
+            return True
+
         from app.models.alert import Alert
 
         tier = await TierService.get_user_tier(user_id, db)
@@ -210,6 +221,10 @@ class TierService:
         Raises:
             HTTPException(403) if requested days exceed limit
         """
+        # PORTFOLIO MODE: Skip all limit checks
+        if PORTFOLIO_MODE:
+            return -1
+
         tier = await TierService.get_user_tier(user_id, db)
         limits = await TierService.get_tier_limits(tier)
         max_days = limits["historical_data_days"]
@@ -245,6 +260,10 @@ class TierService:
         Raises:
             HTTPException(403) if access denied
         """
+        # PORTFOLIO MODE: Skip all limit checks
+        if PORTFOLIO_MODE:
+            return True
+
         tier = await TierService.get_user_tier(user_id, db)
         limits = await TierService.get_tier_limits(tier)
 
@@ -274,6 +293,10 @@ class TierService:
         Raises:
             HTTPException(403) if access denied
         """
+        # PORTFOLIO MODE: Skip all limit checks
+        if PORTFOLIO_MODE:
+            return True
+
         tier = await TierService.get_user_tier(user_id, db)
         limits = await TierService.get_tier_limits(tier)
 
@@ -306,6 +329,10 @@ class TierService:
         Raises:
             HTTPException(403) if limit exceeded
         """
+        # PORTFOLIO MODE: Skip all limit checks
+        if PORTFOLIO_MODE:
+            return True
+
         tier = await TierService.get_user_tier(user_id, db)
         limits = await TierService.get_tier_limits(tier)
         max_companies = limits["companies_tracked"]

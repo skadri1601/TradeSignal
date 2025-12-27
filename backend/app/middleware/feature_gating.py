@@ -29,6 +29,10 @@ TIER_HIERARCHY = {
 }
 
 
+# PORTFOLIO MODE: Set to True to bypass all tier checks (for portfolio showcase)
+PORTFOLIO_MODE = True
+
+
 def require_tier(
     min_tier: str,
     feature_name: Optional[str] = None,
@@ -53,6 +57,10 @@ def require_tier(
         db: AsyncSession = Depends(get_db),
     ) -> User:
         """Check if user has required tier."""
+        # PORTFOLIO MODE: Skip all tier checks
+        if PORTFOLIO_MODE:
+            return current_user
+
         # Get user's current tier
         user_tier = await TierService.get_user_tier(current_user.id, db)
         user_tier_level = TIER_HIERARCHY.get(user_tier, 0)
@@ -102,6 +110,10 @@ def require_feature(
         db: AsyncSession = Depends(get_db),
     ) -> User:
         """Check if user's tier has access to the feature."""
+        # PORTFOLIO MODE: Skip all feature checks
+        if PORTFOLIO_MODE:
+            return current_user
+
         user_tier = await TierService.get_user_tier(current_user.id, db)
         limits = await TierService.get_tier_limits(user_tier)
 

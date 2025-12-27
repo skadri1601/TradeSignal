@@ -1,9 +1,14 @@
 /**
  * Hook for checking feature access based on subscription tier
+ *
+ * PORTFOLIO MODE: All features unlocked for portfolio showcase
  */
 
 import { useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+
+// PORTFOLIO MODE: Set to true to unlock all features
+const PORTFOLIO_MODE = true;
 
 // Tier hierarchy for comparison
 const TIER_LEVELS: Record<string, number> = {
@@ -34,11 +39,17 @@ const FEATURE_TIERS: Record<string, string> = {
 export function useFeatureAccess() {
   const { user } = useAuth();
 
-  const userTier = user?.stripe_subscription_tier || 'free';
-  const userTierLevel = TIER_LEVELS[userTier.toLowerCase()] || 0;
+  // PORTFOLIO MODE: Treat all users as enterprise tier
+  const userTier = PORTFOLIO_MODE ? 'enterprise' : (user?.stripe_subscription_tier || 'free');
+  const userTierLevel = PORTFOLIO_MODE ? 4 : (TIER_LEVELS[userTier.toLowerCase()] || 0);
 
   const hasFeature = useMemo(() => {
     return (featureKey: string): boolean => {
+      // PORTFOLIO MODE: All features available
+      if (PORTFOLIO_MODE) {
+        return true;
+      }
+
       // Check if feature requires a specific tier
       const requiredTier = FEATURE_TIERS[featureKey];
       if (!requiredTier) {
@@ -53,12 +64,21 @@ export function useFeatureAccess() {
 
   const hasTier = useMemo(() => {
     return (minTier: string): boolean => {
+      // PORTFOLIO MODE: All tiers available
+      if (PORTFOLIO_MODE) {
+        return true;
+      }
+
       const requiredTierLevel = TIER_LEVELS[minTier.toLowerCase()] || 0;
       return userTierLevel >= requiredTierLevel;
     };
   }, [userTierLevel]);
 
   const canUpgrade = useMemo(() => {
+    // PORTFOLIO MODE: No upgrade prompts needed
+    if (PORTFOLIO_MODE) {
+      return false;
+    }
     return userTier !== 'enterprise';
   }, [userTier]);
 
@@ -68,10 +88,10 @@ export function useFeatureAccess() {
     hasFeature,
     hasTier,
     canUpgrade,
-    isFree: userTier === 'free',
-    isPlus: userTier === 'plus',
-    isPro: userTier === 'pro',
-    isEnterprise: userTier === 'enterprise',
+    isFree: !PORTFOLIO_MODE && userTier === 'free',
+    isPlus: PORTFOLIO_MODE || userTier === 'plus',
+    isPro: PORTFOLIO_MODE || userTier === 'pro',
+    isEnterprise: PORTFOLIO_MODE || userTier === 'enterprise',
   };
 }
 

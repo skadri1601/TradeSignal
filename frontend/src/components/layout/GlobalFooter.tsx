@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Facebook, Instagram, Twitter, Linkedin } from 'lucide-react';
+import { Twitter, Linkedin, Github, Globe } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 const GlobalFooter = () => {
@@ -108,14 +108,26 @@ const GlobalFooter = () => {
 
         {/* Bottom Bar */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-6 text-sm text-gray-500">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4">
              <span>Copyrights © TradeSignal</span>
+             <span className="hidden md:inline">•</span>
+             <span>
+               Built by{' '}
+               <a
+                 href="https://saadkadri.dev/"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 className="text-purple-400 hover:text-purple-300 transition-colors"
+               >
+                 Saad Kadri
+               </a>
+             </span>
           </div>
           <div className="flex gap-4">
-             <a href="#" className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white hover:text-black transition-all"><Facebook className="w-4 h-4" /></a>
-             <a href="#" className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white hover:text-black transition-all"><Instagram className="w-4 h-4" /></a>
+             <a href="https://saadkadri.dev/" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white hover:text-black transition-all" title="Portfolio"><Globe className="w-4 h-4" /></a>
+             <a href="https://github.com/skadri1601" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white hover:text-black transition-all" title="GitHub"><Github className="w-4 h-4" /></a>
+             <a href="https://www.linkedin.com/in/saad-kadri-58b8bb205/" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white hover:text-black transition-all" title="LinkedIn"><Linkedin className="w-4 h-4" /></a>
              <a href="#" className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white hover:text-black transition-all"><Twitter className="w-4 h-4" /></a>
-             <a href="#" className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white hover:text-black transition-all"><Linkedin className="w-4 h-4" /></a>
           </div>
         </div>
       </div>
