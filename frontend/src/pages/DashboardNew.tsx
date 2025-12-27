@@ -13,10 +13,10 @@ import CompanyLogo from '../components/CompanyLogo';
 export default function DashboardNew() {
   const navigate = useNavigate();
 
-  // Fetch recent trades
+  // Fetch recent trades (increased to 30 days to catch up on missed data)
   const { data: recentTrades, isLoading: loadingTrades } = useQuery({
     queryKey: ['recentTrades'],
-    queryFn: () => tradesApi.getRecentTrades(7),
+    queryFn: () => tradesApi.getRecentTrades(30),
   });
 
   // Fetch trade statistics

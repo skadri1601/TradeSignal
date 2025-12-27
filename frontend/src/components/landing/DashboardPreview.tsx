@@ -1,13 +1,30 @@
 import { TrendingUp, ArrowRight, Zap, Shield, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+// CEO name mapping for demo companies
+const CEO_NAMES: Record<string, string> = {
+  'NVDA': 'Jensen Huang',
+  'TSLA': 'Elon Musk',
+  'META': 'Mark Zuckerberg',
+  'GOOGL': 'Sundar Pichai',
+  'AMZN': 'Andy Jassy',
+  'AMD': 'Lisa Su',
+  'AAPL': 'Tim Cook',
+  'MSFT': 'Satya Nadella',
+};
+
+// Helper function to get CEO name for a ticker
+const getCEOName = (ticker: string): string => {
+  return CEO_NAMES[ticker] || 'CEO';
+};
+
 const DashboardPreview = () => {
-  // PORTFOLIO MODE: Demo data with generic names (not real people's data)
+  // PORTFOLIO MODE: Demo data with CEO names
   const mockTrades = [
-    { ticker: 'NVDA', insider: 'CEO (Demo)', type: 'Buy', value: '$8.2M', change: '+12.4%', status: 'High Conviction' },
-    { ticker: 'TSLA', insider: 'Director (Demo)', type: 'Buy', value: '$5.1M', change: '+8.7%', status: 'Cluster Detected' },
-    { ticker: 'META', insider: 'CFO (Demo)', type: 'Sell', value: '$12.8M', change: '-3.2%', status: 'Normal Pattern' },
-    { ticker: 'AAPL', insider: 'Officer (Demo)', type: 'Buy', value: '$3.4M', change: '+5.1%', status: 'Cluster Detected' },
+    { ticker: 'NVDA', insider: getCEOName('NVDA'), type: 'Buy', value: '$8.2M', change: '+12.4%', status: 'High Conviction' },
+    { ticker: 'TSLA', insider: getCEOName('TSLA'), type: 'Buy', value: '$5.1M', change: '+8.7%', status: 'Cluster Detected' },
+    { ticker: 'META', insider: getCEOName('META'), type: 'Sell', value: '$12.8M', change: '-3.2%', status: 'Normal Pattern' },
+    { ticker: 'AAPL', insider: getCEOName('AAPL'), type: 'Buy', value: '$3.4M', change: '+5.1%', status: 'Cluster Detected' },
   ];
 
   return (

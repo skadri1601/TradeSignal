@@ -1,15 +1,32 @@
 import { TrendingUp, TrendingDown } from 'lucide-react';
 
+// CEO name mapping for demo companies
+const CEO_NAMES: Record<string, string> = {
+  'NVDA': 'Jensen Huang',
+  'TSLA': 'Elon Musk',
+  'META': 'Mark Zuckerberg',
+  'GOOGL': 'Sundar Pichai',
+  'AMZN': 'Andy Jassy',
+  'AMD': 'Lisa Su',
+  'AAPL': 'Tim Cook',
+  'MSFT': 'Satya Nadella',
+};
+
+// Helper function to get CEO name for a ticker
+const getCEOName = (ticker: string): string => {
+  return CEO_NAMES[ticker] || 'CEO';
+};
+
 // Static demo data for portfolio showcase
 const staticTrades = [
-  { id: 1, ticker: 'NVDA', insider_name: 'CEO (Demo)', transaction_type: 'Buy', value: 8200000 },
-  { id: 2, ticker: 'AAPL', insider_name: 'CFO (Demo)', transaction_type: 'Buy', value: 3400000 },
-  { id: 3, ticker: 'MSFT', insider_name: 'Director (Demo)', transaction_type: 'Buy', value: 2100000 },
-  { id: 4, ticker: 'GOOGL', insider_name: 'Officer (Demo)', transaction_type: 'Sell', value: 5600000 },
-  { id: 5, ticker: 'TSLA', insider_name: 'Director (Demo)', transaction_type: 'Buy', value: 4200000 },
-  { id: 6, ticker: 'META', insider_name: 'CFO (Demo)', transaction_type: 'Sell', value: 7800000 },
-  { id: 7, ticker: 'AMZN', insider_name: 'Officer (Demo)', transaction_type: 'Buy', value: 1900000 },
-  { id: 8, ticker: 'AMD', insider_name: 'CEO (Demo)', transaction_type: 'Buy', value: 3100000 },
+  { id: 1, ticker: 'NVDA', insider_name: getCEOName('NVDA'), transaction_type: 'Buy', value: 8200000 },
+  { id: 2, ticker: 'AAPL', insider_name: getCEOName('AAPL'), transaction_type: 'Buy', value: 3400000 },
+  { id: 3, ticker: 'MSFT', insider_name: getCEOName('MSFT'), transaction_type: 'Buy', value: 2100000 },
+  { id: 4, ticker: 'GOOGL', insider_name: getCEOName('GOOGL'), transaction_type: 'Sell', value: 5600000 },
+  { id: 5, ticker: 'TSLA', insider_name: getCEOName('TSLA'), transaction_type: 'Buy', value: 4200000 },
+  { id: 6, ticker: 'META', insider_name: getCEOName('META'), transaction_type: 'Sell', value: 7800000 },
+  { id: 7, ticker: 'AMZN', insider_name: getCEOName('AMZN'), transaction_type: 'Buy', value: 1900000 },
+  { id: 8, ticker: 'AMD', insider_name: getCEOName('AMD'), transaction_type: 'Buy', value: 3100000 },
 ];
 
 const LiveTicker = () => {

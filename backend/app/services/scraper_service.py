@@ -59,14 +59,13 @@ class ScraperService:
         company_ticker: Optional[str] = ticker
 
         # Try to find company in DB
-        company_query = None
+        company = None
         if ticker:
             company_query = select(Company).where(Company.ticker == ticker.upper())
+            result = await db.execute(company_query)
+            company = result.scalar_one_or_none()
         elif cik:
             company_query = select(Company).where(Company.cik == cik)
-        
-        company = None
-        if company_query:
             result = await db.execute(company_query)
             company = result.scalar_one_or_none()
         

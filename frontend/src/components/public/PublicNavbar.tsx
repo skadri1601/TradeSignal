@@ -78,7 +78,7 @@ const PublicNavbar = () => {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute top-full left-1/2 -translate-x-1/2 pt-6 w-56"
+                    className="absolute top-full left-0 pt-6 w-56"
                   >
                     <div className="bg-black/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-3 shadow-xl overflow-hidden">
                       <div className="flex flex-col gap-1">

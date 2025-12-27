@@ -28,7 +28,7 @@ services:
   - type: cron
     runtime: python
     name: tradesignal-scrape-insider
-    repo: https://github.com/YOUR_USERNAME/TradeSignal
+    repo: https://github.com/skadri1601/TradeSignal
     branch: main
     rootDir: backend
     buildCommand: pip install -r requirements.txt
@@ -46,7 +46,7 @@ services:
   - type: cron
     runtime: python
     name: tradesignal-scrape-congressional
-    repo: https://github.com/YOUR_USERNAME/TradeSignal
+    repo: https://github.com/skadri1601/TradeSignal
     branch: main
     rootDir: backend
     buildCommand: pip install -r requirements.txt
@@ -64,7 +64,7 @@ services:
   - type: cron
     runtime: python
     name: tradesignal-fetch-news
-    repo: https://github.com/YOUR_USERNAME/TradeSignal
+    repo: https://github.com/skadri1601/TradeSignal
     branch: main
     rootDir: backend
     buildCommand: pip install -r requirements.txt
