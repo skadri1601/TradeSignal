@@ -146,8 +146,6 @@ const DashboardNavbar = () => {
     });
   }
 
-  const isFreeTier = !subscription?.is_active || subscription?.tier === 'free';
-
   return (
     <nav className="fixed top-6 left-0 right-0 z-50 flex justify-center px-4 w-full pointer-events-none">
       <motion.div 
@@ -219,17 +217,6 @@ const DashboardNavbar = () => {
 
         {/* Right: User Cluster */}
         <div className="flex items-center gap-3 ml-auto">
-            {/* Upgrade Button (Visible only for Free Tier and non-admin users) */}
-            {isFreeTier && !isAdminRole && (
-                <Link 
-                    to="/pricing"
-                    className="hidden md:flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white text-xs font-bold px-4 py-2 rounded-full transition-all hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]"
-                >
-                    <Zap className="w-3 h-3 fill-white" />
-                    Upgrade
-                </Link>
-            )}
-
             {/* Notification Bell */}
             <Link to="/alerts" className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-colors relative">
                 <Bell className="w-5 h-5" />
