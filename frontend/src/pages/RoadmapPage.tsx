@@ -7,41 +7,41 @@ const RoadmapPage = () => {
       quarter: "Q1 2025",
       status: "In Progress",
       items: [
-        { title: "Advanced Portfolio Tracking", description: "Track your holdings alongside insider activity", status: "in-progress", votes: 1243 },
-        { title: "Mobile App (iOS & Android)", description: "Native mobile apps with push notifications", status: "in-progress", votes: 2156 },
-        { title: "Options Trading Analysis", description: "Track insider options grants and exercises", status: "in-progress", votes: 892 },
-        { title: "Enhanced LUNA AI Models", description: "Improved prediction accuracy with Gemini 2.5 Pro", status: "planned", votes: 1567 }
+        { title: "Advanced Portfolio Tracking", description: "Track your holdings alongside insider activity", status: "in-progress", votes: 1243, completedDate: undefined as string | undefined },
+        { title: "Mobile App (iOS & Android)", description: "Native mobile apps with push notifications", status: "in-progress", votes: 2156, completedDate: undefined as string | undefined },
+        { title: "Options Trading Analysis", description: "Track insider options grants and exercises", status: "in-progress", votes: 892, completedDate: undefined as string | undefined },
+        { title: "Enhanced LUNA AI Models", description: "Improved prediction accuracy with Gemini 2.5 Pro", status: "planned", votes: 1567, completedDate: undefined as string | undefined }
       ]
     },
     {
       quarter: "Q2 2025",
       status: "Planned",
       items: [
-        { title: "Social Trading Features", description: "Follow top performers and copy their strategies", status: "planned", votes: 1834 },
-        { title: "Screener 2.0", description: "Advanced filtering with 50+ criteria", status: "planned", votes: 1123 },
-        { title: "Real-time WebSocket Alerts", description: "Instant notifications via WebSocket connections", status: "planned", votes: 967 },
-        { title: "International Markets", description: "Expand beyond US to EU and Asia markets", status: "planned", votes: 2045 }
+        { title: "Social Trading Features", description: "Follow top performers and copy their strategies", status: "planned", votes: 1834, completedDate: undefined as string | undefined },
+        { title: "Screener 2.0", description: "Advanced filtering with 50+ criteria", status: "planned", votes: 1123, completedDate: undefined as string | undefined },
+        { title: "Real-time WebSocket Alerts", description: "Instant notifications via WebSocket connections", status: "planned", votes: 967, completedDate: undefined as string | undefined },
+        { title: "International Markets", description: "Expand beyond US to EU and Asia markets", status: "planned", votes: 2045, completedDate: undefined as string | undefined }
       ]
     },
     {
       quarter: "Q3 2025",
       status: "Future",
       items: [
-        { title: "Hedge Fund 13F Tracking", description: "Track quarterly hedge fund holdings and changes", status: "future", votes: 1456 },
-        { title: "Sentiment Analysis", description: "AI-powered news and social media sentiment tracking", status: "future", votes: 1289 },
-        { title: "Custom Dashboards", description: "Build personalized dashboards with drag-and-drop widgets", status: "future", votes: 934 },
-        { title: "Integration Marketplace", description: "Connect with brokers, Discord bots, and trading platforms", status: "future", votes: 1678 }
+        { title: "Hedge Fund 13F Tracking", description: "Track quarterly hedge fund holdings and changes", status: "future", votes: 1456, completedDate: undefined as string | undefined },
+        { title: "Sentiment Analysis", description: "AI-powered news and social media sentiment tracking", status: "future", votes: 1289, completedDate: undefined as string | undefined },
+        { title: "Custom Dashboards", description: "Build personalized dashboards with drag-and-drop widgets", status: "future", votes: 934, completedDate: undefined as string | undefined },
+        { title: "Integration Marketplace", description: "Connect with brokers, Discord bots, and trading platforms", status: "future", votes: 1678, completedDate: undefined as string | undefined }
       ]
     },
     {
       quarter: "Recently Completed",
       status: "Completed",
       items: [
-        { title: "LUNA AI Engine Launch", description: "Unified AI analysis with Gemini 2.5 Pro + Flash", status: "completed", completedDate: "Dec 2024" },
-        { title: "Congressional Trading Dashboard", description: "Real-time tracking of all 535 Congress members", status: "completed", completedDate: "Nov 2024" },
-        { title: "Enterprise API v1", description: "RESTful API with 2,000 req/hour rate limits", status: "completed", completedDate: "Oct 2024" },
-        { title: "Discord Alerts Integration", description: "Send trade alerts directly to Discord channels", status: "completed", completedDate: "Sep 2024" },
-        { title: "Advanced Filters & Search", description: "Filter by 20+ criteria including transaction type, amount, date", status: "completed", completedDate: "Aug 2024" }
+        { title: "LUNA AI Engine Launch", description: "Unified AI analysis with Gemini 2.5 Pro + Flash", status: "completed", votes: undefined as number | undefined, completedDate: "Dec 2024" },
+        { title: "Congressional Trading Dashboard", description: "Real-time tracking of all 535 Congress members", status: "completed", votes: undefined as number | undefined, completedDate: "Nov 2024" },
+        { title: "Enterprise API v1", description: "RESTful API with 2,000 req/hour rate limits", status: "completed", votes: undefined as number | undefined, completedDate: "Oct 2024" },
+        { title: "Discord Alerts Integration", description: "Send trade alerts directly to Discord channels", status: "completed", votes: undefined as number | undefined, completedDate: "Sep 2024" },
+        { title: "Advanced Filters & Search", description: "Filter by 20+ criteria including transaction type, amount, date", status: "completed", votes: undefined as number | undefined, completedDate: "Aug 2024" }
       ]
     }
   ];
