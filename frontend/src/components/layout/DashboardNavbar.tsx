@@ -23,8 +23,8 @@ import {
   Settings
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { getSubscription, getUsageStats } from '../../api/billing';
-import type { SubscriptionResponse, UsageStats } from '../../api/billing';
+import { getUsageStats } from '../../api/billing';
+import type { UsageStats } from '../../api/billing';
 
 const DashboardNavbar = () => {
   const { user, logout } = useAuth();
@@ -36,7 +36,6 @@ const DashboardNavbar = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   
   // Data States
-  const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null);
   const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
   
   const profileRef = useRef<HTMLDivElement>(null);
@@ -60,11 +59,7 @@ const DashboardNavbar = () => {
     const fetchData = async () => {
       if (user && !isAdminRole) {
         try {
-          const [sub, stats] = await Promise.all([
-            getSubscription(),
-            getUsageStats().catch(() => null)
-          ]);
-          setSubscription(sub);
+          const stats = await getUsageStats().catch(() => null);
           setUsageStats(stats);
         } catch (error) {
            console.error("Failed to fetch dashboard stats");
