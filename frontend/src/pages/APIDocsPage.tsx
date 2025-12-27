@@ -1,7 +1,8 @@
-import { Code, Terminal, Key, Zap, Lock, BookOpen, ExternalLink, Copy, Check } from 'lucide-react';
+import { Code, Terminal, Key, Zap, Lock, BookOpen, ExternalLink, Copy, Check, Rocket } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 
+// PORTFOLIO MODE: API access marked as future enhancement
 const APIDocsPage = () => {
   const [copiedEndpoint, setCopiedEndpoint] = useState<string | null>(null);
 
@@ -61,8 +62,28 @@ const APIDocsPage = () => {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
+      {/* Future Enhancement Banner */}
+      <section className="pt-28 px-4 bg-gradient-to-b from-[#0f0f1a] to-[#0a0a0a]">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-6 mb-8">
+            <div className="flex items-start gap-4">
+              <div className="bg-amber-500/20 p-3 rounded-xl">
+                <Rocket className="w-6 h-6 text-amber-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-amber-300 mb-2">Future Enhancement</h3>
+                <p className="text-amber-200/70 text-sm">
+                  API access and API keys are planned for future development. This documentation previews
+                  the API structure that will be available. All features are currently free for portfolio showcase.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Hero Section */}
-      <section className="pt-32 pb-16 px-4 bg-gradient-to-b from-[#0f0f1a] to-[#0a0a0a]">
+      <section className="pb-16 px-4 bg-gradient-to-b from-[#0f0f1a] to-[#0a0a0a]">
         <div className="max-w-7xl mx-auto">
           <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-full px-4 py-2 mb-6">
             <Code className="w-4 h-4 text-green-400" />
@@ -89,13 +110,12 @@ const APIDocsPage = () => {
               Interactive API Docs
               <ExternalLink className="w-4 h-4" />
             </a>
-            <Link
-              to="/pricing"
-              className="inline-flex items-center gap-2 bg-white/5 border border-white/10 text-white px-6 py-3 rounded-full font-bold hover:bg-white/10 transition-all"
+            <div
+              className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 text-amber-300 px-6 py-3 rounded-full font-bold cursor-default"
             >
               <Key className="w-5 h-5" />
-              Get API Key
-            </Link>
+              API Keys Coming Soon
+            </div>
           </div>
         </div>
       </section>
@@ -105,13 +125,13 @@ const APIDocsPage = () => {
         <div className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-8">Quick Start</h2>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="bg-[#0f0f1a] border border-white/10 rounded-2xl p-6">
-              <div className="bg-purple-500/10 p-3 rounded-xl w-fit mb-4">
-                <Key className="w-6 h-6 text-purple-400" />
+            <div className="bg-[#0f0f1a] border border-amber-500/30 rounded-2xl p-6">
+              <div className="bg-amber-500/10 p-3 rounded-xl w-fit mb-4">
+                <Key className="w-6 h-6 text-amber-400" />
               </div>
-              <h3 className="text-xl font-bold mb-2">1. Get API Key</h3>
+              <h3 className="text-xl font-bold mb-2">1. Get API Key <span className="text-amber-400 text-sm">(Coming Soon)</span></h3>
               <p className="text-gray-400 text-sm">
-                Sign up for a PRO or Enterprise account to access API keys from your dashboard settings.
+                API key generation will be available in a future update. Stay tuned for programmatic access.
               </p>
             </div>
             <div className="bg-[#0f0f1a] border border-white/10 rounded-2xl p-6">
@@ -210,7 +230,8 @@ const APIDocsPage = () => {
       {/* Rate Limits */}
       <section className="py-16 px-4">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold mb-8">Rate Limits</h2>
+          <h2 className="text-3xl font-bold mb-4">Rate Limits</h2>
+          <p className="text-amber-400 text-sm mb-8">Planned rate limits for future API access</p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {rateLimit.map((tier, index) => (
               <div key={index} className="bg-[#0f0f1a] border border-white/10 rounded-2xl p-6">
@@ -235,18 +256,18 @@ const APIDocsPage = () => {
       <section className="py-16 px-4 bg-[#0f0f1a]">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-3 mb-6">
-            <Lock className="w-8 h-8 text-purple-400" />
-            <h2 className="text-3xl font-bold">Authentication</h2>
+            <Lock className="w-8 h-8 text-amber-400" />
+            <h2 className="text-3xl font-bold">Authentication <span className="text-amber-400 text-lg">(Coming Soon)</span></h2>
           </div>
-          <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-8">
+          <div className="bg-[#0a0a0a] border border-amber-500/30 rounded-2xl p-8">
             <p className="text-gray-400 mb-6">
-              All API requests require authentication using a Bearer token. Include your API key in the Authorization header:
+              When API access is available, all requests will require authentication using a Bearer token:
             </p>
             <div className="bg-black/40 rounded-xl p-4 font-mono text-sm">
               <code className="text-green-400">Authorization: Bearer YOUR_API_KEY</code>
             </div>
-            <p className="text-gray-500 text-sm mt-4">
-              Get your API key from Settings {'>'} API Access after upgrading to PRO or Enterprise tier.
+            <p className="text-amber-400/70 text-sm mt-4">
+              API key generation will be available in a future update. Currently, all features are accessible via the web interface.
             </p>
           </div>
         </div>
@@ -255,28 +276,30 @@ const APIDocsPage = () => {
       {/* CTA */}
       <section className="py-20 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="bg-[#0f0f1a] border border-purple-500/20 rounded-3xl p-12">
-            <Code className="w-12 h-12 text-purple-400 mx-auto mb-4" />
-            <h2 className="text-3xl font-bold mb-4">Ready to Build?</h2>
+          <div className="bg-[#0f0f1a] border border-amber-500/20 rounded-3xl p-12">
+            <Rocket className="w-12 h-12 text-amber-400 mx-auto mb-4" />
+            <h2 className="text-3xl font-bold mb-4">API Access Coming Soon</h2>
             <p className="text-gray-400 mb-8">
-              Upgrade to PRO or Enterprise to access our full API with real-time insider trading data
+              Programmatic API access with API keys is planned for future development.
+              In the meantime, explore the interactive API docs to see what's available.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                to="/pricing"
-                className="inline-flex items-center justify-center gap-2 bg-white text-black px-8 py-4 rounded-full font-bold hover:bg-gray-200 transition-all"
-              >
-                View Pricing
-              </Link>
               <a
                 href={`${import.meta.env.VITE_API_URL}/docs`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white px-8 py-4 rounded-full font-bold hover:bg-white/10 transition-all"
+                className="inline-flex items-center justify-center gap-2 bg-white text-black px-8 py-4 rounded-full font-bold hover:bg-gray-200 transition-all"
               >
                 <BookOpen className="w-5 h-5" />
-                Explore Full API Docs
+                Explore API Docs
+                <ExternalLink className="w-4 h-4" />
               </a>
+              <Link
+                to="/about"
+                className="inline-flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white px-8 py-4 rounded-full font-bold hover:bg-white/10 transition-all"
+              >
+                Learn More About TradeSignal
+              </Link>
             </div>
           </div>
         </div>
