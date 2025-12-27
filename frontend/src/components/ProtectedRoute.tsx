@@ -1,11 +1,16 @@
 /**
  * Protected Route Component
  * Redirects to login if user is not authenticated
+ *
+ * PORTFOLIO MODE: Tier restrictions bypassed for portfolio showcase
  */
 
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
+
+// PORTFOLIO MODE: Set to true to bypass all tier restrictions
+const PORTFOLIO_MODE = true;
 
 // Define tier hierarchy
 const TIER_LEVELS: Record<string, number> = {
@@ -106,7 +111,8 @@ export function ProtectedRoute({
   }
 
   // Check for subscription tier requirement
-  if (requireTier && user) {
+  // PORTFOLIO MODE: Skip tier checks entirely
+  if (!PORTFOLIO_MODE && requireTier && user) {
     const userTier = user.stripe_subscription_tier || 'free';
     const requiredLevel = TIER_LEVELS[requireTier.toLowerCase()] || 0;
     const userLevel = TIER_LEVELS[userTier.toLowerCase()] || 0;
@@ -119,22 +125,16 @@ export function ProtectedRoute({
               <span className="text-3xl">💎</span>
             </div>
             <h2 className="text-2xl font-bold text-white mb-4">
-              Premium Feature
+              Future Enhancement
             </h2>
             <p className="text-gray-400 mb-6">
-              This feature requires a {requireTier.toUpperCase()} subscription.
-              Please upgrade your plan to access this page.
+              This feature is planned for future development.
+              All features are currently free for portfolio showcase.
             </p>
             <div className="space-y-3">
               <button
-                onClick={() => window.location.href = '/pricing'}
-                className="w-full bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
-              >
-                View Pricing
-              </button>
-              <button
                 onClick={() => window.location.href = '/dashboard'}
-                className="w-full bg-gray-800 text-gray-300 px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors border border-gray-700"
+                className="w-full bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
               >
                 Back to Dashboard
               </button>
