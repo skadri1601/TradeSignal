@@ -35,14 +35,6 @@ const PublicNavbar = () => {
         { name: 'Roadmap', path: '/roadmap' },
       ]
     },
-    {
-      name: 'Company',
-      path: '/company',
-      dropdown: [
-        { name: 'Security', path: '/security' },
-        { name: 'Accessibility', path: '/accessibility' },
-      ]
-    },
   ];
 
   return (

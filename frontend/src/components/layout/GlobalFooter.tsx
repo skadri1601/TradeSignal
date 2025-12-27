@@ -87,14 +87,12 @@ const GlobalFooter = () => {
                </ul>
              </div>
 
-             {/* Legal & Trust */}
+             {/* Legal */}
              <div className="space-y-4">
-               <h4 className="font-bold text-white mb-6">Legal & Trust</h4>
+               <h4 className="font-bold text-white mb-6">Legal</h4>
                <ul className="space-y-3 text-sm text-gray-400">
                  <li><Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
                  <li><Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
-                 <li><Link to="/security" className="hover:text-white transition-colors">Security</Link></li>
-                 <li><Link to="/accessibility" className="hover:text-white transition-colors">Accessibility</Link></li>
                </ul>
              </div>
           </div>

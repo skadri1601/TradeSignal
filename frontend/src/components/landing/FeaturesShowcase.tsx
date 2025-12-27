@@ -18,11 +18,11 @@ const FeaturesShowcase = () => {
     {
       icon: Brain,
       title: "Analyze",
-      description: "LUNA AI - TradeSignal's proprietary intelligence engine",
+      description: "LUNA AI - Intelligence engine powered by Google Gemini",
       details: [
-        "92% prediction accuracy",
+        "AI-powered sentiment analysis",
         "Cluster detection algorithms",
-        "Pattern recognition AI",
+        "Pattern recognition",
         "Conviction scoring system"
       ],
       gradient: "from-blue-500 to-cyan-500"
@@ -57,44 +57,44 @@ const FeaturesShowcase = () => {
       description: "Connect with fellow traders",
       details: [
         "Active trading forum",
-        "Copy trading (Plus tier)",
+        "Copy trading feature",
         "Strategy sharing",
-        "Expert insights"
+        "Community insights"
       ],
       gradient: "from-pink-500 to-rose-500"
     },
     {
       icon: Smartphone,
-      title: "Mobile",
-      description: "Trade on the go (Coming Q1 2025)",
+      title: "Mobile Ready",
+      description: "Fully responsive web experience",
       details: [
-        "Native iOS & Android apps",
-        "Push notifications",
         "Responsive web design",
-        "Offline mode support"
+        "Mobile-optimized interface",
+        "Touch-friendly controls",
+        "Works on any device"
       ],
       gradient: "from-violet-500 to-purple-500"
     },
     {
       icon: Shield,
       title: "Security",
-      description: "Enterprise-grade data protection",
+      description: "Built with security best practices",
       details: [
-        "SOC 2 Type II certified",
-        "AES-256 encryption",
-        "GDPR & CCPA compliant",
-        "24/7 security monitoring"
+        "HTTPS encryption",
+        "Secure authentication (JWT)",
+        "Password hashing (bcrypt)",
+        "Input validation & sanitization"
       ],
       gradient: "from-teal-500 to-cyan-500"
     },
     {
       icon: Zap,
       title: "API Access",
-      description: "Programmatic data integration",
+      description: "Programmatic data integration (Future Enhancement)",
       details: [
         "RESTful API endpoints",
-        "2,000 requests/hour (PRO)",
-        "100% uptime SLA",
+        "FastAPI backend",
+        "Interactive Swagger docs",
         "Comprehensive documentation"
       ],
       gradient: "from-yellow-500 to-orange-500"

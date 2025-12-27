@@ -2,12 +2,12 @@ import { TrendingUp, ArrowRight, Zap, Shield, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const DashboardPreview = () => {
-  // Mock data for dashboard preview
+  // PORTFOLIO MODE: Demo data with generic names (not real people's data)
   const mockTrades = [
-    { ticker: 'NVDA', insider: 'Jensen Huang', type: 'Buy', value: '$8.2M', change: '+12.4%', status: 'High Conviction' },
-    { ticker: 'TSLA', insider: 'Elon Musk', type: 'Buy', value: '$5.1M', change: '+8.7%', status: 'Cluster Detected' },
-    { ticker: 'META', insider: 'Mark Zuckerberg', type: 'Sell', value: '$12.8M', change: '-3.2%', status: 'Normal Pattern' },
-    { ticker: 'AAPL', insider: 'Tim Cook', type: 'Buy', value: '$3.4M', change: '+5.1%', status: 'Cluster Detected' },
+    { ticker: 'NVDA', insider: 'CEO (Demo)', type: 'Buy', value: '$8.2M', change: '+12.4%', status: 'High Conviction' },
+    { ticker: 'TSLA', insider: 'Director (Demo)', type: 'Buy', value: '$5.1M', change: '+8.7%', status: 'Cluster Detected' },
+    { ticker: 'META', insider: 'CFO (Demo)', type: 'Sell', value: '$12.8M', change: '-3.2%', status: 'Normal Pattern' },
+    { ticker: 'AAPL', insider: 'Officer (Demo)', type: 'Buy', value: '$3.4M', change: '+5.1%', status: 'Cluster Detected' },
   ];
 
   return (
@@ -22,7 +22,7 @@ const DashboardPreview = () => {
           <div>
             <div className="inline-flex items-center gap-2 bg-purple-500/10 border border-purple-500/20 rounded-full px-4 py-2 mb-6">
               <BarChart3 className="w-4 h-4 text-purple-400" />
-              <span className="text-sm text-purple-300">Live Dashboard Preview</span>
+              <span className="text-sm text-purple-300">Dashboard Demo</span>
             </div>
 
             <h2 className="text-4xl lg:text-5xl font-bold mb-6 leading-tight">
@@ -79,7 +79,7 @@ const DashboardPreview = () => {
               {/* Header */}
               <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/5">
                 <h3 className="text-lg font-bold text-white">Recent Insider Trades</h3>
-                <span className="text-xs text-gray-500 bg-white/5 px-3 py-1 rounded-full">Last 24 hours</span>
+                <span className="text-xs text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">Demo Data</span>
               </div>
 
               {/* Table */}
@@ -121,7 +121,7 @@ const DashboardPreview = () => {
 
               {/* Footer */}
               <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between">
-                <span className="text-xs text-gray-500">32,000+ trades tracked</span>
+                <span className="text-xs text-gray-500">Real SEC Form 4 data</span>
                 <button className="text-xs text-purple-400 hover:text-purple-300 font-medium flex items-center gap-1 group">
                   View All Trades
                   <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
@@ -129,10 +129,10 @@ const DashboardPreview = () => {
               </div>
             </div>
 
-            {/* Floating Stats Cards */}
+            {/* Floating Stats Cards - PORTFOLIO MODE: Factual info only */}
             <div className="absolute -top-4 -right-4 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-4 shadow-xl border border-green-400/20 max-w-[140px]">
-              <div className="text-2xl font-bold text-white mb-1">92%</div>
-              <div className="text-xs text-green-100">AI Accuracy</div>
+              <div className="text-2xl font-bold text-white mb-1">SEC</div>
+              <div className="text-xs text-green-100">Form 4 Data</div>
             </div>
 
             <div className="absolute -bottom-4 -left-4 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-4 shadow-xl border border-blue-400/20 max-w-[140px]">
@@ -142,24 +142,24 @@ const DashboardPreview = () => {
           </div>
         </div>
 
-        {/* Bottom Trust Bar */}
+        {/* Bottom Trust Bar - PORTFOLIO MODE: Factual stats only */}
         <div className="mt-16 pt-12 border-t border-white/5">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div>
-              <div className="text-3xl font-bold text-purple-400 mb-2">32,000+</div>
-              <div className="text-sm text-gray-500">Insider Trades Tracked</div>
+              <div className="text-3xl font-bold text-purple-400 mb-2">SEC</div>
+              <div className="text-sm text-gray-500">Form 4 Filings</div>
             </div>
             <div>
               <div className="text-3xl font-bold text-blue-400 mb-2">535</div>
-              <div className="text-sm text-gray-500">Congress Members Monitored</div>
+              <div className="text-sm text-gray-500">Congress Members</div>
             </div>
             <div>
-              <div className="text-3xl font-bold text-green-400 mb-2">2 Hours</div>
-              <div className="text-sm text-gray-500">Data Refresh Rate</div>
+              <div className="text-3xl font-bold text-green-400 mb-2">Real-Time</div>
+              <div className="text-sm text-gray-500">Data Updates</div>
             </div>
             <div>
-              <div className="text-3xl font-bold text-orange-400 mb-2">151</div>
-              <div className="text-sm text-gray-500">Companies Covered</div>
+              <div className="text-3xl font-bold text-orange-400 mb-2">Gemini</div>
+              <div className="text-sm text-gray-500">AI Powered</div>
             </div>
           </div>
         </div>

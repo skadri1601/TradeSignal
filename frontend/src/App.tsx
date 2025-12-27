@@ -63,9 +63,7 @@ const AlertsFeature = lazy(() => import('./pages/features/AlertsFeature'));
 const DocumentationPage = lazy(() => import('./pages/DocumentationPage'));
 const APIDocsPage = lazy(() => import('./pages/APIDocsPage'));
 const RoadmapPage = lazy(() => import('./pages/RoadmapPage'));
-const SecurityPage = lazy(() => import('./pages/SecurityPage'));
-// PORTFOLIO MODE: Removed UseCasesPage and TestimonialsPage (business pages)
-const AccessibilityPage = lazy(() => import('./pages/AccessibilityPage'));
+// PORTFOLIO MODE: Removed SecurityPage and AccessibilityPage (contained false claims like SOC 2 certification)
 const PublicNewsPage = lazy(() => import('./pages/public/PublicNewsPage'));
 const PublicSupportPage = lazy(() => import('./pages/public/PublicSupportPage'));
 
@@ -115,8 +113,9 @@ function AppContent() {
           <Route path="/docs" element={<DocumentationPage />} />
           <Route path="/api-docs" element={<APIDocsPage />} />
           <Route path="/roadmap" element={<RoadmapPage />} />
-          <Route path="/security" element={<SecurityPage />} />
-          <Route path="/accessibility" element={<AccessibilityPage />} />
+          {/* PORTFOLIO MODE: Redirect security/accessibility (contained false claims) */}
+          <Route path="/security" element={<Navigate to="/" replace />} />
+          <Route path="/accessibility" element={<Navigate to="/" replace />} />
           <Route path="/public/news" element={<PublicNewsPage />} />
           <Route path="/public/support" element={<PublicSupportPage />} />
 

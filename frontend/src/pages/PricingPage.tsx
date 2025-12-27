@@ -329,18 +329,19 @@ export default function PricingPage() {
               TradeSignal provides real-time insider trading intelligence by tracking SEC Form 4 filings,
               congressional trades, and market-moving transactions. Choose the plan that fits your trading style.
             </p>
+            {/* PORTFOLIO MODE: Factual stats only */}
             <div className="flex flex-wrap justify-center gap-4 text-sm">
               <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full">
                 <span className="text-blue-400">✓</span>
-                <span className="text-gray-300">15M+ Filings Processed</span>
+                <span className="text-gray-300">SEC Form 4 Data</span>
               </div>
               <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full">
                 <span className="text-purple-400">✓</span>
-                <span className="text-gray-300">92% AI Accuracy</span>
+                <span className="text-gray-300">Gemini AI Powered</span>
               </div>
               <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full">
                 <span className="text-green-400">✓</span>
-                <span className="text-gray-300">10K+ Active Traders</span>
+                <span className="text-gray-300">535 Congress Members</span>
               </div>
             </div>
           </section>

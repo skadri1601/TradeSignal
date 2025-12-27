@@ -7,105 +7,60 @@ interface FAQItem {
   category: string;
 }
 
+// PORTFOLIO MODE: Removed billing FAQs, kept platform and data FAQs
 const faqs: FAQItem[] = [
-  // Billing
-  {
-    category: 'Billing & Payments',
-    question: 'How do I upgrade my subscription?',
-    answer: 'You can upgrade your subscription at any time by visiting the Pricing page and selecting a higher tier. Your billing will be prorated for the remainder of your current billing period.',
-  },
-  {
-    category: 'Billing & Payments',
-    question: 'What payment methods do you accept?',
-    answer: 'We accept all major credit cards (Visa, Mastercard, American Express) and debit cards through Stripe, our secure payment processor.',
-  },
-  {
-    category: 'Billing & Payments',
-    question: 'When will I be charged?',
-    answer: 'You will be charged immediately when you subscribe or upgrade. For monthly subscriptions, you will be charged on the same date each month. For annual subscriptions, you will be charged once per year.',
-  },
-  {
-    category: 'Billing & Payments',
-    question: 'Can I change my subscription tier?',
-    answer: 'Yes! You can upgrade or downgrade your subscription at any time. Upgrades take effect immediately with prorated billing. Downgrades take effect at the end of your current billing period.',
-  },
-  {
-    category: 'Billing & Payments',
-    question: 'How do I cancel my subscription?',
-    answer: 'You can cancel your subscription at any time from your Profile page. Your subscription will remain active until the end of your current billing period, and you will continue to have access to all features until then.',
-  },
-  {
-    category: 'Billing & Payments',
-    question: 'Will I get a refund if I cancel?',
-    answer: 'We offer a 30-day money-back guarantee for new subscriptions. If you cancel within 30 days of your initial purchase, you will receive a full refund. After 30 days, refunds are handled on a case-by-case basis.',
-  },
-  {
-    category: 'Billing & Payments',
-    question: 'How do I request a refund?',
-    answer: 'To request a refund, please contact our support team through the Contact Us page or email support@tradesignal.com. Include your order number and reason for the refund request. We typically process refunds within 5-7 business days.',
-  },
-  {
-    category: 'Billing & Payments',
-    question: 'Where can I find my receipts and invoices?',
-    answer: 'You can view and download all your receipts and invoices from the Order History page. Each order includes links to download receipts and invoices in PDF format.',
-  },
-  {
-    category: 'Billing & Payments',
-    question: 'What happens if my payment fails?',
-    answer: 'If your payment fails, we will attempt to charge your card again. You will receive email notifications about failed payments. If payment continues to fail, your subscription may be paused until payment is successful.',
-  },
-  // Features
-  {
-    category: 'Features & Usage',
-    question: 'What are the limits for each tier?',
-    answer: 'Free tier: 5 AI requests/day, 3 alerts, 10 companies tracked, 30 days historical data. Plus tier: 50 AI requests/day, 20 alerts, 50 companies, 1 year historical data. Pro tier: 500 AI requests/day, 100 alerts, unlimited companies, unlimited historical data. Enterprise: Unlimited everything.',
-  },
-  {
-    category: 'Features & Usage',
-    question: 'What happens when I reach my usage limit?',
-    answer: 'When you reach your daily or monthly limit, you will see a notification prompting you to upgrade. You can continue using the service, but certain features may be restricted until you upgrade or your limit resets.',
-  },
-  {
-    category: 'Features & Usage',
-    question: 'Do limits reset daily or monthly?',
-    answer: 'AI request limits reset daily at midnight UTC. Alert limits and company tracking limits are based on your subscription tier and do not reset - they are maximum concurrent limits.',
-  },
   // Platform & Features
   {
     category: 'Platform & Features',
     question: 'What is TradeSignal and who is it for?',
-    answer: 'TradeSignal is a real-time insider trading intelligence platform designed for retail investors, day traders, and financial analysts. We track SEC Form 4 filings, congressional trades (STOCK Act), and institutional flows with LUNA, our advanced AI. Our mission is to level the playing field by giving you the same data institutional investors use to make decisions.',
+    answer: 'TradeSignal is a real-time insider trading intelligence platform designed for retail investors, day traders, and financial analysts. We track SEC Form 4 filings, congressional trades (STOCK Act), and institutional flows with LUNA, our AI engine powered by Google Gemini.',
   },
   {
     category: 'Platform & Features',
     question: 'What makes TradeSignal different from other platforms?',
-    answer: 'Unlike traditional screeners, TradeSignal uses LUNA, our proprietary AI engine built with advanced machine learning architectures. LUNA analyzes sentiment, detects anomalies, and identifies high-conviction patterns that raw data charts miss. We process 15 million+ filings with 92% sentiment accuracy.',
+    answer: 'TradeSignal uses LUNA, an AI engine powered by Google Gemini that analyzes sentiment, detects trading clusters, and identifies high-conviction patterns. The platform combines real SEC data with AI-powered insights in a modern, intuitive interface.',
   },
   {
     category: 'Platform & Features',
     question: 'What is LUNA AI and how does it work?',
-    answer: 'LUNA (Large Understanding Network for Analysis) is our custom-tuned Large Language Model engine. It reads thousands of SEC filings to parse text, context, and footnotes, identifying non-standard transaction codes and sentiment that traditional screeners miss. LUNA assigns "Bullish" or "Bearish" sentiment scores to complex transaction patterns with 92% accuracy.',
+    answer: 'LUNA is our AI analysis engine built on Google Gemini. It reads SEC filings to parse text, context, and footnotes, identifying transaction patterns and sentiment that traditional screeners miss. LUNA assigns "Bullish" or "Bearish" sentiment scores to complex transactions.',
+  },
+  {
+    category: 'Platform & Features',
+    question: 'Is TradeSignal free to use?',
+    answer: 'Yes! TradeSignal is currently free to use as a portfolio showcase project. All features are accessible without any subscription or payment. Subscription tiers are planned for future development.',
   },
   // Data & Technology
   {
     category: 'Data & Technology',
     question: 'Where do you get your insider trading data?',
-    answer: 'Our primary source is the SEC EDGAR database. We ingest Form 4 filings in near real-time directly from the source. For market data (stock prices), we use Finnhub and Alpha Vantage.',
+    answer: 'Our primary source is the SEC EDGAR database. We ingest Form 4 filings in near real-time directly from the source. For market data (stock prices), we use Finnhub and Alpha Vantage APIs.',
   },
   {
     category: 'Data & Technology',
     question: 'Is the data real-time?',
-    answer: 'Yes. Insider trades appear on our platform within minutes of being filed with the SEC. Market price data may have a standard 15-minute delay depending on the exchange and your subscription tier.',
+    answer: 'Yes. Insider trades appear on our platform within minutes of being filed with the SEC. Market price data may have a standard 15-minute delay depending on the data provider.',
   },
   {
     category: 'Data & Technology',
     question: 'How does your AI analysis work?',
-    answer: 'We utilize LUNA, our custom-tuned Large Language Model engine built with proprietary machine learning architectures. LUNA parses the text, context, and footnotes of filings to identify non-standard transaction codes and sentiment that traditional screeners miss.',
+    answer: 'We utilize LUNA, our AI engine powered by Google Gemini. LUNA parses the text, context, and footnotes of SEC filings to identify non-standard transaction codes and sentiment that traditional screeners miss.',
   },
   {
     category: 'Data & Technology',
     question: 'How accurate is the Congressional trading data?',
     answer: 'Congressional data is sourced from STOCK Act disclosures. Please note that by law, representatives have up to 45 days to report a trade, so this data is inherently delayed relative to the transaction date.',
+  },
+  // Future Enhancements
+  {
+    category: 'Future Enhancements',
+    question: 'Will there be subscription tiers in the future?',
+    answer: 'Subscription tiers are planned for future development. Currently, all features are free to access as this is a portfolio showcase project demonstrating full-stack development capabilities.',
+  },
+  {
+    category: 'Future Enhancements',
+    question: 'Will there be API access?',
+    answer: 'Programmatic API access with API keys is planned for future development. You can explore the current API structure in our interactive API documentation at /api-docs.',
   },
 ];
 
@@ -155,7 +110,7 @@ export default function FAQPage() {
             </span>
           </h1>
           <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-8">
-            Find answers to common questions about billing, payments, refunds, and features.
+            Find answers to common questions about TradeSignal's features and technology.
           </p>
           <p className="text-gray-400 max-w-3xl mx-auto text-center">
             TradeSignal provides real-time insider trading intelligence by tracking SEC Form 4 filings,

@@ -2,6 +2,7 @@ import { CheckCircle2, Zap, Shield, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const FinalCTA = () => {
+  // PORTFOLIO MODE: Removed business claims, kept factual benefits
   const benefits = [
     {
       icon: Zap,
@@ -9,7 +10,7 @@ const FinalCTA = () => {
     },
     {
       icon: Shield,
-      text: "14-day money-back guarantee"
+      text: "100% free access"
     },
     {
       icon: Calendar,
@@ -25,10 +26,10 @@ const FinalCTA = () => {
       <div className="max-w-5xl mx-auto relative z-10">
         {/* Main Card */}
         <div className="bg-gradient-to-br from-[#0f0f1a] to-[#1a1a2e] border border-white/10 rounded-3xl p-12 lg:p-16 text-center shadow-2xl">
-          {/* Badge */}
+          {/* Badge - PORTFOLIO MODE: Removed fake user count */}
           <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-full px-4 py-2 mb-6">
             <CheckCircle2 className="w-4 h-4 text-green-400" />
-            <span className="text-sm text-green-300">Join 12,000+ Active Traders</span>
+            <span className="text-sm text-green-300">Free Portfolio Demo</span>
           </div>
 
           {/* Heading */}
@@ -74,40 +75,40 @@ const FinalCTA = () => {
             </Link>
           </div>
 
-          {/* Trust Indicators */}
+          {/* Trust Indicators - PORTFOLIO MODE: Replaced false claims with factual info */}
           <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-gray-500">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-green-400" />
-              <span>SOC 2 Certified</span>
+              <span>Open Source</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-green-400" />
-              <span>GDPR Compliant</span>
+              <span>Real SEC Data</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-green-400" />
-              <span>99.99% Uptime</span>
+              <span>AI-Powered</span>
             </div>
           </div>
         </div>
 
-        {/* Stats Bar Below */}
+        {/* Stats Bar Below - PORTFOLIO MODE: Factual stats only */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-12">
           <div className="text-center">
-            <div className="text-3xl font-bold text-purple-400 mb-2">32K+</div>
-            <div className="text-sm text-gray-500">Trades Tracked</div>
+            <div className="text-3xl font-bold text-purple-400 mb-2">535</div>
+            <div className="text-sm text-gray-500">Congress Members</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-blue-400 mb-2">92%</div>
-            <div className="text-sm text-gray-500">AI Accuracy</div>
+            <div className="text-3xl font-bold text-blue-400 mb-2">SEC</div>
+            <div className="text-sm text-gray-500">Form 4 Data</div>
           </div>
           <div className="text-center">
             <div className="text-3xl font-bold text-green-400 mb-2">&lt;2min</div>
             <div className="text-sm text-gray-500">Alert Speed</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-orange-400 mb-2">12K+</div>
-            <div className="text-sm text-gray-500">Active Users</div>
+            <div className="text-3xl font-bold text-orange-400 mb-2">Gemini</div>
+            <div className="text-sm text-gray-500">AI Powered</div>
           </div>
         </div>
       </div>
