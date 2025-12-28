@@ -1,15 +1,26 @@
 """
 Cache service for managing Redis caching with TTL and invalidation.
+
+NOTE: Redis is now optional. If redis module is not installed or Redis is not configured,
+all cache operations will gracefully return None/False without errors.
 """
 
 import logging
 import json
 from typing import Any, Optional, Dict
 from datetime import timedelta
-import redis.asyncio as aioredis
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+# Try to import redis, but make it optional
+try:
+    import redis.asyncio as aioredis
+    REDIS_AVAILABLE = True
+except ImportError:
+    REDIS_AVAILABLE = False
+    logger.warning("Redis module not installed. Caching will be disabled.")
+    aioredis = None
 
 
 class CacheService:
@@ -21,6 +32,10 @@ class CacheService:
 
     async def connect(self):
         """Connect to Redis."""
+        if not REDIS_AVAILABLE:
+            logger.warning("Redis module not available. Caching disabled.")
+            return
+            
         if not settings.redis_url:
             logger.warning("Redis URL not configured. Caching disabled.")
             return
@@ -39,9 +54,16 @@ class CacheService:
 
     async def disconnect(self):
         """Disconnect from Redis."""
+        if not REDIS_AVAILABLE:
+            return
+            
         if self.redis_client:
-            await self.redis_client.close()
-            self.redis_client = None
+            try:
+                await self.redis_client.close()
+            except Exception as e:
+                logger.warning(f"Error closing Redis connection: {e}")
+            finally:
+                self.redis_client = None
 
     async def get(self, key: str) -> Optional[Any]:
         """Get a value from cache."""
