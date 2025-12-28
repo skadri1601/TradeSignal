@@ -6,7 +6,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { tradesApi } from '../api/trades';
 import { stocksApi } from '../api/stocks';
-import { TrendingUp, TrendingDown, ArrowRight, Clock } from 'lucide-react';
+import { marketDataApi } from '../api/marketData';
+import { TrendingUp, TrendingDown, ArrowRight, Clock, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import CompanyLogo from '../components/CompanyLogo';
 
@@ -48,6 +49,13 @@ export default function DashboardNew() {
     queryKey: ['topMovers', topMoversTickers],
     queryFn: () => stocksApi.getMultipleQuotes(topMoversTickers as string[]),
     enabled: topMoversTickers.length > 0,
+  });
+
+  // Fetch IPO calendar
+  const { data: ipoData, isLoading: loadingIpo } = useQuery({
+    queryKey: ['ipoCalendar'],
+    queryFn: () => marketDataApi.getIpoCalendar(),
+    staleTime: 60 * 60 * 1000, // 1 hour - matches backend cache TTL
   });
 
   // Latest insider activity (replace "news")
@@ -374,6 +382,53 @@ export default function DashboardNew() {
                 ))
               ) : (
                 <div className="text-center py-8 text-gray-500">No stocks available</div>
+              )}
+            </div>
+          </div>
+
+          {/* IPO Calendar */}
+          <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10 p-6 mt-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">IPO Calendar</h2>
+              <Calendar className="w-5 h-5 text-blue-400" />
+            </div>
+
+            <div className="space-y-3">
+              {loadingIpo ? (
+                <div className="text-center py-8 text-gray-500">Loading IPOs...</div>
+              ) : ipoData?.ipos && ipoData.ipos.length > 0 ? (
+                ipoData.ipos.slice(0, 5).map((ipo, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-start justify-between p-3 hover:bg-white/5 rounded-xl transition-colors border border-transparent hover:border-white/5"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-2 mb-1">
+                        {ipo.symbol && (
+                          <span className="font-semibold text-white text-sm">{ipo.symbol}</span>
+                        )}
+                        {ipo.status && (
+                          <span className="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-400">
+                            {ipo.status}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-white font-medium truncate">{ipo.company_name}</p>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400 mt-1">
+                        {ipo.ipo_date && (
+                          <span className="flex items-center">
+                            <Calendar className="w-3 h-3 mr-1" />
+                            {new Date(ipo.ipo_date).toLocaleDateString()}
+                          </span>
+                        )}
+                        {ipo.exchange && <span>{ipo.exchange}</span>}
+                        {ipo.price_range && <span>{ipo.price_range}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">No upcoming IPOs</div>
               )}
             </div>
           </div>
