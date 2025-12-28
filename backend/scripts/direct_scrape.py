@@ -281,7 +281,8 @@ async def direct_scrape(
     sec_client = SECClient(user_agent=settings.sec_user_agent)
     
     # Get companies to scrape
-    async with db_manager.get_session() as db:
+    # Use longer timeout (10s) for scripts to handle busy pooler
+    async with db_manager.get_session(connection_timeout=10.0) as db:
         if ticker:
             result = await db.execute(
                 select(Company).filter(

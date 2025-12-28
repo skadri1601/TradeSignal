@@ -273,7 +273,15 @@ class DatabaseManager:
             logger.error(f"Unexpected error in database session: {e}", exc_info=True)
 
     @asynccontextmanager
-    async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
+    async def get_session(self, connection_timeout: float = 5.0) -> AsyncGenerator[AsyncSession, None]:
+        """
+        Get a database session with optional connection timeout.
+        
+        Args:
+            connection_timeout: Timeout in seconds for initial connection test.
+                              Default 5.0s for API requests (fast failure).
+                              Use 10.0s for scripts that need more patience.
+        """
         session_factory = self.get_session_factory()
         session = None
         try:
@@ -283,12 +291,12 @@ class DatabaseManager:
             try:
                 await asyncio.wait_for(
                     session.execute(text("SELECT 1")),
-                    timeout=5.0  # Fast failure if connection can't be established
+                    timeout=connection_timeout  # Configurable timeout
                 )
             except asyncio.TimeoutError:
                 await session.close()
                 raise RuntimeError(
-                    "Database session creation timed out after 5s. "
+                    f"Database session creation timed out after {connection_timeout}s. "
                     "This may indicate Supabase pooler exhaustion or network issues."
                 )
             yield session
