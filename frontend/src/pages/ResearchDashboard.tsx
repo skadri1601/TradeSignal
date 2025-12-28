@@ -19,7 +19,7 @@ export default function ResearchDashboard() {
     error,
     refetch,
     isFetching,
-  } = useQuery<FullResearchReport>({
+  } = useQuery<FullResearchReport | null>({
     queryKey: ['research', 'full-report', selectedTicker],
     queryFn: () => researchApi.getFullReport(selectedTicker),
     enabled: selectedTicker.length > 0,
