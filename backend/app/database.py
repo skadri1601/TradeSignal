@@ -143,7 +143,7 @@ class DatabaseManager:
             "server_settings": {
                 "application_name": "tradesignal_backend"
             },
-            "timeout": 30,
+            "timeout": 5 if is_supabase else 30,  # Faster failure for Supabase
         }
         
         if is_supabase:
@@ -264,12 +264,13 @@ class DatabaseManager:
             logger.error(
                 f"Database SSL error: {e}\n"
                 "If you're behind a corporate proxy or experiencing certificate chain issues, "
-                "set DISABLE_SSL_VERIFICATION=true in your .env file (development/testing only)."
+                "set DISABLE_SSL_VERIFICATION=true in your .env file (development/testing only).",
+                exc_info=True
             )
         elif isinstance(e, SQLAlchemyError):
-            logger.error(f"Database session error: {e}")
+            logger.error(f"Database session error: {e}", exc_info=True)
         else:
-            logger.error(f"Unexpected error in database session: {e}")
+            logger.error(f"Unexpected error in database session: {e}", exc_info=True)
 
     @asynccontextmanager
     async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
@@ -277,6 +278,19 @@ class DatabaseManager:
         session = None
         try:
             session = session_factory()
+            # Test connection immediately with timeout to fail fast if pooler is exhausted
+            # This prevents hanging for the full connection timeout duration
+            try:
+                await asyncio.wait_for(
+                    session.execute(text("SELECT 1")),
+                    timeout=5.0  # Fast failure if connection can't be established
+                )
+            except asyncio.TimeoutError:
+                await session.close()
+                raise RuntimeError(
+                    "Database session creation timed out after 5s. "
+                    "This may indicate Supabase pooler exhaustion or network issues."
+                )
             yield session
             await session.commit()
         except HTTPException:
@@ -498,7 +512,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             detail="Database service unavailable.",
         )
     except Exception as e:
-        logger.error(f"Unexpected error in get_db: {e}")
+        logger.error(f"Unexpected error in get_db: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database service unavailable.",
