@@ -39,19 +39,10 @@ router = APIRouter(prefix="/api/research", tags=["research"])
 def require_pro_tier(current_user: User = Depends(get_current_active_user)):
     """
     Dependency to require PRO tier or higher for research features.
+
+    PORTFOLIO MODE: All features are free - tier check bypassed.
     """
-    allowed_tiers = ["pro", "enterprise"]
-    if current_user.subscription_tier not in allowed_tiers:
-        raise HTTPException(
-            status_code=402,
-            detail={
-                "error": "Premium feature",
-                "message": "Research features require PRO subscription",
-                "required_tier": "pro",
-                "current_tier": current_user.subscription_tier,
-                "upgrade_url": "/pricing"
-            }
-        )
+    # PORTFOLIO MODE: Skip tier checks - all features are free
     return current_user
 
 
