@@ -42,7 +42,7 @@ class AlertService:
         self.notification_service = NotificationService()
         self.prioritization_service = AlertPrioritizationService(db)
         self.notification_storage_service = NotificationStorageService(db) # Initialize new service
-        self.multi_channel_service = MultiChannelAlertService() # No longer needs db or storage service (uses Celery tasks)
+        self.multi_channel_service = MultiChannelAlertService() # Celery tasks removed - alerts disabled
 
     async def create_alert(self, alert_data: AlertCreate, user_id: int) -> Alert:
         """Create a new alert."""

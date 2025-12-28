@@ -4,9 +4,10 @@ import logging
 from typing import Dict, Any
 from datetime import datetime
 
-from app.config import settings # Import settings
-from app.core.redis_cache import get_cache
+from app.config import settings
 from app.database import db_manager
+
+# NOTE: Redis cache removed - caching now uses Supabase
 from app.services.congressional_client import CongressionalAPIClient
 from app.models.scrape_history import ScrapeHistory # Import ScrapeHistory
 
@@ -16,11 +17,8 @@ router = APIRouter(prefix="/data-health", tags=["data-health"])
 
 REQUIRED_ENV_VARS_CRITICAL = [
     "DATABASE_URL",
-    "REDIS_URL",
     "FINNHUB_API_KEY",
     "GEMINI_API_KEY",
-    "CELERY_BROKER_URL",
-    "CELERY_RESULT_BACKEND",
     "PUSH_VAPID_PRIVATE_KEY",
     "PUSH_VAPID_CLAIMS_EMAIL",
     "STRIPE_SECRET_KEY",
@@ -123,24 +121,11 @@ async def data_health_check() -> Dict[str, Any]:
         overall_status = "degraded"
         logger.error(f"Database health check failed in data_health: {e}")
 
-    # 5. Redis Check (re-using get_cache from health.py)
-    try:
-        cache = get_cache()
-        if cache and cache.enabled():
-            test_key = "data_health:check"
-            cache.set(test_key, {"test": "ok"}, ttl=10)
-            result = cache.get(test_key)
-            if result and result.get("test") == "ok":
-                details["redis"] = {"status": "healthy", "message": "Redis connection OK"}
-            else:
-                details["redis"] = {"status": "degraded", "message": "Redis responding but data inconsistent"}
-                overall_status = "degraded"
-        else:
-            details["redis"] = {"status": "unavailable", "message": "Redis not configured or disabled (using in-memory fallback)"}
-    except Exception as e:
-        details["redis"] = {"status": "unhealthy", "error": str(e)}
-        overall_status = "degraded"
-        logger.error(f"Redis health check failed in data_health: {e}")
+    # Redis has been removed - now using Supabase caching
+    details["cache"] = {
+        "status": "disabled",
+        "message": "Redis removed - using Supabase caching instead"
+    }
 
 
     http_status_code = http_status.HTTP_200_OK if overall_status == "healthy" else http_status.HTTP_503_SERVICE_UNAVAILABLE

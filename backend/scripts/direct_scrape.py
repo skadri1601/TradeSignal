@@ -1,10 +1,11 @@
 """
 Direct SEC Scraper - Scrapes SEC Form 4 filings directly WITHOUT Celery.
 
-This script bypasses the Celery task queue and writes directly to the database.
-Use this when Celery workers are not available (e.g., no Redis connection).
+NOTE: This script is currently DISABLED because Celery tasks have been removed.
+The parse_form4_xml and save_trades_and_insiders functions need to be migrated
+to a standalone service before this script can work again.
 
-Usage:
+Usage (when re-enabled):
     # Scrape last 10 days for all companies
     python scripts/direct_scrape.py --days 10
     
@@ -62,8 +63,12 @@ async def process_single_filing(
     from sqlalchemy import select
     from sqlalchemy.dialects.postgresql import insert
     
-    # Import parsing and saving functions from sec_tasks
-    from app.tasks.sec_tasks import parse_form4_xml, save_trades_and_insiders
+    # NOTE: Celery tasks removed - functions no longer available
+    # TODO: Migrate parse_form4_xml and save_trades_and_insiders to a standalone service
+    raise NotImplementedError(
+        "SEC scraping functions have been moved. "
+        "parse_form4_xml and save_trades_and_insiders need to be migrated to a standalone service."
+    )
     
     accession_number = filing_meta.get("accession_number")
     filing_url = filing_meta.get("filing_url")

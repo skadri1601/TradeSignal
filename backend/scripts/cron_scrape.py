@@ -159,78 +159,17 @@ async def scrape_congressional_trades(days_back: int = 60):
 
 
 async def fetch_market_news():
-    """Fetch market news from Finnhub and cache in Redis."""
-    import httpx
-    from app.config import settings
-    from app.core.redis_cache import get_cache
-    from datetime import timedelta
-
+    """
+    Fetch market news from Finnhub and cache.
+    NOTE: Redis removed - news is now fetched on-demand via news_service.
+    This function is disabled.
+    """
     logger.info("=" * 80)
-    logger.info("Starting Market News Fetch")
-    logger.info("=" * 80)
-
-    finnhub_api_key = getattr(settings, "finnhub_api_key", None)
-    if not finnhub_api_key:
-        logger.error("Finnhub API key not configured!")
-        return {"success": False, "error": "No API key"}
-
-    redis = get_cache()
-    if not redis or not redis.enabled():
-        logger.error("Redis not available - news cannot be cached!")
-        return {"success": False, "error": "Redis not available"}
-
-    base_url = "https://finnhub.io/api/v1"
-    cache_ttl = 21600  # 6 hours
-    results = {"general": 0, "crypto": 0}
-
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        # Fetch general market news
-        try:
-            response = await client.get(
-                f"{base_url}/news",
-                params={"category": "general", "token": finnhub_api_key}
-            )
-            response.raise_for_status()
-            data = response.json()
-
-            # Filter to last 7 days
-            cutoff = int((datetime.now() - timedelta(days=7)).timestamp())
-            filtered = [a for a in data if a.get("datetime", 0) >= cutoff]
-            filtered.sort(key=lambda x: x.get("datetime", 0), reverse=True)
-
-            redis.set("news:general", filtered, ttl=cache_ttl)
-            results["general"] = len(filtered)
-            logger.info(f"Cached {len(filtered)} general news articles")
-        except Exception as e:
-            logger.error(f"Failed to fetch general news: {e}")
-
-        await asyncio.sleep(0.5)  # Rate limiting
-
-        # Fetch crypto news
-        try:
-            response = await client.get(
-                f"{base_url}/news",
-                params={"category": "crypto", "token": finnhub_api_key}
-            )
-            response.raise_for_status()
-            data = response.json()
-
-            cutoff = int((datetime.now() - timedelta(days=7)).timestamp())
-            filtered = [a for a in data if a.get("datetime", 0) >= cutoff]
-            filtered.sort(key=lambda x: x.get("datetime", 0), reverse=True)
-
-            redis.set("news:crypto", filtered, ttl=cache_ttl)
-            results["crypto"] = len(filtered)
-            logger.info(f"Cached {len(filtered)} crypto news articles")
-        except Exception as e:
-            logger.error(f"Failed to fetch crypto news: {e}")
-
-    logger.info("=" * 80)
-    logger.info("Market News Fetch Complete")
-    logger.info(f"General: {results['general']}, Crypto: {results['crypto']}")
+    logger.info("Market News Fetch - DISABLED (Redis removed)")
+    logger.info("News is now fetched on-demand via the news API endpoint.")
     logger.info("=" * 80)
 
-    return {"success": True, **results}
+    return {"success": True, "message": "Skipped - using on-demand fetching"}
 
 
 async def main(scrape_type: str, days: int = None):

@@ -2,7 +2,7 @@
 Company Enrichment Service for TradeSignal.
 
 Automatically enriches company and insider data when profiles are viewed.
-Uses Celery tasks to fetch data from SEC EDGAR API and Yahoo Finance asynchronously.
+NOTE: Celery tasks removed - enrichment now logs when data is stale.
 """
 import logging
 from typing import Optional, Dict, Any
@@ -13,7 +13,6 @@ from datetime import datetime
 from app.models.company import Company
 from app.models.insider import Insider
 from app.config import settings
-from app.tasks.enrichment_tasks import enrich_company_profile_task
 
 logger = logging.getLogger(__name__)
 
@@ -67,13 +66,11 @@ class CompanyEnrichmentService:
             )
             return company
 
-        logger.info(f"Enqueuing company enrichment task for {company.ticker} (stale: {is_stale})")
+        # NOTE: Celery tasks removed - just log that enrichment is needed
+        # Future: Could implement on-demand enrichment via yfinance here
+        logger.info(f"Company {company.ticker} needs enrichment (stale: {is_stale}) - background tasks disabled")
 
-        # Enqueue the Celery task
-        enrich_company_profile_task.delay(company_id)
-
-        # Return the current company object immediately
-        # The frontend will eventually see updated data via polling or subsequent requests
+        # Return the current company object
         return company
 
     async def enrich_insider(self, insider_id: int) -> Optional[Insider]:

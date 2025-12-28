@@ -33,7 +33,7 @@ class ScrapeResponse(BaseModel):
 
     success: bool = Field(..., description="Whether scrape initiation succeeded")
     message: str = Field(..., description="Additional message")
-    task_id: Optional[str] = Field(None, description="Celery task ID if scraping was initiated")
+    task_id: Optional[str] = Field(None, description="Task ID (deprecated - Celery removed)")
 
 
 @router.post("/scrape", response_model=ScrapeResponse, status_code=202) # Use 202 Accepted for async operation

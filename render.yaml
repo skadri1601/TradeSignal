@@ -1,9 +1,4 @@
-databases:
-  # Redis Cache for news, sessions, and rate limiting
-  - name: tradesignal-redis
-    plan: free  # or starter for 100MB
-    region: oregon  # Match your web service region
-    ipAllowList: []  # Internal access only
+# NOTE: Redis database removed - caching now uses Supabase PostgreSQL
 
 services:
   # Main API Web Service
@@ -18,10 +13,6 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
-      - key: REDIS_URL
-        fromDatabase:
-          name: tradesignal-redis
-          property: connectionString
     healthCheckPath: /health
 
   # Cron Job: Scrape Insider Trades (every 6 hours)
@@ -37,10 +28,6 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
-      - key: REDIS_URL
-        fromDatabase:
-          name: tradesignal-redis
-          property: connectionString
 
   # Cron Job: Scrape Congressional Trades (every 12 hours)
   - type: cron
@@ -55,12 +42,10 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
-      - key: REDIS_URL
-        fromDatabase:
-          name: tradesignal-redis
-          property: connectionString
 
   # Cron Job: Fetch Market News (every 2 hours)
+  # NOTE: News fetching is now on-demand via API endpoints, but keeping this cron
+  # for backwards compatibility (it will skip and return immediately)
   - type: cron
     runtime: python
     name: tradesignal-fetch-news
@@ -73,7 +58,3 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
-      - key: REDIS_URL
-        fromDatabase:
-          name: tradesignal-redis
-          property: connectionString

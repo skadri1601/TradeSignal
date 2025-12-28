@@ -3,6 +3,7 @@ Congressional Trade API Client.
 
 Fetches congressional stock trading data from Finnhub API with fallback sources.
 Implements rate limiting, caching, and error handling.
+NOTE: Redis removed - using in-memory caching.
 """
 
 import asyncio
@@ -11,11 +12,14 @@ from datetime import datetime, timedelta, date
 from typing import List, Dict, Optional, Any
 from decimal import Decimal
 import httpx
+import time
 
 from app.config import settings
-from app.core.redis_cache import get_cache
 
 logger = logging.getLogger(__name__)
+
+# In-memory cache for congressional data (Redis removed)
+_congressional_cache: Dict[str, tuple[Any, float]] = {}
 
 
 class CongressionalAPIClient:
@@ -34,7 +38,7 @@ class CongressionalAPIClient:
             settings.congressional_cache_ttl_hours * 3600
         )  # convert to seconds
         self.base_url = "https://finnhub.io/api/v1"
-        self.redis = get_cache()
+        # Redis removed - using in-memory cache
         self._request_times: List[float] = []
         self._lock = asyncio.Lock()
 
@@ -335,21 +339,26 @@ class CongressionalAPIClient:
         return all_trades
 
     async def _get_from_cache(self, key: str) -> Optional[List[Dict[str, Any]]]:
-        """Retrieve data from Redis cache."""
+        """Retrieve data from in-memory cache."""
         try:
-            if self.redis:
-                cached_data = self.redis.get(key)
-                if cached_data:
-                    return cached_data  # RedisCache.get() already returns parsed dict
+            if key in _congressional_cache:
+                cached_data, cached_time = _congressional_cache[key]
+                age_seconds = time.time() - cached_time
+                if age_seconds < self.cache_ttl:
+                    logger.debug(f"Cache hit for {key} (age: {age_seconds:.0f}s)")
+                    return cached_data
+                else:
+                    # Expired
+                    del _congressional_cache[key]
         except Exception as e:
             logger.warning(f"Cache retrieval error: {e}")
         return None
 
     async def _save_to_cache(self, key: str, data: List[Dict[str, Any]]) -> None:
-        """Save data to Redis cache."""
+        """Save data to in-memory cache."""
         try:
-            if self.redis:
-                self.redis.set(key, data, ttl=self.cache_ttl)
+            _congressional_cache[key] = (data, time.time())
+            logger.debug(f"Cached {len(data)} items for key {key}")
         except Exception as e:
             logger.warning(f"Cache save error: {e}")
 

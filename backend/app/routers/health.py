@@ -13,8 +13,9 @@ import asyncio
 from typing import Dict, Any
 
 from app.database import db_manager
-from app.core.redis_cache import get_cache
 from app.config import settings
+
+# NOTE: Redis cache removed - caching now uses Supabase
 
 logger = logging.getLogger(__name__)
 
@@ -81,36 +82,11 @@ async def detailed_health_check() -> tuple[Dict[str, Any], int]:
         health["status"] = "degraded"
         logger.error(f"Database health check failed: {e}")
 
-    # Check Redis
-    try:
-        cache = get_cache()
-        if cache and cache.enabled():
-            # Try a simple operation
-            test_key = "health:check"
-            cache.set(test_key, {"test": "ok"}, ttl=10)
-            result = cache.get(test_key)
-
-            if result and result.get("test") == "ok":
-                health["services"]["redis"] = {
-                    "status": "healthy",
-                    "message": "Redis connection OK",
-                }
-            else:
-                health["services"]["redis"] = {
-                    "status": "degraded",
-                    "message": "Redis responding but data inconsistent",
-                }
-                health["status"] = "degraded"
-        else:
-            health["services"]["redis"] = {
-                "status": "unavailable",
-                "message": "Redis not configured or disabled (using in-memory fallback)",
-            }
-            # Not critical - we have fallback
-    except Exception as e:
-        health["services"]["redis"] = {"status": "unhealthy", "error": str(e)}
-        health["status"] = "degraded"
-        logger.error(f"Redis health check failed: {e}")
+    # Redis has been removed - now using Supabase caching
+    health["services"]["cache"] = {
+        "status": "disabled",
+        "message": "Redis removed - using Supabase caching instead",
+    }
 
     # Check data sources (import here to avoid circular dependencies)
     try:

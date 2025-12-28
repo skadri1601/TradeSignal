@@ -2,22 +2,72 @@
 Email Service for sending transactional emails.
 
 Supports multiple email providers:
-- SendGrid (default)
-- Resend
+- Resend (default)
+- SendGrid
 - Brevo (formerly Sendinblue)
 
-All emails are sent asynchronously via Celery tasks.
+Emails are sent directly (synchronously) - Celery tasks removed.
 """
 
 import logging
 import os
 from typing import Optional, Dict, Any
 from datetime import datetime
+import httpx
 
 from app.config import settings
-from app.tasks.alert_tasks import send_email_notification_task
 
 logger = logging.getLogger(__name__)
+
+
+async def _send_email_direct(
+    email_to: str,
+    subject: str,
+    html_body: str,
+) -> Dict[str, Any]:
+    """
+    Send email directly using configured provider (synchronous, no Celery).
+    
+    Returns:
+        Dict with status and details
+    """
+    if not settings.email_api_key or not settings.email_from:
+        logger.warning("Email configuration missing. Cannot send email.")
+        return {"status": "skipped", "error": "Email configuration missing"}
+    
+    email_service = getattr(settings, 'email_service', 'resend')
+    
+    try:
+        if email_service == 'resend':
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    "https://api.resend.com/emails",
+                    headers={
+                        "Authorization": f"Bearer {settings.email_api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "from": settings.email_from,
+                        "to": [email_to],
+                        "subject": subject,
+                        "html": html_body,
+                    },
+                    timeout=10.0,
+                )
+                if response.status_code == 200:
+                    logger.info(f"Email sent successfully to {email_to}")
+                    return {"status": "sent", "provider": "resend"}
+                else:
+                    logger.error(f"Resend error: {response.status_code} - {response.text}")
+                    return {"status": "error", "error": response.text}
+        else:
+            # Other providers can be added here
+            logger.warning(f"Email provider '{email_service}' not implemented for direct send")
+            return {"status": "skipped", "error": f"Provider {email_service} not implemented"}
+            
+    except Exception as e:
+        logger.error(f"Failed to send email: {e}", exc_info=True)
+        return {"status": "error", "error": str(e)}
 
 
 class EmailService:
@@ -181,24 +231,18 @@ class EmailService:
         subject = "Reset Your TradeSignal Password"
         html_body = EmailService._build_password_reset_html(reset_url, expires_hours)
 
-        # Enqueue email task
+        # Send email directly (no Celery)
         try:
-            task = send_email_notification_task.delay(
+            result = await _send_email_direct(
                 email_to=email,
                 subject=subject,
                 html_body=html_body,
-                alert_name="Password Reset",
-                trade_id=None,
             )
-            logger.info(
-                f"Password reset email task enqueued for {email} (task_id: {task.id})"
-            )
-            return {
-                "status": "enqueued",
-                "task_id": task.id,
-            }
+            if result.get("status") == "sent":
+                logger.info(f"Password reset email sent to {email}")
+            return result
         except Exception as e:
-            logger.error(f"Failed to enqueue password reset email: {e}", exc_info=True)
+            logger.error(f"Failed to send password reset email: {e}", exc_info=True)
             return {
                 "status": "error",
                 "error": str(e),
@@ -376,21 +420,18 @@ class EmailService:
 </html>
         """
 
+        # Send email directly (no Celery)
         try:
-            task = send_email_notification_task.delay(
+            result = await _send_email_direct(
                 email_to=email,
                 subject=subject,
                 html_body=html_body,
-                alert_name="Welcome Email",
-                trade_id=None,
             )
-            logger.info(f"Welcome email task enqueued for {email} (task_id: {task.id})")
-            return {
-                "status": "enqueued",
-                "task_id": task.id,
-            }
+            if result.get("status") == "sent":
+                logger.info(f"Welcome email sent to {email}")
+            return result
         except Exception as e:
-            logger.error(f"Failed to enqueue welcome email: {e}", exc_info=True)
+            logger.error(f"Failed to send welcome email: {e}", exc_info=True)
             return {
                 "status": "error",
                 "error": str(e),

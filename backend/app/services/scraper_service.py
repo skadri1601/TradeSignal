@@ -2,6 +2,7 @@
 SEC Form 4 Scraper Service
 
 Orchestrates fetching Form 4 filings from SEC and saving to database.
+NOTE: Celery tasks removed - scraping functionality disabled.
 """
 
 import logging
@@ -12,7 +13,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.company import Company
-from app.tasks.sec_tasks import scrape_recent_form4_filings, update_cik_for_company_task
 
 logger = logging.getLogger(__name__)
 
@@ -80,36 +80,21 @@ class ScraperService:
             # For new companies, create a placeholder in DB if needed (or let SEC tasks handle it)
             # For now, we'll proceed and let the SEC tasks resolve company info.
         
-        # If CIK is missing, enqueue a task to update it
+        # NOTE: Celery tasks removed - scraping functionality disabled
         if ticker and not current_cik:
-            logger.info(f"CIK missing for ticker {ticker}. Enqueuing CIK lookup task.")
-            # This task will update the company in DB if found/created
-            update_cik_for_company_task.delay(company_id=company_id, ticker=ticker)
-            # We can't wait for the CIK, so we'll proceed with known info and let the scraping task handle CIK resolution if needed.
-            # For immediate scraping, CIK is preferred. If not available, we rely on the scheduled task.
-            # For now, we'll assume a CIK is available or will be found by scheduled tasks.
-            # For an on-demand scrape, it's better to tell the user if CIK isn't immediately available.
-            raise ValueError("CIK not found for ticker. Please try again later or wait for background CIK update.")
+            logger.warning(f"CIK missing for ticker {ticker}. Background tasks disabled.")
+            raise ValueError("CIK not found for ticker. Background scraping tasks are currently disabled.")
 
         if not current_cik:
              raise ValueError("CIK is required for scraping.")
 
-        # Enqueue the actual scraping task
-        # We must pass enough info to the Celery task without relying on DB session
-        company_info = {
-            "company_id": company_id,
-            "cik": current_cik,
-            "ticker": company_ticker or ticker,
-            "name": company_name or "Unknown Company" # Fallback name
-        }
-        task = scrape_recent_form4_filings.delay(company_info)
-        
-        logger.info(f"Enqueued Form 4 scraping task for {company_ticker or current_cik}. Task ID: {task.id}")
+        # NOTE: Celery tasks removed - return disabled message
+        logger.warning(f"Scraping requested for {company_ticker or current_cik} but background tasks are disabled.")
 
         return {
-            "success": True,
-            "task_id": task.id,
-            "message": f"Scraping initiated for {company_ticker or current_cik}. Check task status with ID: {task.id}",
+            "success": False,
+            "task_id": None,
+            "message": f"Background scraping tasks are currently disabled. Data for {company_ticker or current_cik} will be available via scheduled jobs.",
         }
 
     # All helper methods for processing filings, ensuring company/insider, creating trades,

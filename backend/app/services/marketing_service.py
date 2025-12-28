@@ -18,10 +18,11 @@ from app.models.marketing_campaign import (
     CampaignStatus,
 )
 from app.models.user import User
-from app.tasks.marketing_tasks import send_campaign_email_task
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+# NOTE: Celery tasks removed - marketing emails disabled
 
 
 class MarketingService:
@@ -165,16 +166,8 @@ class MarketingService:
             logger.warning(f"User {user_id} has no email address")
             return campaign_email
 
-        # Enqueue email sending task
-        send_campaign_email_task.delay(
-            email_to=user.email,
-            subject=subject,
-            html_body=html_body,
-            campaign_id=campaign_id,
-            campaign_email_id=campaign_email.id,
-        )
-
-        logger.info(f"Enqueued campaign email for user {user_id} in campaign {campaign_id}")
+        # NOTE: Celery tasks removed - marketing emails disabled
+        logger.info(f"Campaign email requested (Celery disabled) for user {user_id} in campaign {campaign_id}")
         return campaign_email
 
     async def track_conversion(

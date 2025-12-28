@@ -22,8 +22,9 @@ from app.models import Company
 from app.config import settings
 from alpha_vantage.timeseries import TimeSeries
 import finnhub
-from app.core.redis_cache import get_cache
 from prometheus_client import Counter, Histogram
+
+# NOTE: Redis cache removed - using in-memory cache only
 
 logger = logging.getLogger(__name__)
 
@@ -398,34 +399,7 @@ class StockPriceService:
         Returns:
             Dict with price data including staleness indicators or None if all sources failed
         """
-        # Check cache first - prefer Redis, fall back to in-memory cache
-        cache = get_cache()
-        if use_cache and cache and cache.enabled():
-            cache_key = f"quote:{ticker}"
-            cached = cache.get(cache_key)
-            if cached:
-                # Calculate age if cached_at_ts present, else 0
-                cached_ts = cached.get("cached_at_ts")
-                age_seconds = int(time.time() - cached_ts) if cached_ts else 0
-                logger.debug(
-                    f"Using Redis cached data for {ticker} (age: {age_seconds}s)"
-                )
-                cached["is_stale"] = age_seconds > 60
-                cached["data_age_seconds"] = age_seconds
-                cached["last_updated"] = (
-                    datetime.fromtimestamp(cached_ts).isoformat()
-                    if cached_ts
-                    else cached.get("updated_at")
-                )
-                cached["cached"] = True
-                cached["data_source"] = cached.get("data_source", "yahoo_finance")
-                try:
-                    CACHE_HIT_COUNTER.labels(cache_type="redis").inc()
-                except Exception:
-                    pass
-                return cached
-
-        # Fallback: check local in-memory cache
+        # Check in-memory cache (Redis removed)
         if use_cache and ticker in _quote_cache:
             cached_data, cached_time = _quote_cache[ticker]
             age_seconds = int(time.time() - cached_time)
@@ -540,18 +514,8 @@ class StockPriceService:
 
         # Cache the result if we got data
         if quote:
-            # store in in-memory cache
+            # store in in-memory cache (Redis removed)
             _quote_cache[ticker] = (quote, time.time())
-
-            # store in Redis for shared cache (include timestamp)
-            try:
-                cache = get_cache()
-                if cache and cache.enabled():
-                    cached_payload = dict(quote)
-                    cached_payload["cached_at_ts"] = time.time()
-                    cache.set(f"quote:{ticker}", cached_payload, ttl=_cache_ttl)
-            except Exception:
-                pass
 
         return quote
 
@@ -570,54 +534,23 @@ class StockPriceService:
             Dict mapping ticker to quote data
         """
         results = {}
-
-        # Try Redis batch lookup first for speed
-        cache = get_cache()
-        cache_keys = [f"quote:{ticker}" for ticker in tickers]
-        cached_values = None
-
-        if cache and cache.enabled():
-            try:
-                cached_values = cache.mget(cache_keys)
-            except Exception:
-                cached_values = None
-
         tickers_to_fetch: List[str] = []
 
-        if cached_values:
-            for i, ticker in enumerate(tickers):
-                cached = cached_values[i]
-                if cached:
-                    # compute age
-                    cached_ts = cached.get("cached_at_ts")
-                    age_seconds = int(time.time() - cached_ts) if cached_ts else 0
-                    cached["is_stale"] = age_seconds > 60
-                    cached["data_age_seconds"] = age_seconds
-                    cached["last_updated"] = (
-                        datetime.fromtimestamp(cached_ts).isoformat()
-                        if cached_ts
-                        else cached.get("updated_at")
-                    )
-                    cached["cached"] = True
-                    results[ticker] = cached
-                else:
-                    tickers_to_fetch.append(ticker)
-        else:
-            # No Redis or mget failed - fall back to in-memory cache check
-            for ticker in tickers:
-                if ticker in _quote_cache:
-                    cached_data, cached_time = _quote_cache[ticker]
-                    age_seconds = int(time.time() - cached_time)
-                    if age_seconds < _cache_ttl:
-                        cached_data["is_stale"] = age_seconds > 60
-                        cached_data["data_age_seconds"] = age_seconds
-                        cached_data["last_updated"] = datetime.fromtimestamp(
-                            cached_time
-                        ).isoformat()
-                        cached_data["cached"] = True
-                        results[ticker] = cached_data
-                        continue
-                tickers_to_fetch.append(ticker)
+        # Check in-memory cache (Redis removed)
+        for ticker in tickers:
+            if ticker in _quote_cache:
+                cached_data, cached_time = _quote_cache[ticker]
+                age_seconds = int(time.time() - cached_time)
+                if age_seconds < _cache_ttl:
+                    cached_data["is_stale"] = age_seconds > 60
+                    cached_data["data_age_seconds"] = age_seconds
+                    cached_data["last_updated"] = datetime.fromtimestamp(
+                        cached_time
+                    ).isoformat()
+                    cached_data["cached"] = True
+                    results[ticker] = cached_data
+                    continue
+            tickers_to_fetch.append(ticker)
 
         logger.info(
             f"Cache hit: {len(results)}/{len(tickers)}, fetching: {len(tickers_to_fetch)}"
@@ -636,19 +569,7 @@ class StockPriceService:
                     try:
                         quote = future.result()
                         results[ticker] = quote
-
-                        # Cache result in Redis if available
-                        try:
-                            if quote:
-                                cache = get_cache()
-                                if cache and cache.enabled():
-                                    payload = dict(quote)
-                                    payload["cached_at_ts"] = time.time()
-                                    cache.set(
-                                        f"quote:{ticker}", payload, ttl=_cache_ttl
-                                    )
-                        except Exception:
-                            pass
+                        # In-memory caching is handled in get_stock_quote
 
                     except Exception as e:
                         logger.error(f"Error getting quote for {ticker}: {e}")

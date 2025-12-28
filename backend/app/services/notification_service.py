@@ -1,8 +1,8 @@
 """
 Notification Service for TradeSignal.
 
-Enqueues tasks for sending notifications via webhooks (Slack, Discord, custom endpoints),
-email, and web push.
+Handles notifications via webhooks, email, and web push.
+NOTE: Celery tasks removed - notifications are disabled until direct implementation.
 """
 
 import logging
@@ -11,17 +11,8 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 from app.models.trade import Trade
 from app.models.alert import Alert
-from app.models.push_subscription import PushSubscription # For type hinting
+from app.models.push_subscription import PushSubscription
 from app.config import settings
-from app.tasks.alert_tasks import (
-    send_webhook_notification_task,
-    send_test_webhook_notification_task,
-    send_email_notification_task,
-    send_subscription_confirmation_email_task,
-    send_test_email_notification_task,
-    send_push_notification_task,
-    send_test_push_notification_task,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -49,15 +40,9 @@ class NotificationService:
         trade_data = trade.to_dict() # Assuming a .to_dict() method or manual serialization
         alert_name = alert.name # Assuming alert.name exists
         
-        task = send_webhook_notification_task.delay(
-            webhook_url=webhook_url,
-            alert_name=alert_name,
-            trade_data=trade_data,
-            company_name=company_name,
-            insider_name=insider_name,
-        )
-        logger.info(f"Webhook notification task enqueued with ID: {task.id}")
-        return {"status": "enqueued", "task_id": task.id}
+        # NOTE: Celery tasks removed - webhook notifications disabled
+        logger.info(f"Webhook notification requested (Celery disabled): {webhook_url}")
+        return {"status": "disabled", "message": "Background tasks disabled"}
 
     async def _build_email_html_body(
         self, alert: Alert, trade: Trade, company_name: str, insider_name: str
@@ -164,16 +149,9 @@ class NotificationService:
         subject = f"🔔 Trade Alert: {alert.name}"
         html_body = await self._build_email_html_body(alert, trade, company_name, insider_name)
         
-        trade_id = trade.id # Assuming trade.id exists
-        task = send_email_notification_task.delay(
-            email_to=alert.email,
-            subject=subject,
-            html_body=html_body,
-            alert_name=alert.name,
-            trade_id=trade_id,
-        )
-        logger.info(f"Email notification task enqueued with ID: {task.id}")
-        return {"status": "enqueued", "task_id": task.id}
+        # NOTE: Celery tasks removed - email notifications disabled
+        logger.info(f"Email notification requested (Celery disabled): {alert.email}")
+        return {"status": "disabled", "message": "Background tasks disabled"}
 
     async def send_subscription_confirmation_email(
         self, email_to: str, tier: str, period_start: datetime, period_end: datetime
@@ -258,14 +236,9 @@ class NotificationService:
 </html>
         """
         
-        task = send_subscription_confirmation_email_task.delay(
-            email_to=email_to,
-            tier=tier,
-            period_start_iso=period_start.isoformat(),
-            period_end_iso=period_end.isoformat(),
-        )
-        logger.info(f"Subscription confirmation email task enqueued with ID: {task.id}")
-        return {"status": "enqueued", "task_id": task.id}
+        # NOTE: Celery tasks removed - email notifications disabled
+        logger.info(f"Subscription confirmation email requested (Celery disabled): {email_to}")
+        return {"status": "disabled", "message": "Background tasks disabled"}
 
     async def send_test_email_notification(
         self, email_to: str, alert_name: str
@@ -328,12 +301,9 @@ class NotificationService:
 </html>
         """
         
-        task = send_test_email_notification_task.delay(
-            email_to=email_to,
-            alert_name=alert_name,
-        )
-        logger.info(f"Test email notification task enqueued with ID: {task.id}")
-        return {"status": "enqueued", "task_id": task.id}
+        # NOTE: Celery tasks removed - email notifications disabled
+        logger.info(f"Test email notification requested (Celery disabled): {email_to}")
+        return {"status": "disabled", "message": "Background tasks disabled"}
 
     async def send_push_notification(
         self,
@@ -358,16 +328,9 @@ class NotificationService:
         alert_name = alert.name # Serialize alert name
         alert_id = alert.id # Pass alert id
         
-        task = send_push_notification_task.delay(
-            subscription_info=subscription_info,
-            alert_name=alert_name,
-            trade_data=trade_data,
-            company_name=company_name,
-            insider_name=insider_name,
-            alert_id=alert_id
-        )
-        logger.info(f"Push notification task enqueued with ID: {task.id}")
-        return {"status": "enqueued", "task_id": task.id}
+        # NOTE: Celery tasks removed - push notifications disabled
+        logger.info(f"Push notification requested (Celery disabled): alert {alert_id}")
+        return {"status": "disabled", "message": "Background tasks disabled"}
 
     async def send_test_push_notification(
         self, subscription: PushSubscription, alert_name: str
@@ -383,10 +346,7 @@ class NotificationService:
             },
         }
         
-        task = send_test_push_notification_task.delay(
-            subscription_info=subscription_info,
-            alert_name=alert_name,
-        )
-        logger.info(f"Test push notification task enqueued with ID: {task.id}")
-        return {"status": "enqueued", "task_id": task.id}
+        # NOTE: Celery tasks removed - push notifications disabled
+        logger.info(f"Test push notification requested (Celery disabled): {alert_name}")
+        return {"status": "disabled", "message": "Background tasks disabled"}
 
