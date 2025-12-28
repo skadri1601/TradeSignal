@@ -300,6 +300,11 @@ async def direct_scrape(
         if limit:
             companies = companies[:limit]
         
+        # Eagerly load company.name for all companies while session is still active
+        # This prevents lazy loading errors when accessing name later in the loop
+        for company in companies:
+            _ = company.name  # Trigger load while session is active
+        
         logger.info(f"Found {len(companies)} companies to scrape")
         
         # Statistics
