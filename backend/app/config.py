@@ -503,6 +503,23 @@ class Settings(BaseSettings):
         alias="TRUST_PROXY_HEADERS",
     )
 
+    # Supabase Auth Configuration (Gradual Migration)
+    supabase_url: Optional[str] = Field(
+        default=None,
+        description="Supabase project URL",
+        alias="SUPABASE_URL",
+    )
+    supabase_anon_key: Optional[str] = Field(
+        default=None,
+        description="Supabase anon/public key (safe for frontend)",
+        alias="SUPABASE_ANON_KEY",
+    )
+    supabase_service_role_key: Optional[str] = Field(
+        default=None,
+        description="Supabase service role key (backend only, keep secret!)",
+        alias="SUPABASE_SERVICE_ROLE_KEY",
+    )
+
     # Redis Configuration (Phase 4.1 - Caching)
     redis_url: Optional[str] = Field(
         default=None, description="Redis connection URL for caching", alias="REDIS_URL"

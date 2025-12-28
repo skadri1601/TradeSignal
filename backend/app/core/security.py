@@ -16,6 +16,7 @@ from app.database import get_db
 from app.models.user import User
 from app.services.api_key_service import APIKeyService
 from app.models.api_key import UserAPIKey
+from app.services.supabase_auth_service import supabase_auth_service
 
 # Password hashing
 # Configure bcrypt to handle password validation properly
@@ -166,6 +167,8 @@ async def get_current_user(
     """
     Get the current authenticated user from JWT token.
 
+    Supports both custom JWT tokens and Supabase JWT tokens.
+
     Args:
         token: JWT access token from Authorization header
         db: Database session
@@ -176,6 +179,11 @@ async def get_current_user(
     Raises:
         HTTPException: If token is invalid or user not found
     """
+    import logging
+    from sqlalchemy import select
+
+    logger = logging.getLogger(__name__)
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail=INVALID_CREDENTIALS_MESSAGE,
@@ -186,35 +194,38 @@ async def get_current_user(
     if not token or not token.strip():
         raise credentials_exception
 
-    # Decode token (this will raise HTTPException if invalid)
+    user: Optional[User] = None
+
+    # Try custom JWT first (for existing users with auth_provider='custom')
     try:
         payload = decode_token(token)
+        user_id_str: Optional[str] = payload.get("sub")
+        if user_id_str is not None:
+            try:
+                user_id = int(user_id_str)
+                result = await db.execute(select(User).filter(User.id == user_id))
+                user = result.scalar_one_or_none()
+            except (ValueError, TypeError):
+                pass  # Not a valid custom token, try Supabase
     except HTTPException:
-        # Re-raise HTTPException as-is (already has proper 401 status)
-        raise
+        pass  # Custom JWT failed, try Supabase
     except Exception as e:
-        # Log unexpected errors but return 401 to client
-        import logging
+        logger.debug(f"Custom JWT decode failed: {e}")
 
-        logger = logging.getLogger(__name__)
-        logger.error(f"Unexpected error decoding token: {e}", exc_info=True)
-        raise credentials_exception
-
-    # Extract user ID from token (stored as string, convert to int)
-    user_id_str: Optional[str] = payload.get("sub")
-    if user_id_str is None:
-        raise credentials_exception
-
-    try:
-        user_id = int(user_id_str)
-    except (ValueError, TypeError):
-        raise credentials_exception
-
-    # Get user from database
-    from sqlalchemy import select
-
-    result = await db.execute(select(User).filter(User.id == user_id))
-    user = result.scalar_one_or_none()
+    # If custom JWT didn't work, try Supabase token
+    if user is None and supabase_auth_service.is_configured:
+        try:
+            supabase_user = await supabase_auth_service.get_user(token)
+            if supabase_user:
+                # Look up user by supabase_uid
+                result = await db.execute(
+                    select(User).filter(User.supabase_uid == supabase_user["id"])
+                )
+                user = result.scalar_one_or_none()
+                if user:
+                    logger.debug(f"Supabase token validated for user ID: {user.id}")
+        except Exception as e:
+            logger.debug(f"Supabase token validation failed: {e}")
 
     if user is None:
         raise credentials_exception

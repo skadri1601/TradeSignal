@@ -28,6 +28,7 @@ from app.core.security import (
 )
 from app.config import settings
 from app.core.limiter import limiter
+from app.services.supabase_auth_service import supabase_auth_service
 
 router = APIRouter()
 
@@ -211,16 +212,40 @@ async def register(
             )
 
         # Create new user with error handling
+        # Try Supabase Auth for new users if configured
         try:
             logger.debug(f"Creating user: {user_data.email}")
+
+            supabase_uid = None
+            auth_provider = "custom"
+            hashed_password = get_password_hash(user_data.password)
+
+            # If Supabase Auth is configured, use it for new users
+            if supabase_auth_service.is_configured:
+                logger.info("Using Supabase Auth for new user registration")
+                supabase_user = await supabase_auth_service.create_user(
+                    email=user_data.email,
+                    password=user_data.password
+                )
+                if supabase_user:
+                    supabase_uid = supabase_user.id
+                    auth_provider = "supabase"
+                    hashed_password = "SUPABASE_MANAGED"  # Password managed by Supabase
+                    logger.info(f"Supabase user created: {supabase_uid}")
+                else:
+                    # Fall back to custom auth if Supabase fails
+                    logger.warning("Supabase user creation failed, falling back to custom auth")
+
             new_user = User(
                 email=user_data.email,
                 username=user_data.username,
-                hashed_password=get_password_hash(user_data.password),
+                hashed_password=hashed_password,
                 is_active=True,
-                is_verified=False,  # Require email verification
+                is_verified=auth_provider == "supabase",  # Supabase handles email verification
                 is_superuser=False,
                 role="customer",  # Default role for new users
+                auth_provider=auth_provider,
+                supabase_uid=supabase_uid,
             )
 
             db.add(new_user)
@@ -360,27 +385,6 @@ async def login(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        # Verify password with error handling
-        try:
-            logger.debug(f"Verifying password for user ID: {user.id}")
-            password_valid = verify_password(form_data.password, user.hashed_password)
-        except Exception as pwd_error:
-            logger.error(f"Error verifying password: {pwd_error}", exc_info=True)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="An error occurred during authentication. Please try again.",
-            )
-
-        if not password_valid:
-            logger.warning(
-                f"Login failed: Invalid password for user ID: {user.id}, email: {user.email}"
-            )
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect email/username or password",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
         # Check if user account is active
         if not user.is_active:
             logger.warning(
@@ -390,24 +394,70 @@ async def login(
                 status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive"
             )
 
-        # Create access and refresh tokens with error handling
-        try:
-            logger.debug(f"Creating tokens for user ID: {user.id}")
-            access_token = create_access_token(data={"sub": str(user.id)})
-            refresh_token = create_refresh_token(data={"sub": str(user.id)})
-            logger.debug(f"Tokens created successfully for user ID: {user.id}")
-        except Exception as token_error:
-            logger.error(f"Error creating tokens: {token_error}", exc_info=True)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="An error occurred while generating authentication tokens. Please try again.",
+        # Route authentication based on auth_provider
+        auth_provider = getattr(user, 'auth_provider', 'custom')
+
+        if auth_provider == "supabase" and supabase_auth_service.is_configured:
+            # Authenticate via Supabase Auth
+            logger.debug(f"Using Supabase Auth for user ID: {user.id}")
+            supabase_tokens = await supabase_auth_service.sign_in(
+                email=user.email,
+                password=form_data.password
             )
+            if not supabase_tokens:
+                logger.warning(f"Supabase login failed for user ID: {user.id}")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Incorrect email/username or password",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            logger.info(f"Supabase login successful for user ID: {user.id}")
+            return TokenResponse(
+                access_token=supabase_tokens.access_token,
+                refresh_token=supabase_tokens.refresh_token,
+                token_type="bearer"
+            )
+        else:
+            # Use custom JWT auth (existing users)
+            # Verify password with error handling
+            try:
+                logger.debug(f"Verifying password for user ID: {user.id}")
+                password_valid = verify_password(form_data.password, user.hashed_password)
+            except Exception as pwd_error:
+                logger.error(f"Error verifying password: {pwd_error}", exc_info=True)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="An error occurred during authentication. Please try again.",
+                )
 
-        logger.info(f"Login successful for user ID: {user.id}, email: {user.email}")
+            if not password_valid:
+                logger.warning(
+                    f"Login failed: Invalid password for user ID: {user.id}, email: {user.email}"
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Incorrect email/username or password",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
 
-        return TokenResponse(
-            access_token=access_token, refresh_token=refresh_token, token_type="bearer"
-        )
+            # Create access and refresh tokens with error handling
+            try:
+                logger.debug(f"Creating tokens for user ID: {user.id}")
+                access_token = create_access_token(data={"sub": str(user.id)})
+                refresh_token = create_refresh_token(data={"sub": str(user.id)})
+                logger.debug(f"Tokens created successfully for user ID: {user.id}")
+            except Exception as token_error:
+                logger.error(f"Error creating tokens: {token_error}", exc_info=True)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="An error occurred while generating authentication tokens. Please try again.",
+                )
+
+            logger.info(f"Login successful for user ID: {user.id}, email: {user.email}")
+
+            return TokenResponse(
+                access_token=access_token, refresh_token=refresh_token, token_type="bearer"
+            )
     except HTTPException:
         # Re-raise HTTP exceptions (they're expected and properly formatted)
         raise

@@ -16,6 +16,7 @@ python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 bcrypt<5.0.0  # Lock to 4.x to avoid 5.x breaking changes
 python-multipart==0.0.6
+supabase>=2.0.0  # Supabase Auth client for gradual migration
 
 # Data Processing
 pandas==2.1.3
