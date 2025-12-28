@@ -82,50 +82,110 @@ export interface FullResearchReport {
 export const researchApi = {
   /**
    * Get Intrinsic Value Target (IVT) for a stock
+   * Returns null if data is not available (404) - this is expected for companies without coverage
    */
-  getIVT: async (ticker: string): Promise<IVTData> => {
-    const response = await apiClient.get(`/api/research/${ticker}/ivt`);
-    return response.data;
+  getIVT: async (ticker: string): Promise<IVTData | null> => {
+    try {
+      const response = await apiClient.get(`/api/research/${ticker}/ivt`);
+      return response.data;
+    } catch (error: any) {
+      // Silently return null for 404s (expected when data not available)
+      if (error.response?.status === 404) {
+        return null;
+      }
+      // Re-throw other errors
+      throw error;
+    }
   },
 
   /**
    * Get TradeSignal Score (TS Score) for a stock
+   * Returns null if data is not available (404) - this is expected for companies without coverage
    */
-  getTSScore: async (ticker: string): Promise<TSScoreData> => {
-    const response = await apiClient.get(`/api/research/${ticker}/ts-score`);
-    return response.data;
+  getTSScore: async (ticker: string): Promise<TSScoreData | null> => {
+    try {
+      const response = await apiClient.get(`/api/research/${ticker}/ts-score`);
+      return response.data;
+    } catch (error: any) {
+      // Silently return null for 404s (expected when data not available)
+      if (error.response?.status === 404) {
+        return null;
+      }
+      // Re-throw other errors
+      throw error;
+    }
   },
 
   /**
    * Get Risk Level Assessment for a stock
+   * Returns null if data is not available (404) - this is expected for companies without coverage
    */
-  getRiskLevel: async (ticker: string): Promise<RiskLevelData> => {
-    const response = await apiClient.get(`/api/research/${ticker}/risk-level`);
-    return response.data;
+  getRiskLevel: async (ticker: string): Promise<RiskLevelData | null> => {
+    try {
+      const response = await apiClient.get(`/api/research/${ticker}/risk-level`);
+      return response.data;
+    } catch (error: any) {
+      // Silently return null for 404s (expected when data not available)
+      if (error.response?.status === 404) {
+        return null;
+      }
+      // Re-throw other errors
+      throw error;
+    }
   },
 
   /**
    * Get Competitive Strength Rating for a stock
+   * Returns null if data is not available (404) - this is expected for companies without coverage
    */
-  getCompetitiveStrength: async (ticker: string): Promise<CompetitiveStrengthData> => {
-    const response = await apiClient.get(`/api/research/${ticker}/competitive-strength`);
-    return response.data;
+  getCompetitiveStrength: async (ticker: string): Promise<CompetitiveStrengthData | null> => {
+    try {
+      const response = await apiClient.get(`/api/research/${ticker}/competitive-strength`);
+      return response.data;
+    } catch (error: any) {
+      // Silently return null for 404s (expected when data not available)
+      if (error.response?.status === 404) {
+        return null;
+      }
+      // Re-throw other errors
+      throw error;
+    }
   },
 
   /**
    * Get Management Excellence Score for a stock
+   * Returns null if data is not available (404) - this is expected for companies without coverage
    */
-  getManagementScore: async (ticker: string): Promise<ManagementScoreData> => {
-    const response = await apiClient.get(`/api/research/${ticker}/management-score`);
-    return response.data;
+  getManagementScore: async (ticker: string): Promise<ManagementScoreData | null> => {
+    try {
+      const response = await apiClient.get(`/api/research/${ticker}/management-score`);
+      return response.data;
+    } catch (error: any) {
+      // Silently return null for 404s (expected when data not available)
+      if (error.response?.status === 404) {
+        return null;
+      }
+      // Re-throw other errors
+      throw error;
+    }
   },
 
   /**
    * Get full research report with all scores
+   * Returns null if data is not available (404) - this is expected for companies without coverage
    */
-  getFullReport: async (ticker: string): Promise<FullResearchReport> => {
-    const response = await apiClient.get(`/api/research/${ticker}/full-report`);
-    return response.data;
+  getFullReport: async (ticker: string): Promise<FullResearchReport | null> => {
+    try {
+      const response = await apiClient.get(`/api/research/${ticker}/full-report`);
+      return response.data;
+    } catch (error: any) {
+      // Silently return null for 404s (expected when data not available)
+      if (error.response?.status === 404) {
+        return null;
+      }
+      // Re-throw other errors
+      throw error;
+    }
   },
 
   /**

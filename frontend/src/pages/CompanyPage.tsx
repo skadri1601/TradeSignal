@@ -29,6 +29,13 @@ import {
 export default function CompanyPage() {
   const { ticker } = useParams<{ ticker: string }>();
 
+  // Helper function to safely format dates
+  const formatDate = (dateStr: string | null | undefined): string => {
+    if (!dateStr) return 'N/A';
+    const date = new Date(dateStr);
+    return Number.isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString();
+  };
+
   const { data: company, isLoading: companyLoading } = useQuery({
     queryKey: ['company', ticker],
     queryFn: () => companiesApi.getCompany(ticker!),
@@ -349,7 +356,7 @@ export default function CompanyPage() {
                       {earnings.earnings_history.slice(0, 4).map((earning, idx) => (
                         <tr key={idx}>
                           <td className="px-4 py-2 text-sm text-white">
-                            {new Date(earning.date).toLocaleDateString()}
+                            {formatDate(earning.date)}
                           </td>
                           <td className="px-4 py-2 text-sm text-gray-400">
                             {earning.estimate !== null ? `$${earning.estimate.toFixed(2)}` : '-'}
