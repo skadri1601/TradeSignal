@@ -40,17 +40,35 @@ if platform.system() == 'Windows':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
-async def scrape_insider_trades(days_back: int = 30, max_filings: int = 50):
-    """Scrape insider trades from SEC EDGAR for all watchlist companies."""
+async def scrape_insider_trades(days_back: int = 30, max_filings: int = 5):
+    """
+    Scrape insider trades from SEC EDGAR for all watchlist companies.
+
+    Resource-optimized for $7 Render tier (512MB RAM, shared CPU):
+    - Batch processing (10 companies at a time)
+    - Rate limiting (0.15s delay between SEC requests)
+    - Max 5 filings per company
+    - Commit after each company to free memory
+    """
     from app.database import db_manager
     from app.services.scraper_service import ScraperService
     from app.models import Company
     from sqlalchemy import select
-    import os
+
+    # Resource limits for $7 Render tier
+    BATCH_SIZE = 10  # Process 10 companies at a time
+    MAX_FILINGS_PER_COMPANY = 5  # Limit filings to save resources
+    MAX_DAYS_BACK = 30  # Only recent filings
+    REQUEST_DELAY = 0.15  # 0.15s = ~6 req/sec (SEC allows 10/sec)
+
+    # Apply limits
+    max_filings = min(max_filings, MAX_FILINGS_PER_COMPANY)
+    days_back = min(days_back, MAX_DAYS_BACK)
 
     logger.info("=" * 80)
-    logger.info("Starting Insider Trades Scrape")
+    logger.info("Starting Insider Trades Scrape (Resource-Optimized)")
     logger.info(f"Days back: {days_back}, Max filings per company: {max_filings}")
+    logger.info(f"Batch size: {BATCH_SIZE}, Request delay: {REQUEST_DELAY}s")
     logger.info("=" * 80)
 
     # Load companies from watchlist file
@@ -76,49 +94,77 @@ async def scrape_insider_trades(days_back: int = 30, max_filings: int = 50):
         logger.error("No companies found to scrape!")
         return {"success": False, "error": "No companies found"}
 
+    # Estimate time
+    estimated_minutes = (len(tickers) * REQUEST_DELAY * (max_filings + 1)) / 60
+    logger.info(f"Estimated time: ~{estimated_minutes:.1f} minutes for {len(tickers)} companies")
+
     scraper = ScraperService()
     results = {
         "success": [],
         "failed": [],
+        "skipped": [],
         "total_filings": 0,
         "total_trades": 0
     }
 
-    async with db_manager.get_session() as db:
-        for i, ticker in enumerate(tickers, 1):
-            logger.info(f"[{i}/{len(tickers)}] Scraping {ticker}...")
+    # Process in batches to manage memory
+    for batch_start in range(0, len(tickers), BATCH_SIZE):
+        batch = tickers[batch_start:batch_start + BATCH_SIZE]
+        batch_num = batch_start // BATCH_SIZE + 1
+        total_batches = (len(tickers) + BATCH_SIZE - 1) // BATCH_SIZE
 
-            try:
-                result = await scraper.scrape_company_trades(
-                    db=db,
-                    ticker=ticker,
-                    days_back=days_back,
-                    max_filings=max_filings
-                )
+        logger.info(f"Processing batch {batch_num}/{total_batches}: {batch}")
 
-                if result.get("success"):
-                    filings = result.get("filings_processed", 0)
-                    trades = result.get("trades_created", 0)
-                    results["success"].append(ticker)
-                    results["total_filings"] += filings
-                    results["total_trades"] += trades
-                    logger.info(f"  OK: {filings} filings, {trades} trades")
-                else:
+        async with db_manager.get_session() as db:
+            for i, ticker in enumerate(batch, 1):
+                global_idx = batch_start + i
+                logger.info(f"[{global_idx}/{len(tickers)}] Scraping {ticker}...")
+
+                try:
+                    result = await scraper.scrape_company_trades(
+                        db=db,
+                        ticker=ticker,
+                        days_back=days_back,
+                        max_filings=max_filings
+                    )
+
+                    if result.get("success"):
+                        filings = result.get("filings_processed", 0)
+                        trades = result.get("trades_created", 0)
+
+                        if filings == 0 and trades == 0:
+                            results["skipped"].append(ticker)
+                            logger.info("  SKIPPED: No new filings")
+                        else:
+                            results["success"].append(ticker)
+                            results["total_filings"] += filings
+                            results["total_trades"] += trades
+                            logger.info(f"  OK: {filings} filings, {trades} trades")
+                    else:
+                        results["failed"].append(ticker)
+                        logger.warning(f"  FAILED: {result.get('message', 'Unknown')}")
+
+                except Exception as e:
                     results["failed"].append(ticker)
-                    logger.warning(f"  FAILED: {result.get('message', 'Unknown')}")
+                    logger.error(f"  ERROR: {str(e)[:100]}")
 
-            except Exception as e:
-                results["failed"].append(ticker)
-                logger.error(f"  ERROR: {str(e)[:100]}")
+                # Rate limiting for SEC (safer than 10 req/sec)
+                await asyncio.sleep(REQUEST_DELAY)
 
-            # Rate limiting for SEC (10 req/sec limit)
-            await asyncio.sleep(0.12)
+            # Commit after each batch
             await db.commit()
+
+        # Brief pause between batches to prevent memory buildup
+        if batch_start + BATCH_SIZE < len(tickers):
+            logger.info("Pausing between batches...")
+            await asyncio.sleep(1)
 
     logger.info("=" * 80)
     logger.info("Insider Trades Scrape Complete")
-    logger.info(f"Successful: {len(results['success'])}, Failed: {len(results['failed'])}")
+    logger.info(f"Successful: {len(results['success'])}, Skipped: {len(results['skipped'])}, Failed: {len(results['failed'])}")
     logger.info(f"Total filings: {results['total_filings']}, Total trades: {results['total_trades']}")
+    if results["failed"]:
+        logger.info(f"Failed tickers: {results['failed']}")
     logger.info("=" * 80)
 
     return results
