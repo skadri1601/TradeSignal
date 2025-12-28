@@ -781,6 +781,7 @@ from app.routers import (  # noqa: E402
     research,
     forum,
     brokerage,
+    market_data,
 )
 from app.routers import enterprise_api  # noqa: E402
 
@@ -849,6 +850,7 @@ app.include_router(contact.router, prefix=f"{settings.api_v1_prefix}", tags=["Co
 app.include_router(public_contact.router, prefix=f"{settings.api_v1_prefix}", tags=["Public Contact"])
 app.include_router(jobs.router, prefix=f"{settings.api_v1_prefix}", tags=["Jobs"])
 app.include_router(news.router, prefix=f"{settings.api_v1_prefix}", tags=["News"])
+app.include_router(market_data.router, prefix=f"{settings.api_v1_prefix}", tags=["Market Data"])
 from app.routers import tickets  # noqa: E402
 
 app.include_router(tickets.router, prefix=f"{settings.api_v1_prefix}", tags=["Tickets"])

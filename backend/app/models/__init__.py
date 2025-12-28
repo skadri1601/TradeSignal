@@ -103,6 +103,14 @@ from app.models.webhook import (
     WebhookEventType,
     WebhookStatus,
 )
+from app.models.market_data import (
+    DividendHistory,
+    EarningsCalendar,
+    AnalystRecommendation,
+    FinancialStatement,
+    PriceTarget,
+    EarningsSurprise,
+)
 
 __all__ = [
     "Company",
@@ -192,4 +200,10 @@ __all__ = [
     "WebhookStatus",
     "UserAPIKey",
     "APIKeyUsage",
+    "DividendHistory",
+    "EarningsCalendar",
+    "AnalystRecommendation",
+    "FinancialStatement",
+    "PriceTarget",
+    "EarningsSurprise",
 ]
