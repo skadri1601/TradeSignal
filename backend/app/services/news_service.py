@@ -2,16 +2,19 @@
 News Service
 
 Fetches and manages market news articles from Finnhub News API.
-Implements rate limiting, Redis caching, and error handling.
+Implements on-demand fetching, rate limiting, and Supabase caching.
 
 Data Sources:
 - Finnhub News API (general market news, company news, crypto news)
 """
 
 import logging
+import asyncio
+from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
+import httpx
 from app.config import settings
-from app.core.redis_cache import get_cache
+from app.services.supabase_cache_service import supabase_cache_service
 
 logger = logging.getLogger(__name__)
 
@@ -19,66 +22,230 @@ logger = logging.getLogger(__name__)
 class NewsService:
     """
     Service for fetching and managing market news.
-
-    This service primarily reads from a Redis cache which is populated by Celery tasks.
+    
+    Fetches news on-demand from Finnhub API with Supabase caching.
+    Replaces Celery-based background fetching.
     """
 
     def __init__(self):
         """Initialize the news service."""
-        self.cache_ttl = 21600  # 6 hours in seconds (should match Celery task)
-        self.redis = get_cache()
+        self.cache_ttl_minutes = 15  # 15 minutes cache TTL
+        self.finnhub_api_key = getattr(settings, "finnhub_api_key", None)
+        self.rate_limit = 60  # Finnhub free tier: 60 calls/minute
+        self.base_url = "https://finnhub.io/api/v1"
+        self._request_times: List[float] = []
+        self._lock = asyncio.Lock()
 
-    async def _get_from_cache(self, key: str) -> Optional[List[Dict[str, Any]]]:
-        """Retrieve data from Redis cache."""
+    async def _rate_limit(self) -> None:
+        """Implement rate limiting (token bucket algorithm)."""
+        async with self._lock:
+            now = asyncio.get_event_loop().time()
+            # Remove requests older than 1 minute
+            self._request_times = [t for t in self._request_times if now - t < 60]
+
+            # Check if we've hit the rate limit
+            if len(self._request_times) >= self.rate_limit:
+                # Calculate wait time
+                oldest_request = self._request_times[0]
+                wait_time = 60 - (now - oldest_request)
+                if wait_time > 0:
+                    logger.warning(
+                        f"Rate limit reached. Waiting {wait_time:.2f} seconds..."
+                    )
+                    await asyncio.sleep(wait_time)
+                    # Clean up old requests after waiting
+                    now = asyncio.get_event_loop().time()
+                    self._request_times = [
+                        t for t in self._request_times if now - t < 60
+                    ]
+            # Record this request
+            self._request_times.append(now)
+
+    def _filter_recent_news(
+        self, news_data: List[Dict[str, Any]], days: int = 7
+    ) -> List[Dict[str, Any]]:
+        """
+        Filter news articles to only include those from the last N days.
+        """
+        if not isinstance(news_data, list):
+            return []
+
+        cutoff_date = datetime.now() - timedelta(days=days)
+        cutoff_timestamp = int(cutoff_date.timestamp())
+
+        filtered = []
+        for article in news_data:
+            article_datetime = article.get("datetime", 0)
+            if article_datetime >= cutoff_timestamp:
+                filtered.append(article)
+
+        filtered.sort(key=lambda x: x.get("datetime", 0), reverse=True)
+        return filtered
+
+    async def _fetch_general_news(self) -> List[Dict[str, Any]]:
+        """Fetch general market news from Finnhub API."""
+        if not self.finnhub_api_key:
+            logger.warning("Finnhub API key not configured for general news.")
+            return []
+
         try:
-            if self.redis and self.redis.enabled():
-                cached_data = self.redis.get(key)
-                if cached_data:
-                    logger.debug(f"Retrieved news from cache: {key}")
-                    return cached_data
+            await self._rate_limit()
+
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                url = f"{self.base_url}/news"
+                params = {"category": "general", "token": self.finnhub_api_key}
+                
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+                data = response.json()
+
+                filtered_news = self._filter_recent_news(data, days=7)
+                logger.info(f"Fetched {len(filtered_news)} general news articles from Finnhub")
+                return filtered_news
+
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Finnhub HTTP error for general news: {e.response.status_code} - {e.response.text}")
+            return []
+        except httpx.RequestError as e:
+            logger.error(f"Finnhub request error for general news: {e}")
+            return []
         except Exception as e:
-            logger.warning(f"Cache retrieval error for {key}: {e}")
-        return None
+            logger.error(f"Unexpected error fetching general news: {e}", exc_info=True)
+            return []
+
+    async def _fetch_crypto_news(self) -> List[Dict[str, Any]]:
+        """Fetch crypto news from Finnhub API."""
+        if not self.finnhub_api_key:
+            logger.warning("Finnhub API key not configured for crypto news.")
+            return []
+
+        try:
+            await self._rate_limit()
+
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                url = f"{self.base_url}/news"
+                params = {"category": "crypto", "token": self.finnhub_api_key}
+                
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+                data = response.json()
+
+                filtered_news = self._filter_recent_news(data, days=7)
+                logger.info(f"Fetched {len(filtered_news)} crypto news articles from Finnhub")
+                return filtered_news
+
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Finnhub HTTP error for crypto news: {e.response.status_code} - {e.response.text}")
+            return []
+        except httpx.RequestError as e:
+            logger.error(f"Finnhub request error for crypto news: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Unexpected error fetching crypto news: {e}", exc_info=True)
+            return []
+
+    async def _fetch_company_news(self, ticker: str) -> List[Dict[str, Any]]:
+        """Fetch company-specific news from Finnhub API."""
+        if not self.finnhub_api_key:
+            logger.warning(f"Finnhub API key not configured for company news ({ticker}).")
+            return []
+
+        ticker = ticker.upper()
+        try:
+            await self._rate_limit()
+
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                url = f"{self.base_url}/company-news"
+                to_date = datetime.now()
+                from_date = to_date - timedelta(days=7)
+                params = {
+                    "symbol": ticker,
+                    "from": from_date.strftime("%Y-%m-%d"),
+                    "to": to_date.strftime("%Y-%m-%d"),
+                    "token": self.finnhub_api_key
+                }
+                
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+                data = response.json()
+
+                filtered_news = self._filter_recent_news(data, days=7)
+                logger.info(f"Fetched {len(filtered_news)} company news articles for {ticker} from Finnhub")
+                return filtered_news
+
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Finnhub HTTP error for company news ({ticker}): {e.response.status_code} - {e.response.text}")
+            return []
+        except httpx.RequestError as e:
+            logger.error(f"Finnhub request error for company news ({ticker}): {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Unexpected error fetching company news for {ticker}: {e}", exc_info=True)
+            return []
 
     async def get_general_news(self, limit: int = 50) -> List[Dict[str, Any]]:
         """
-        Get general market news from cache.
+        Get general market news (on-demand fetch with caching).
         """
         cache_key = "news:general"
-        cached = await self._get_from_cache(cache_key)
-        if cached:
-            return cached[:limit]
-        logger.warning(f"General news cache miss for key: {cache_key}")
-        return []
+        
+        # Use get_or_set pattern: check cache, fetch if miss
+        async def fetch_func():
+            return await self._fetch_general_news()
+        
+        news = await supabase_cache_service.get_or_set(
+            cache_key,
+            fetch_func,
+            ttl_minutes=self.cache_ttl_minutes,
+            cache_type="news"
+        )
+        
+        return news[:limit] if news else []
 
     async def get_company_news(
         self, ticker: str, limit: int = 50
     ) -> List[Dict[str, Any]]:
         """
-        Get company-specific news from cache.
+        Get company-specific news (on-demand fetch with caching).
         """
         ticker = ticker.upper()
         cache_key = f"news:company:{ticker}"
-        cached = await self._get_from_cache(cache_key)
-        if cached:
-            return cached[:limit]
-        logger.warning(f"Company news cache miss for key: {cache_key} (ticker: {ticker})")
-        return []
+        
+        # Use get_or_set pattern: check cache, fetch if miss
+        async def fetch_func():
+            return await self._fetch_company_news(ticker)
+        
+        news = await supabase_cache_service.get_or_set(
+            cache_key,
+            fetch_func,
+            ttl_minutes=self.cache_ttl_minutes,
+            cache_type="news"
+        )
+        
+        return news[:limit] if news else []
 
     async def get_crypto_news(self, limit: int = 50) -> List[Dict[str, Any]]:
         """
-        Get crypto news from cache.
+        Get crypto news (on-demand fetch with caching).
         """
         cache_key = "news:crypto"
-        cached = await self._get_from_cache(cache_key)
-        if cached:
-            return cached[:limit]
-        logger.warning(f"Crypto news cache miss for key: {cache_key}")
-        return []
+        
+        # Use get_or_set pattern: check cache, fetch if miss
+        async def fetch_func():
+            return await self._fetch_crypto_news()
+        
+        news = await supabase_cache_service.get_or_set(
+            cache_key,
+            fetch_func,
+            ttl_minutes=self.cache_ttl_minutes,
+            cache_type="news"
+        )
+        
+        return news[:limit] if news else []
 
     async def get_latest_news(self, limit: int = 50) -> List[Dict[str, Any]]:
         """
-        Get latest news from all categories (general, company, crypto) from cache.
+        Get latest news from all categories (general, company, crypto).
         """
         general_news = await self.get_general_news(limit=limit)
         crypto_news = await self.get_crypto_news(limit=limit)

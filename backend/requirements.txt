@@ -57,7 +57,6 @@ slowapi==0.1.9
 email-validator==2.1.0
 pandas-market-calendars==4.4.1
 finnhub-python==2.4.19
-redis==5.0.1
 prometheus-fastapi-instrumentator==6.1.0
 prometheus-client==0.19.0
 python-json-logger==2.0.7
@@ -69,10 +68,6 @@ pytest==7.4.3
 pytest-asyncio==0.21.1
 pytest-cov==4.1.0
 pytest-mock==3.12.0
-
-# Scalability (Phase 7)
-celery==5.3.4
-flower==2.0.1
 
 # Business Model (Phase 8)
 stripe==7.7.0
