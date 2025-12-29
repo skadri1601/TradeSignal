@@ -114,6 +114,11 @@ class Settings(BaseSettings):
         description="CoinGecko API key for crypto data",
         alias="COINGECKO_API_KEY",
     )
+    financial_modeling_prep_api_key: Optional[str] = Field(
+        default=None,
+        description="Financial Modeling Prep API key for company financials (IVT calculation)",
+        alias="FINANCIAL_MODELING_PREP_API_KEY",
+    )
 
     # Federal Reserve Data (FRED API)
     fred_api_key: Optional[str] = Field(

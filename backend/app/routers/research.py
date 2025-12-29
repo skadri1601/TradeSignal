@@ -125,6 +125,7 @@ async def get_ts_score(
     Get TradeSignal Score (1-5 rating) for a stock.
 
     Risk-adjusted valuation score combining IVT, risk level, and market factors.
+    Calculates on-the-fly if data doesn't exist.
     """
     ticker = ticker.upper()
 
@@ -156,21 +157,53 @@ async def get_ts_score(
                 "score": score_value,
                 "rating": rating_text,
                 "price_to_ivt_ratio": float(ts_score.p_ivt_ratio) if ts_score.p_ivt_ratio else None,
-                "risk_adjusted": ts_score.risk_level is not None,  # Model doesn't have risk_adjusted_score
+                "risk_adjusted": ts_score.risk_level is not None,
                 "calculation_date": ts_score.calculated_at.isoformat() if ts_score.calculated_at else None,
-                "cached": True
+                "cached": True,
+                "cache_source": "database"
             }
 
-        # If not cached, return placeholder
-        raise HTTPException(
-            status_code=404,
-            detail=f"TradeSignal Score not yet calculated for {ticker}. Coverage coming soon."
-        )
+        # Calculate on-demand if not cached
+        logger.info(f"Calculating TS Score for {ticker} on-the-fly")
+        ts_service = TSScoreService(db)
+
+        try:
+            calculation_result = await ts_service.calculate_ts_score(ticker)
+        except ValueError as e:
+            logger.warning(f"Cannot calculate TS Score for {ticker}: {e}")
+            raise HTTPException(
+                status_code=404,
+                detail=f"Cannot calculate TS Score for {ticker}: {str(e)}"
+            )
+
+        # Save to database
+        await ts_service.save_ts_score(calculation_result)
+
+        # Map badge to rating
+        badge_to_rating = {
+            "excellent": "Strong Buy",
+            "strong": "Buy",
+            "good": "Buy",
+            "moderate": "Hold",
+            "weak": "Sell",
+            "poor": "Strong Sell"
+        }
+
+        return {
+            "ticker": ticker,
+            "score": calculation_result["ts_score"],
+            "rating": badge_to_rating.get(calculation_result["badge"], "Hold"),
+            "price_to_ivt_ratio": calculation_result["components"].get("ivt_discount_premium"),
+            "risk_adjusted": True,
+            "calculation_date": calculation_result["calculated_at"],
+            "cached": False,
+            "cache_source": "calculated"
+        }
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching TS Score for {ticker}: {e}")
+        logger.error(f"Error fetching TS Score for {ticker}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -184,6 +217,7 @@ async def get_risk_level(
     Get Risk Level Assessment for a stock.
 
     Returns risk category and component scores.
+    Calculates on-the-fly if data doesn't exist.
     """
     ticker = ticker.upper()
 
@@ -201,7 +235,7 @@ async def get_risk_level(
             return {
                 "ticker": ticker,
                 "level": risk.risk_level,
-                "category": risk.risk_level,  # Use risk_level as category
+                "category": risk.risk_level,
                 "volatility_score": float(risk.earnings_volatility_score) if risk.earnings_volatility_score else None,
                 "assessment_date": risk.calculated_at.isoformat() if risk.calculated_at else None,
                 "components": {
@@ -211,18 +245,41 @@ async def get_risk_level(
                     "concentration_risk": float(risk.concentration_score) if risk.concentration_score else None,
                     "industry_stability": float(risk.industry_stability_score) if risk.industry_stability_score else None
                 },
-                "cached": True
+                "cached": True,
+                "cache_source": "database"
             }
 
-        raise HTTPException(
-            status_code=404,
-            detail=f"Risk Level Assessment not yet available for {ticker}. Coverage coming soon."
-        )
+        # Calculate on-demand if not cached
+        logger.info(f"Calculating Risk Level for {ticker} on-the-fly")
+        risk_service = RiskLevelService(db)
+
+        # Calculate with defaults (service handles missing data gracefully)
+        calculation_result = await risk_service.calculate_risk_level(ticker)
+
+        # Save to database
+        await risk_service.save_risk_assessment(calculation_result)
+
+        return {
+            "ticker": ticker,
+            "level": calculation_result["risk_level"],
+            "category": calculation_result["risk_level"],
+            "volatility_score": calculation_result["component_scores"]["earnings_volatility"],
+            "assessment_date": calculation_result["calculated_at"],
+            "components": {
+                "earnings_volatility": calculation_result["component_scores"]["earnings_volatility"],
+                "financial_leverage": calculation_result["component_scores"]["financial_leverage"],
+                "operating_leverage": calculation_result["component_scores"]["operating_leverage"],
+                "concentration_risk": calculation_result["component_scores"]["concentration"],
+                "industry_stability": calculation_result["component_scores"]["industry_stability"]
+            },
+            "cached": False,
+            "cache_source": "calculated"
+        }
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching Risk Level for {ticker}: {e}")
+        logger.error(f"Error fetching Risk Level for {ticker}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
