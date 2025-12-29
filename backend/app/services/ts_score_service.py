@@ -191,14 +191,36 @@ class TSScoreService:
 
     async def save_ts_score(self, score_data: Dict[str, Any]) -> TradeSignalScore:
         """Save TS Score to database."""
+        # Map badge to rating
+        badge_to_rating = {
+            "excellent": "Strong Buy",
+            "strong": "Buy",
+            "good": "Buy",
+            "moderate": "Hold",
+            "weak": "Sell",
+            "poor": "Strong Sell"
+        }
+
+        # Map ts_score (0-100) to score (1-5)
+        ts_score_value = score_data["ts_score"]
+        if ts_score_value >= 80:
+            score_1_to_5 = 5
+        elif ts_score_value >= 60:
+            score_1_to_5 = 4
+        elif ts_score_value >= 40:
+            score_1_to_5 = 3
+        elif ts_score_value >= 20:
+            score_1_to_5 = 2
+        else:
+            score_1_to_5 = 1
+
         score = TradeSignalScore(
             ticker=score_data["ticker"].upper(),
-            score=score_data["ts_score"],
-            badge=score_data["badge"],
-            insider_buy_ratio=score_data["components"]["insider_buy_ratio"],
-            ivt_discount_premium=score_data["components"]["ivt_discount_premium"],
-            risk_score=score_data["components"]["risk_score"],
-            politician_score=score_data["components"]["politician_score"],
+            score=score_1_to_5,
+            p_ivt_ratio=score_data["components"].get("ivt_discount_premium"),
+            discount_premium_pct=score_data["components"].get("ivt_discount_premium"),
+            risk_level=score_data["badge"],
+            rating=badge_to_rating.get(score_data["badge"], "Hold"),
             calculated_at=datetime.fromisoformat(score_data["calculated_at"]),
         )
 
