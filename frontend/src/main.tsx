@@ -3,8 +3,12 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
+import { injectSpeedInsights } from '@vercel/speed-insights';
 import App from './App';
 import './index.css';
+
+// Initialize Vercel Speed Insights
+injectSpeedInsights();
 
 // Create React Query client
 const queryClient = new QueryClient({
