@@ -273,36 +273,64 @@ class DatabaseManager:
             logger.error(f"Unexpected error in database session: {e}", exc_info=True)
 
     @asynccontextmanager
-    async def get_session(self, connection_timeout: float = 5.0) -> AsyncGenerator[AsyncSession, None]:
+    async def get_session(
+        self,
+        connection_timeout: float = 5.0,
+        max_connect_retries: int = 2,
+    ) -> AsyncGenerator[AsyncSession, None]:
         """
-        Get a database session with optional connection timeout.
+        Get a database session with optional connection timeout and retry.
         
         Args:
             connection_timeout: Timeout in seconds for initial connection test.
                               Default 5.0s for API requests (fast failure).
                               Use 10.0s for scripts that need more patience.
+            max_connect_retries: Number of attempts for the initial connection test.
+                                Retries with 1s backoff to handle transient pooler hiccups.
         """
         session_factory = self.get_session_factory()
         session = None
         try:
             session = session_factory()
-            # Test connection immediately with timeout to fail fast if pooler is exhausted
-            # This prevents hanging for the full connection timeout duration
-            try:
-                await asyncio.wait_for(
-                    session.execute(text("SELECT 1")),
-                    timeout=connection_timeout  # Configurable timeout
-                )
-            except asyncio.TimeoutError:
+            last_error: Exception | None = None
+            for attempt in range(max_connect_retries):
+                try:
+                    await asyncio.wait_for(
+                        session.execute(text("SELECT 1")),
+                        timeout=connection_timeout,
+                    )
+                    last_error = None
+                    break
+                except asyncio.TimeoutError as te:
+                    last_error = te
+                    if attempt < max_connect_retries - 1:
+                        logger.warning(
+                            f"Database connection test timed out (attempt {attempt + 1}/{max_connect_retries}), "
+                            f"retrying in 1s..."
+                        )
+                        await asyncio.sleep(1.0)
+                except Exception as ce:
+                    last_error = ce
+                    if attempt < max_connect_retries - 1:
+                        logger.warning(
+                            f"Database connection test failed (attempt {attempt + 1}/{max_connect_retries}): {ce}, "
+                            f"retrying in 1s..."
+                        )
+                        await asyncio.sleep(1.0)
+
+            if last_error is not None:
                 await session.close()
-                raise RuntimeError(
-                    f"Database session creation timed out after {connection_timeout}s. "
-                    "This may indicate Supabase pooler exhaustion or network issues."
-                )
+                if isinstance(last_error, asyncio.TimeoutError):
+                    raise RuntimeError(
+                        f"Database connection timed out after {max_connect_retries} attempts "
+                        f"({connection_timeout}s each). "
+                        "This may indicate Supabase pooler exhaustion or network issues."
+                    )
+                raise last_error
+
             yield session
             await session.commit()
         except HTTPException:
-            # Don't rollback or log for HTTP exceptions - these are expected auth errors, etc.
             if session:
                 await session.rollback()
             raise
@@ -310,7 +338,6 @@ class DatabaseManager:
             await self._handle_session_error(e, session)
             raise
         finally:
-            # CRITICAL: Always close session to release connection back to pool (or close for NullPool)
             if session:
                 await session.close()
 
@@ -506,24 +533,37 @@ class DatabaseManager:
 db_manager = DatabaseManager()
 
 
+def _classify_db_error(e: Exception) -> tuple[str, str]:
+    """Return (detail_message, error_code) based on the exception type."""
+    error_str = str(e).lower()
+    if isinstance(e, RuntimeError) and "timed out" in error_str:
+        return "Database connection timed out.", "database_timeout"
+    if "connection refused" in error_str:
+        return "Database connection refused.", "database_refused"
+    if "gaierror" in error_str or "getaddrinfo" in error_str:
+        return "Database DNS resolution failed.", "database_dns"
+    return "Database service unavailable.", "database_unavailable"
+
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     try:
         async with db_manager.get_session() as session:
             yield session
     except HTTPException:
-        # Re-raise HTTP exceptions as-is (these are expected auth errors, etc.)
         raise
     except SQLAlchemyError as e:
         logger.error(f"Database error: {e}")
+        detail, error_code = _classify_db_error(e)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database service unavailable.",
+            detail={"message": detail, "error_code": error_code},
         )
     except Exception as e:
         logger.error(f"Unexpected error in get_db: {e}", exc_info=True)
+        detail, error_code = _classify_db_error(e)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database service unavailable.",
+            detail={"message": detail, "error_code": error_code},
         )
 
 async def init_db() -> None:

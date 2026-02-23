@@ -69,7 +69,7 @@ const PublicSupportPage = lazy(() => import('./pages/public/PublicSupportPage'))
 
 // Loading skeleton component
 const PageLoader = () => (
-  <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
+  <div className="min-h-screen flex items-center justify-center bg-black">
     <div className="space-y-4 w-full max-w-4xl px-4">
       {[...Array(5)].map((_, i) => (
         <div key={i} className="animate-pulse flex space-x-4 p-4 bg-white/5 border border-white/5 rounded-lg">
@@ -87,8 +87,8 @@ function AppContent() {
     <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* Auth routes - NO LAYOUT (full screen) */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/login/*" element={<LoginPage />} />
+        <Route path="/register/*" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
         

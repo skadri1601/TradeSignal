@@ -117,6 +117,263 @@ class ResetPasswordRequest(BaseModel):
 logger = logging.getLogger(__name__)
 
 
+@router.post("/clerk-sync", response_model=UserResponse)
+async def clerk_sync(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.replace("Bearer ", "")
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing authorization token",
+        )
+
+    try:
+        from jwt import PyJWKClient, decode as jwt_decode
+        import re
+        import base64
+
+        clerk_issuer_match = re.search(
+            r"pk_(?:test|live)_([a-zA-Z0-9]+)",
+            settings.clerk_publishable_key or "",
+        )
+        if not clerk_issuer_match:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Clerk not configured",
+            )
+
+        raw_key = clerk_issuer_match.group(1)
+        clerk_frontend_api = base64.b64decode(raw_key + "==").decode().rstrip("$")
+        jwks_url = f"https://{clerk_frontend_api}/.well-known/jwks.json"
+        jwks_client = PyJWKClient(jwks_url)
+        signing_key = jwks_client.get_signing_key_from_jwt(token)
+        clerk_payload = jwt_decode(
+            token,
+            signing_key.key,
+            algorithms=["RS256"],
+            options={"verify_exp": True},
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Clerk token verification failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Clerk token",
+        )
+
+    clerk_user_id = clerk_payload.get("sub")
+    if not clerk_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+        )
+
+    try:
+        result = await db.execute(
+            select(User).filter(User.clerk_uid == clerk_user_id)
+        )
+        user = result.scalar_one_or_none()
+    except (OperationalError, DatabaseError) as db_error:
+        logger.error(f"Database error during clerk-sync lookup: {db_error}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database temporarily unavailable. Please retry.",
+        )
+    except SQLAlchemyError as db_error:
+        logger.error(f"Database error during clerk-sync lookup: {db_error}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database error occurred during sync.",
+        )
+
+    if not user:
+        import httpx
+
+        headers = {"Authorization": f"Bearer {settings.clerk_secret_key}"}
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"https://api.clerk.com/v1/users/{clerk_user_id}",
+                headers=headers,
+            )
+
+        if resp.status_code != 200:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to fetch user from Clerk",
+            )
+
+        clerk_user = resp.json()
+        email = (clerk_user.get("email_addresses") or [{}])[0].get(
+            "email_address", ""
+        )
+        username = clerk_user.get("username") or email.split("@")[0]
+
+        try:
+            existing_email = await db.execute(
+                select(User).filter(User.email == email)
+            )
+            existing = existing_email.scalar_one_or_none()
+            if existing:
+                existing.clerk_uid = clerk_user_id
+                existing.auth_provider = "clerk"
+                await db.commit()
+                await db.refresh(existing)
+                return existing
+
+            existing_username = await db.execute(
+                select(User).filter(User.username == username)
+            )
+            if existing_username.scalar_one_or_none():
+                username = f"{username}_{clerk_user_id[:6]}"
+
+            user = User(
+                email=email,
+                username=username,
+                hashed_password="CLERK_MANAGED",
+                clerk_uid=clerk_user_id,
+                auth_provider="clerk",
+                full_name=f"{clerk_user.get('first_name', '')} {clerk_user.get('last_name', '')}".strip() or None,
+                avatar_url=clerk_user.get("image_url"),
+                is_active=True,
+                is_verified=True,
+            )
+            db.add(user)
+            await db.commit()
+            await db.refresh(user)
+        except (OperationalError, DatabaseError) as db_error:
+            await db.rollback()
+            logger.error(f"Database error during clerk-sync user creation: {db_error}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database temporarily unavailable. Please retry.",
+            )
+        except SQLAlchemyError as db_error:
+            await db.rollback()
+            logger.error(f"Database error during clerk-sync user creation: {db_error}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create user account during sync.",
+            )
+
+    return user
+
+
+@router.post("/clerk-webhook", status_code=status.HTTP_200_OK)
+async def clerk_webhook(request: Request, db: AsyncSession = Depends(get_db)):
+    """
+    Receive Clerk webhook events for user lifecycle management.
+    Replaces the need for frontend clerk-sync on user creation/updates.
+    """
+    if not settings.clerk_webhook_secret:
+        raise HTTPException(status_code=500, detail="Webhook secret not configured")
+
+    body = await request.body()
+    headers_dict = {
+        "svix-id": request.headers.get("svix-id", ""),
+        "svix-timestamp": request.headers.get("svix-timestamp", ""),
+        "svix-signature": request.headers.get("svix-signature", ""),
+    }
+
+    from svix.webhooks import Webhook, WebhookVerificationError
+    wh = Webhook(settings.clerk_webhook_secret)
+    try:
+        payload = wh.verify(body, headers_dict)
+    except WebhookVerificationError:
+        logger.warning("Clerk webhook signature verification failed")
+        raise HTTPException(status_code=400, detail="Invalid webhook signature")
+
+    event_type = payload.get("type", "")
+    data = payload.get("data", {})
+    clerk_user_id = data.get("id", "")
+
+    if not clerk_user_id:
+        return {"status": "ignored", "reason": "no user id"}
+
+    if event_type == "user.created":
+        existing = await db.execute(
+            select(User).filter(User.clerk_uid == clerk_user_id)
+        )
+        if existing.scalar_one_or_none():
+            return {"status": "ok", "action": "already_exists"}
+
+        email = (data.get("email_addresses") or [{}])[0].get("email_address", "")
+        username = data.get("username") or email.split("@")[0]
+        full_name = f"{data.get('first_name', '')} {data.get('last_name', '')}".strip() or None
+        avatar_url = data.get("image_url")
+
+        existing_email = await db.execute(select(User).filter(User.email == email))
+        existing_user = existing_email.scalar_one_or_none()
+        if existing_user:
+            existing_user.clerk_uid = clerk_user_id
+            existing_user.auth_provider = "clerk"
+            if full_name:
+                existing_user.full_name = full_name
+            if avatar_url:
+                existing_user.avatar_url = avatar_url
+            await db.commit()
+            logger.info(f"Clerk webhook: linked existing user {existing_user.id} to clerk_uid {clerk_user_id}")
+            return {"status": "ok", "action": "linked"}
+
+        existing_username = await db.execute(select(User).filter(User.username == username))
+        if existing_username.scalar_one_or_none():
+            username = f"{username}_{clerk_user_id[:6]}"
+
+        user = User(
+            email=email,
+            username=username,
+            hashed_password="CLERK_MANAGED",
+            clerk_uid=clerk_user_id,
+            auth_provider="clerk",
+            full_name=full_name,
+            avatar_url=avatar_url,
+            is_active=True,
+            is_verified=True,
+        )
+        db.add(user)
+        await db.commit()
+        logger.info(f"Clerk webhook: created user {user.id} for clerk_uid {clerk_user_id}")
+        return {"status": "ok", "action": "created"}
+
+    elif event_type == "user.updated":
+        result = await db.execute(select(User).filter(User.clerk_uid == clerk_user_id))
+        user = result.scalar_one_or_none()
+        if not user:
+            return {"status": "ignored", "reason": "user_not_found"}
+
+        email = (data.get("email_addresses") or [{}])[0].get("email_address", "")
+        full_name = f"{data.get('first_name', '')} {data.get('last_name', '')}".strip() or None
+        avatar_url = data.get("image_url")
+
+        if email and email != user.email:
+            user.email = email
+        if full_name:
+            user.full_name = full_name
+        if avatar_url:
+            user.avatar_url = avatar_url
+
+        await db.commit()
+        logger.info(f"Clerk webhook: updated user {user.id}")
+        return {"status": "ok", "action": "updated"}
+
+    elif event_type == "user.deleted":
+        result = await db.execute(select(User).filter(User.clerk_uid == clerk_user_id))
+        user = result.scalar_one_or_none()
+        if not user:
+            return {"status": "ignored", "reason": "user_not_found"}
+
+        user.is_active = False
+        await db.commit()
+        logger.info(f"Clerk webhook: deactivated user {user.id}")
+        return {"status": "ok", "action": "deactivated"}
+
+    return {"status": "ignored", "reason": f"unhandled event: {event_type}"}
+
+
 # Authentication Endpoints
 
 

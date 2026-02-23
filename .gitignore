@@ -218,6 +218,9 @@ backend/check_*.py
 backend/test_*.py
 backend/run_tests*.py
 
+# Clerk vendored JS bundles (loaded from CDN instead)
+frontend/public/*clerk*.js
+
 # Frontend Images
 frontend/public/images/
 

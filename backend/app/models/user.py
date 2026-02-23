@@ -65,13 +65,17 @@ class User(Base):
         String(20), default="customer", nullable=False, index=True
     )
 
-    # Auth provider: 'custom' (our JWT) or 'supabase' (Supabase Auth)
+    # Auth provider: 'custom' (our JWT), 'supabase' (Supabase Auth), or 'clerk' (Clerk Auth)
     auth_provider: Mapped[str] = mapped_column(
         String(20), default="custom", nullable=False
     )
     # Supabase user ID (UUID from Supabase auth.users table)
     supabase_uid: Mapped[Optional[str]] = mapped_column(
         String(36), nullable=True, unique=True, index=True
+    )
+    # Clerk user ID (from Clerk auth)
+    clerk_uid: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True, unique=True, index=True
     )
 
     # Password reset fields

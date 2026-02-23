@@ -25,9 +25,8 @@ class ScraperService:
     Resource-optimized for $7 Render tier.
     """
 
-    # Resource limits for $7 Render tier
-    DEFAULT_MAX_FILINGS = 5  # Limit filings per company to save resources
-    DEFAULT_DAYS_BACK = 30  # Only recent filings
+    DEFAULT_MAX_FILINGS = 50
+    DEFAULT_DAYS_BACK = 60
 
     def __init__(self):
         """Initialize scraper service with lazy-loaded clients."""
@@ -45,8 +44,8 @@ class ScraperService:
         db: AsyncSession,
         ticker: Optional[str] = None,
         cik: Optional[str] = None,
-        days_back: int = 30,
-        max_filings: int = 5,
+        days_back: int = 60,
+        max_filings: int = 50,
     ) -> Dict[str, Any]:
         """
         Scrape Form 4 filings for a company directly (no Celery).
@@ -180,7 +179,7 @@ class ScraperService:
             select(Trade).where(
                 and_(
                     Trade.company_id == company_id,
-                    Trade.sec_url == sec_url
+                    Trade.sec_filing_url == sec_url
                 )
             ).limit(1)
         )
@@ -243,7 +242,7 @@ class ScraperService:
             total_value=txn.get("total_value"),
             shares_owned_after=txn.get("shares_owned_after"),
             filing_date=filing_date,
-            sec_url=filing.get("filing_url"),
+            sec_filing_url=filing.get("filing_url"),
         )
         db.add(trade)
         logger.debug(

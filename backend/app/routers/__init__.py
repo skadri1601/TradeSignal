@@ -13,7 +13,6 @@ from app.routers import (
     scheduler,
     push,
     stocks,
-    health,
     congressional_trades,
     congresspeople,
     billing,
@@ -26,7 +25,6 @@ from app.routers import (
     data_health,
     notifications,
     ai,
-    # REMOVED: patterns (file was deleted by Gemini along with pattern_analysis_service)
     tickets,
     alerts,
 )
@@ -40,7 +38,6 @@ __all__ = [
     "scheduler",
     "push",
     "stocks",
-    "health",
     "congressional_trades",
     "congresspeople",
     "billing",
@@ -53,7 +50,6 @@ __all__ = [
     "data_health",
     "notifications",
     "ai",
-    # REMOVED: "patterns" (file was deleted by Gemini)
     "tickets",
     "alerts",
 ]

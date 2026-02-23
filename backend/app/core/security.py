@@ -212,7 +212,41 @@ async def get_current_user(
     except Exception as e:
         logger.debug(f"Custom JWT decode failed: {e}")
 
-    # If custom JWT didn't work, try Supabase token
+    # If custom JWT didn't work, try Clerk token
+    if user is None and settings.clerk_secret_key:
+        try:
+            from jwt import PyJWKClient, decode as jwt_decode
+            import re
+            import base64
+
+            clerk_issuer_match = re.search(
+                r"pk_(?:test|live)_([a-zA-Z0-9]+)",
+                settings.clerk_publishable_key or "",
+            )
+            if clerk_issuer_match:
+                raw_key = clerk_issuer_match.group(1)
+                clerk_frontend_api = base64.b64decode(raw_key + "==").decode().rstrip("$")
+                jwks_url = f"https://{clerk_frontend_api}/.well-known/jwks.json"
+                jwks_client = PyJWKClient(jwks_url)
+                signing_key = jwks_client.get_signing_key_from_jwt(token)
+                clerk_payload = jwt_decode(
+                    token,
+                    signing_key.key,
+                    algorithms=["RS256"],
+                    options={"verify_exp": True},
+                )
+                clerk_user_id = clerk_payload.get("sub")
+                if clerk_user_id:
+                    result = await db.execute(
+                        select(User).filter(User.clerk_uid == clerk_user_id)
+                    )
+                    user = result.scalar_one_or_none()
+                    if user:
+                        logger.debug(f"Clerk token validated for user ID: {user.id}")
+        except Exception as e:
+            logger.debug(f"Clerk token validation failed: {e}")
+
+    # If custom JWT and Clerk didn't work, try Supabase token
     if user is None and supabase_auth_service.is_configured:
         try:
             supabase_user = await supabase_auth_service.get_user(token)

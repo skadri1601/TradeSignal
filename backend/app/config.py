@@ -14,6 +14,9 @@ from dotenv import load_dotenv
 _env_file = Path(__file__).parent.parent / ".env"
 if _env_file.exists():
     load_dotenv(_env_file, override=True)
+_env_local = Path(__file__).parent.parent / ".env.local"
+if _env_local.exists():
+    load_dotenv(_env_local, override=True)
 
 from pydantic_settings import BaseSettings, SettingsConfigDict  # noqa: E402
 from pydantic import Field, field_validator  # noqa: E402
@@ -506,6 +509,23 @@ class Settings(BaseSettings):
         default=True,
         description="Trust X-Forwarded-Proto and other proxy headers (required for Render, Heroku, etc.)",
         alias="TRUST_PROXY_HEADERS",
+    )
+
+    # Clerk Auth Configuration
+    clerk_secret_key: Optional[str] = Field(
+        default=None,
+        description="Clerk secret key for backend JWT verification",
+        alias="CLERK_SECRET_KEY",
+    )
+    clerk_publishable_key: Optional[str] = Field(
+        default=None,
+        description="Clerk publishable key",
+        alias="CLERK_PUBLISHABLE_KEY",
+    )
+    clerk_webhook_secret: Optional[str] = Field(
+        default=None,
+        description="Clerk webhook signing secret (from Clerk Dashboard > Webhooks)",
+        alias="CLERK_WEBHOOK_SECRET",
     )
 
     # Supabase Auth Configuration (Gradual Migration)

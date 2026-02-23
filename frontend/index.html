@@ -24,14 +24,14 @@
                               globalThis.location.port !== '';
         
         // Base CSP for production (include both http and https for API compatibility)
-        let connectSrc = "'self' wss://api.tradesignal.capital ws://api.tradesignal.capital https://api.tradesignal.capital http://api.tradesignal.capital https://api.stripe.com https://checkout.stripe.com https://r.stripe.com";
+        let connectSrc = "'self' wss://api.tradesignal.capital ws://api.tradesignal.capital https://api.tradesignal.capital http://api.tradesignal.capital https://api.stripe.com https://checkout.stripe.com https://r.stripe.com https://*.clerk.accounts.dev https://api.clerk.com https://clerk-telemetry.com";
         
         // Add localhost origins in development
         if (isDevelopment) {
           connectSrc += " http://localhost:8000 http://localhost:5173 http://localhost:5174 http://localhost:3000 http://127.0.0.1:8000 ws://localhost:8000";
         }
         
-        const csp = `default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https:; connect-src ${connectSrc}; frame-src https://js.stripe.com https://hooks.stripe.com;`;
+        const csp = `default-src 'self'; script-src 'self' 'unsafe-inline' blob: https://js.stripe.com https://challenges.cloudflare.com https://*.clerk.accounts.dev; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https:; connect-src ${connectSrc}; frame-src https://js.stripe.com https://hooks.stripe.com https://*.clerk.accounts.dev https://challenges.cloudflare.com;`;
         
         const meta = document.createElement('meta');
         meta.httpEquiv = 'Content-Security-Policy';
@@ -40,10 +40,10 @@
       })();
     </script>
   </head>
-  <body style="background-color: #0a0a0a; color: white; margin: 0; font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;">
+  <body style="background-color: #000000; color: white; margin: 0; font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;">
     <div id="root">
       <!-- Initial loading spinner before React loads -->
-      <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background-color: #0a0a0a;">
+      <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background-color: #000000;">
         <div style="text-align: center;">
           <svg style="width: 48px; height: 48px; margin: 0 auto 16px; animation: spin 1s linear infinite;" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="12" cy="12" r="10" stroke="#6366f1" stroke-width="4" stroke-linecap="round" stroke-dasharray="60" stroke-dashoffset="10" opacity="0.25"/>

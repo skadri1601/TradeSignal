@@ -258,30 +258,37 @@ class SchedulerService:
             end_time = datetime.now()
             duration = (end_time - start_time).total_seconds()
 
-            # Update history record
+            # Determine actual status from scraper result
+            scrape_success = result.get("success", False)
+            filings_found = result.get("filings_processed", 0)
+            trades_created = result.get("trades_created", 0)
+            actual_status = "success" if scrape_success else "failed"
+            error_message = None if scrape_success else result.get("message")
+
+            # Update history record with real results
             async with db_manager.get_session() as db:
                 result_history = await db.get(ScrapeHistory, history_id)
                 if result_history:
                     result_history.completed_at = end_time
-                    result_history.status = "queued" # Changed from success to queued
-                    # We don't have counts yet because it's async
-                    result_history.filings_found = 0 
-                    result_history.trades_created = 0
+                    result_history.status = actual_status
+                    result_history.filings_found = filings_found
+                    result_history.trades_created = trades_created
                     result_history.duration_seconds = duration
+                    result_history.error_message = error_message
                     await db.commit()
 
             logger.info(
-                f"Scrape enqueued for {ticker}: Task ID {result.get('task_id')}"
+                f"Scrape completed for {ticker}: status={actual_status}, "
+                f"filings={filings_found}, trades={trades_created}"
             )
 
             return {
-                "status": "queued",
+                "status": actual_status,
                 "ticker": ticker,
-                "filings_found": 0,
-                "trades_created": 0,
+                "filings_found": filings_found,
+                "trades_created": trades_created,
                 "duration_seconds": duration,
-                "error_message": None,
-                "task_id": result.get("task_id")
+                "error_message": error_message,
             }
 
         except Exception as e:

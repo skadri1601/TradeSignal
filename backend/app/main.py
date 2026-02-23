@@ -42,6 +42,9 @@ from prometheus_fastapi_instrumentator import Instrumentator
 # Background tasks registry
 _background_tasks = set()
 
+# Scheduler service instance (initialized during lifespan startup)
+_scheduler_service = None
+
 # Health check cache (to prevent connection pool exhaustion from frequent health checks)
 _health_check_cache: Optional[Tuple[bool, datetime]] = None
 _HEALTH_CHECK_CACHE_TTL = 60  # seconds (increased from 15s)
@@ -310,6 +313,16 @@ async def _shutdown_application() -> None:
             db_manager._engine = None
             db_manager._session_factory = None
 
+    # Stop scheduler
+    global _scheduler_service
+    if _scheduler_service is not None:
+        try:
+            await _scheduler_service.stop()
+            logger.info("Scheduler stopped")
+        except Exception as e:
+            logger.warning(f"Scheduler stop error: {e}")
+        _scheduler_service = None
+
     # Disconnect cache service
     try:
         await cache_service.disconnect()
@@ -367,6 +380,17 @@ async def lifespan(app: FastAPI):
         if db_connected:
             logger.info("✅ Database connection established")
             await _create_database_tables()
+
+            # Auto-start the scheduler so periodic scraping survives server restarts
+            global _scheduler_service
+            try:
+                from app.services.scheduler_service import SchedulerService
+                _scheduler_service = SchedulerService()
+                await _scheduler_service.start()
+                logger.info("✅ Scheduler auto-started")
+            except Exception as sched_err:
+                logger.warning(f"⚠️  Scheduler failed to start: {sched_err}")
+                _scheduler_service = None
         else:
             logger.warning("=" * 80)
             logger.warning("⚠️  DATABASE UNAVAILABLE - Starting in degraded mode")
@@ -527,10 +551,27 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         f"Path: {request.method} {request.url.path}"
     )
 
+    if isinstance(exc.detail, dict):
+        error_msg = exc.detail.get("message", str(exc.detail))
+        error_code = exc.detail.get("error_code", "server_error")
+    else:
+        error_msg = exc.detail
+        if exc.status_code == 503:
+            error_code = "database_unavailable"
+        elif exc.status_code in (401, 403):
+            error_code = "auth_error"
+        elif exc.status_code == 429:
+            error_code = "rate_limited"
+        elif exc.status_code == 422:
+            error_code = "validation_error"
+        else:
+            error_code = "server_error"
+
     return JSONResponse(
         status_code=exc.status_code,
         content={
-            "error": exc.detail,
+            "error": error_msg,
+            "error_code": error_code,
             "status_code": exc.status_code,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "path": str(request.url.path),
@@ -902,13 +943,6 @@ app.include_router(
     prefix=f"{settings.api_v1_prefix}",
     tags=["Pricing"],
 )
-# COMMENTED OUT: Duplicate health_api router conflicts with main app health check at GET /health
-# app.include_router(
-#     health_api.router,
-#     prefix=f"{settings.api_v1_prefix}",
-#     tags=["Health"],
-# )
-
 
 if __name__ == "__main__":
     import uvicorn
