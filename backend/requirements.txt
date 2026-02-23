@@ -51,7 +51,7 @@ pytz==2023.3
 
 # Utilities
 python-dotenv==1.0.0
-httpx==0.25.2
+httpx>=0.26.0,<1.0.0
 aiofiles==23.2.1
 py-vapid==1.9.0
 pywebpush==1.14.0
