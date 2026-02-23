@@ -1,8 +1,8 @@
 # FastAPI
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
-pydantic==2.5.0
-pydantic-settings==2.1.0
+pydantic>=2.10.0,<3.0.0
+pydantic-settings>=2.1.0,<3.0.0
 
 # Database
 sqlalchemy==2.0.23
@@ -17,7 +17,7 @@ passlib[bcrypt]==1.7.4
 bcrypt<5.0.0  # Lock to 4.x to avoid 5.x breaking changes
 python-multipart==0.0.6
 PyJWT[crypto]>=2.8.0
-supabase>=2.0.0  # Supabase Auth client for gradual migration
+supabase>=2.22.0,<3.0.0
 svix>=1.85.0
 
 # Data Processing
