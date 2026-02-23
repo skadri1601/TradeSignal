@@ -36,9 +36,13 @@ const renderWithAuth = (
 ) => {
   const mockAuthContext: AuthContextType = {
     user,
-    tokens: isAuthenticated ? { access_token: 'test-token', refresh_token: 'refresh-token' } : null,
+    tokens: null,
     isLoading: loading,
     isAuthenticated,
+    isDegraded: false,
+    syncError: null,
+    autoRetryCountdown: 0,
+    retrySync: vi.fn(),
     login: vi.fn(),
     logout: vi.fn(),
     register: vi.fn(),

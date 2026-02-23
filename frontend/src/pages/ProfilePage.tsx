@@ -5,7 +5,7 @@
 
 import { useState, FormEvent, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, getAccessToken } from '../contexts/AuthContext';
 import { User, Calendar, Phone, FileText, Image, Save, AlertCircle, CheckCircle2, Crown, XCircle, Pause, Play, HelpCircle, Webhook as WebhookIcon, Key, Plus, Trash2, Eye, Copy } from 'lucide-react';
 import { getSubscription, cancelSubscription, pauseSubscription, resumeSubscription } from '../api/billing';
 import type { SubscriptionResponse } from '../api/billing';
@@ -26,7 +26,7 @@ interface ProfileData {
 }
 
 export default function ProfilePage() {
-  const { user, tokens } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isAdmin = user?.is_superuser || false;
@@ -153,7 +153,7 @@ export default function ProfilePage() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${tokens?.access_token}`
+          'Authorization': `Bearer ${getAccessToken()}`
         },
         body: JSON.stringify(profileData)
       });
@@ -196,7 +196,7 @@ export default function ProfilePage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${tokens?.access_token}`
+          'Authorization': `Bearer ${getAccessToken()}`
         },
         body: JSON.stringify({
           current_password: currentPassword,
@@ -231,7 +231,7 @@ export default function ProfilePage() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${tokens?.access_token}`
+          'Authorization': `Bearer ${getAccessToken()}`
         },
         body: JSON.stringify({
           new_email: newEmail,
