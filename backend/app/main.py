@@ -26,17 +26,19 @@ from typing import Any, Optional, Tuple
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
-from app.database import db_manager
+from app.database import db_manager, Base
+from app.models import ScrapeJob, ScrapeHistory, ContactSubmission  # noqa: F401
 from app.core.limiter import limiter
 from app.middleware.error_handler import register_error_handlers
 from app.services.cache_service import cache_service
+from app.services.scheduler_service import SchedulerService
 from prometheus_fastapi_instrumentator import Instrumentator
 
 # Background tasks registry
@@ -222,24 +224,21 @@ async def _check_database_connection(masked_url: str) -> bool:
     return False
 
 
+async def _run_create_all() -> None:
+    engine = db_manager.get_engine()
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+
 async def _create_database_tables() -> None:
     """Create database tables if they don't exist."""
     try:
-        from app.database import Base
-        from app.models import ScrapeJob, ScrapeHistory, ContactSubmission  # noqa: F401
-
-        async def _create_tables():
-            engine = db_manager.get_engine()
-            async with engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
-
-        try:
-            await asyncio.wait_for(_create_tables(), timeout=30.0)
-            logger.info("✅ Database tables created/verified")
-        except asyncio.TimeoutError:
-            logger.warning("⚠️  Database table creation timed out (tables may already exist)")
+        await asyncio.wait_for(_run_create_all(), timeout=30.0)
+        logger.info("Database tables created/verified")
+    except asyncio.TimeoutError:
+        logger.warning("Database table creation timed out (tables may already exist)")
     except Exception as e:
-        logger.warning(f"⚠️  Failed to create tables: {e}")
+        logger.warning(f"Failed to create tables: {e}")
 
 
 def _log_startup_info(app: FastAPI) -> None:
@@ -290,21 +289,16 @@ async def _shutdown_application() -> None:
 
     # Close database connections (with shorter timeout and force close)
     try:
-        try:
-            await asyncio.wait_for(db_manager.close(), timeout=2.0)
-            logger.info(" Database connections closed")
-        except asyncio.TimeoutError:
-            logger.warning(" Database close timed out, forcing close")
-            # Force close by setting engine to None
-            if db_manager._engine is not None:
-                db_manager._engine = None
-                db_manager._session_factory = None
-                logger.info(" Database engine force-closed")
-        except asyncio.CancelledError:
-            logger.warning(" Database close was cancelled")
-            raise  # Re-raise to allow proper cancellation propagation
+        await asyncio.wait_for(db_manager.close(), timeout=2.0)
+        logger.info("Database connections closed")
+    except asyncio.TimeoutError:
+        logger.warning("Database close timed out, forcing close")
+        if db_manager._engine is not None:
+            db_manager._engine = None
+            db_manager._session_factory = None
+            logger.info("Database engine force-closed")
     except asyncio.CancelledError:
-        # Re-raise CancelledError to allow proper cancellation propagation
+        logger.warning("Database close was cancelled")
         raise
     except Exception as e:
         logger.error(f"Error during database shutdown: {e}")
@@ -350,9 +344,6 @@ async def lifespan(app: FastAPI):
     logger.info(f"Log Level: {settings.log_level}")
     logger.info("=" * 80)
 
-    # Track if we're setting up degraded mode due to cancellation
-    degraded_mode_due_to_cancellation = False
-
     try:
         # Check if DATABASE_URL is configured
         db_url = settings.database_url
@@ -366,16 +357,7 @@ async def lifespan(app: FastAPI):
         else:
             masked_url = _mask_database_url(db_url)
             logger.info(f" Database URL configured: {masked_url}")
-            try:
-                db_connected = await _check_database_connection(masked_url)
-            except asyncio.CancelledError as cancel_error:
-                # If connection check is cancelled, log and set degraded mode
-                # Re-raise after cleanup to allow proper cancellation propagation
-                logger.warning(" Database connection check was cancelled - starting in degraded mode")
-                db_connected = False
-                degraded_mode_due_to_cancellation = True
-                # Re-raise to allow proper cancellation propagation
-                raise cancel_error
+            db_connected = await _check_database_connection(masked_url)
 
         if db_connected:
             logger.info("✅ Database connection established")
@@ -384,7 +366,6 @@ async def lifespan(app: FastAPI):
             # Auto-start the scheduler so periodic scraping survives server restarts
             global _scheduler_service
             try:
-                from app.services.scheduler_service import SchedulerService
                 _scheduler_service = SchedulerService()
                 await _scheduler_service.start()
                 logger.info("✅ Scheduler auto-started")
@@ -406,17 +387,8 @@ async def lifespan(app: FastAPI):
 
         _log_startup_info(app)
 
-    except asyncio.CancelledError as cancel_error:
-        # If cancellation occurred during connection check and we set up degraded mode,
-        # allow startup to continue in degraded mode
-        # Otherwise, re-raise to allow proper cancellation propagation
-        if degraded_mode_due_to_cancellation:
-            logger.info(" Continuing startup in degraded mode despite connection check cancellation")
-            # Suppress cancellation to allow degraded mode startup
-            # This is intentional - we want the app to start even if connection check is cancelled
-        else:
-            # Re-raise CancelledError to allow proper cancellation propagation
-            raise cancel_error
+    except asyncio.CancelledError:
+        raise
     except Exception as e:
         logger.error(f"Error during startup: {e}", exc_info=True)
         raise
@@ -642,9 +614,6 @@ async def general_exception_handler(request: Request, exc: Exception):
         logger.critical(
             f"Failed to create error response: {response_error}", exc_info=True
         )
-        # Return a minimal response
-        from fastapi.responses import Response
-
         return Response(
             content='{"error":"Internal Server Error"}',
             status_code=500,

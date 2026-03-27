@@ -15,6 +15,7 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
 
 from app.config import settings
+from app.services.ma_tracking_service import MATrackingService
 
 logger = logging.getLogger(__name__)
 
@@ -252,7 +253,6 @@ class FinancialDataService:
         m_and_a = None
         if db:
             try:
-                from app.services.ma_tracking_service import MATrackingService
                 ma_service = MATrackingService(db)
                 # Sync M&A transactions first
                 await ma_service.sync_ma_transactions(ticker)

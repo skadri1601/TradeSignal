@@ -9,7 +9,9 @@ from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
 
-from app.models import Company
+from datetime import date, timedelta
+
+from app.models import Company, Trade, Insider
 from app.schemas.company import CompanyCreate, CompanyUpdate, CompanyWithStats
 
 logger = logging.getLogger(__name__)
@@ -243,8 +245,6 @@ class CompanyService:
         Returns:
             CompanyWithStats instance or None
         """
-        from app.models import Trade, Insider
-
         # Get company
         company = await CompanyService.get_by_id(db, company_id)
         if not company:
@@ -266,8 +266,6 @@ class CompanyService:
         total_insiders = total_insiders_result.scalar_one()
 
         # Recent buys/sells (last 30 days)
-        from datetime import date, timedelta
-
         thirty_days_ago = date.today() - timedelta(days=30)
 
         recent_buys_result = await db.execute(

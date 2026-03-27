@@ -13,10 +13,21 @@ from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, desc, case
 
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None
+
+try:
+    from openai import AsyncOpenAI
+except ImportError:
+    AsyncOpenAI = None
+
 from app.config import settings
 from app.models.trade import Trade
 from app.models.company import Company
 from app.models.insider import Insider
+from app.services.market_data_service import MarketDataService
 
 logger = logging.getLogger(__name__)
 
@@ -45,8 +56,6 @@ class AIService:
         # Initialize Gemini
         if settings.gemini_api_key:
             try:
-                import google.generativeai as genai
-
                 genai.configure(api_key=settings.gemini_api_key)
                 
                 # Standard Client (Flash)
@@ -69,8 +78,6 @@ class AIService:
         # Initialize OpenAI
         if settings.openai_api_key:
             try:
-                from openai import AsyncOpenAI
-
                 self.openai_client = AsyncOpenAI(api_key=settings.openai_api_key)
                 logger.info(f"OpenAI initialized: {settings.openai_model}")
             except Exception as e:
@@ -167,9 +174,6 @@ class AIService:
                     "timestamp": datetime.utcnow().isoformat(),
                 }
 
-            # 2. Fetch Market Data (Earnings, Tech, Fund, News)
-            # Use dynamic import to avoid circular dependencies
-            from app.services.market_data_service import MarketDataService
             market_service = MarketDataService()
             
             # Fetch data (could be parallelized with asyncio.gather)
@@ -614,7 +618,6 @@ class AIService:
         if not settings.enable_technical_analysis or not settings.yfinance_enabled:
             return None
         try:
-            from app.services.market_data_service import MarketDataService
             market_service = MarketDataService()
             return await market_service.get_technical_indicators(ticker)
         except Exception as e:
@@ -626,7 +629,6 @@ class AIService:
         if not settings.enable_fundamental_analysis or not settings.yfinance_enabled:
             return None
         try:
-            from app.services.market_data_service import MarketDataService
             market_service = MarketDataService()
             return await market_service.get_fundamental_data(ticker)
         except Exception as e:
@@ -638,7 +640,6 @@ class AIService:
         if not settings.enable_news_sentiment:
             return None
         try:
-            from app.services.market_data_service import MarketDataService
             market_service = MarketDataService()
             return await market_service.get_news_sentiment(ticker)
         except Exception as e:
@@ -650,7 +651,6 @@ class AIService:
         if not settings.enable_analyst_ratings:
             return None
         try:
-            from app.services.market_data_service import MarketDataService
             market_service = MarketDataService()
             return await market_service.get_analyst_ratings(ticker)
         except Exception as e:

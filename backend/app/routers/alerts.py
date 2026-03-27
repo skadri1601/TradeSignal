@@ -27,7 +27,7 @@ from app.database import get_db
 from app.services.alert_service import AlertService
 from app.services.tier_service import TierService
 from app.models.user import User
-from app.core.security import get_current_active_user
+from app.core.security import get_current_active_user, decode_token
 from app.schemas.alert import (
     AlertCreate,
     AlertUpdate,
@@ -416,8 +416,6 @@ async def alert_stream(websocket: WebSocket):
     token = websocket.query_params.get("token")
     if token:
         try:
-            from app.core.security import decode_token
-
             payload = decode_token(token)
             user_id_str = payload.get("sub")
 

@@ -20,6 +20,7 @@ from app.schemas.trade import (
     TradeStats,
     TradeWithDetails,
 )
+from app.services.alert_service import AlertService
 from app.services.trade_event_manager import trade_event_manager
 from app.config import settings
 
@@ -233,8 +234,6 @@ class TradeService:
         # Real-time alert checking
         if settings.alerts_enabled:
             try:
-                from app.services.alert_service import AlertService
-
                 alert_service = AlertService(db)
                 await alert_service.check_trade_against_alerts(trade)
                 logger.info(f"Checked trade {trade.id} against active alerts")
@@ -291,8 +290,6 @@ class TradeService:
         # Real-time alert checking (in case update changes trade value/type)
         if settings.alerts_enabled:
             try:
-                from app.services.alert_service import AlertService
-
                 alert_service = AlertService(db)
                 await alert_service.check_trade_against_alerts(trade)
                 logger.info(f"Checked updated trade {trade.id} against active alerts")

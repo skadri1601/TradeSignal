@@ -20,6 +20,7 @@ from app.models.company import Company
 from app.models.intrinsic_value import IntrinsicValueTarget
 from app.models.tradesignal_score import TradeSignalScore
 from app.models.risk_level import RiskLevelAssessment
+from app.models.portfolio import PortfolioPerformance, VirtualPortfolio
 
 logger = logging.getLogger(__name__)
 
@@ -229,12 +230,9 @@ async def get_portfolio_performance(
 
     Returns portfolio value over time for performance charts.
     """
-    from app.models.portfolio import PortfolioPerformance
-
     start_date = datetime.utcnow() - timedelta(days=days_back)
 
-    # Verify portfolio belongs to user
-    from app.models.portfolio import VirtualPortfolio
+
     result = await db.execute(
         select(VirtualPortfolio).where(
             and_(

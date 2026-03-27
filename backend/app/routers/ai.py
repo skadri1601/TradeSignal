@@ -22,7 +22,11 @@ from app.schemas.ai import (
 )
 from app.config import settings
 from app.models.user import User
+from app.models.trade import Trade
+from app.models.company import Company
 from app.core.security import get_current_active_user
+from datetime import datetime, timedelta
+from sqlalchemy import select, func
 
 logger = logging.getLogger(__name__)
 
@@ -366,11 +370,6 @@ async def get_ai_diagnostics(
     - AI configuration
     - Date range settings
     """
-    from datetime import datetime, timedelta
-    from sqlalchemy import select, func
-    from app.models.trade import Trade
-    from app.models.company import Company
-    
     try:
         # Get total trades count
         total_trades_result = await db.execute(select(func.count(Trade.id)))

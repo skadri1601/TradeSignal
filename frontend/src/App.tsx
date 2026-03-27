@@ -30,8 +30,6 @@ const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
 const ReleaseNotesPage = lazy(() => import('./pages/ReleaseNotesPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
-const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
-const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const SupportPage = lazy(() => import('./pages/SupportPage'));
 const BillingSuccessPage = lazy(() => import('./pages/BillingSuccessPage'));
@@ -89,9 +87,6 @@ function AppContent() {
         {/* Auth routes - NO LAYOUT (full screen) */}
         <Route path="/login/*" element={<LoginPage />} />
         <Route path="/register/*" element={<RegisterPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
-        
         {/* Public Routes - Wrapped in PublicLayout (Floating Navbar) */}
         <Route element={<PublicLayout />}>
           <Route path="/" element={<LandingPage />} />

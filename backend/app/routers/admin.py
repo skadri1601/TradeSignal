@@ -5,13 +5,14 @@ Endpoints for user management and system administration
 
 import logging
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 from pydantic import BaseModel, EmailStr
 
 from app.database import get_db
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 from app.core.security import get_current_support_or_superuser, get_current_super_admin
@@ -1010,8 +1011,6 @@ async def get_feature_flags(
     Get all feature flags and their current status.
     Super Admin only.
     """
-    from app.config import settings
-
     return {
         "feature_flags": {
             "enable_ai_insights": {
@@ -1045,8 +1044,6 @@ async def get_subscription_analytics(
     Get subscription analytics including conversion rates, churn, and revenue.
     Super Admin only.
     """
-    from datetime import timedelta
-
     cutoff_date = datetime.utcnow() - timedelta(days=days)
 
     # Total subscriptions by tier

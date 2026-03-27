@@ -19,10 +19,8 @@ htmlcov/
 *.egg-info/
 dist/
 build/
-.turbo/
-.parcel-cache/
-.vite/
-.next/
+*.pyc
+*.pyo
 
 # Node
 node_modules/
@@ -30,22 +28,23 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-dist/
 dist-ssr/
 *.local
 .npm/
 .yarn/
+.turbo/
+.parcel-cache/
+.vite/
+.next/
 
 # TypeScript
 *.tsbuildinfo
-.tsbuildinfo
 
 # Environment
 .env
 .env.local
 .env.*.local
 backend/.env
-# Keep .env.example files for documentation
 !.env.example
 !backend/.env.example
 
@@ -54,52 +53,51 @@ backend/.env
 .idea/
 *.swp
 *.swo
+.*.swp
+.*.swo
 *~
-.DS_Store
-
-# Docker
-*.log
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-celerybeat-schedule
-*.sql
-
-# Misc
-.cache/
-temp/
-tmp/
-*.bak
 
 # macOS
 .DS_Store
 .AppleDouble
 .LSOverride
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
 
 # Windows
 Thumbs.db
 ehthumbs.db
 Desktop.ini
-
-# Docker volumes
-postgres_data/
+$RECYCLE.BIN/
 
 # Logs
 *.log
 logs/
 
-# Secrets (extra protection)
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+celerybeat-schedule
+celerybeat-schedule.*
+celerybeat.pid
+celerydb
+worker.pid
+
+# Docker
+docker-compose.override.yml
+postgres_data/
+
+# Secrets
 secrets/
 *.pem
 *.key
 *.crt
-
-# Development
-.vscode/settings.json
-.idea/workspace.xml
-
 
 # Test coverage
 coverage/
@@ -110,7 +108,7 @@ coverage/
 .ipynb_checkpoints/
 *.ipynb
 
-# Data files (don't commit large datasets)
+# Data files
 *.csv
 *.xlsx
 *.parquet
@@ -118,56 +116,26 @@ data/raw/
 data/processed/
 !tests/**/*.csv
 
-# Compiled files
-*.pyc
-*.pyo
-*.class
-
-# OS generated files
-.fseventsd
-.Spotlight-V100
-.TemporaryItems
-.Trashes
-.VolumeIcon.icns
-.com.apple.timemachine.donotpresent
-$RECYCLE.BIN/
-
-# Editor backups
-*.bak
-*.tmp
-*~
-.*.swp
-.*.swo
-
 # Local dev files
 scratch/
 playground/
 experiments/
+temp/
+tmp/
+*.bak
+*.tmp
+.tmp_*.py
+.cache/
 
-# Documentation / Markdown
-# *.md  <-- Unignored to allow README and docs
-
-# Tests - KEEP THESE UNIGNORED FOR CI/CD
-# tests/
-# e2e/
-# playwright.config.ts
-# vitest.config.ts
-# backend/tests/
-# backend/test_*.py
+# Claude Code / AI tools
+.claude/
+.agents/
+skills-lock.json
 
 # Database migrations
 backend/migrations/
 
-# Claude Code settings (local)
-.claude/
-# AI task assignment files (work-in-progress)
-
-
-
-# Temporary database/test files
-.tmp_*.py
-
-# One-time scripts (already executed)
+# One-time scripts
 backend/scripts/create_*.py
 backend/scripts/fix_*.py
 backend/scripts/migrate_*.py
@@ -186,22 +154,31 @@ backend/scripts/generate_*.py
 backend/scripts/make_*.py
 backend/scripts/scrape_*.py
 backend/scripts/verify_*.py
+backend/scripts/analyze_*.py
+backend/scripts/manual_scrape_test.py
 
-# Frontend Test Components
-# frontend/src/components/__tests__/
+# Temporary backend scripts at root level
+backend/fix_*.py
+backend/check_*.py
+backend/test_*.py
+backend/run_tests*.py
 
-# Package lock files
-# package-lock.json
+# Clerk vendored JS bundles (loaded from CDN)
+frontend/public/*clerk*.js
 
-# Migration script
+# Frontend images
+frontend/public/images/
+
+# ESLint config
+frontend/.eslintrc.cjs
+
+# Batch files
+*.bat
 run_migration.bat
 
-# Assets directory
-assets/
-
-
-# Temporary analysis files
-backend/scripts/analyze_*.py
+# Linting config
+.flake8
+backend/.flake8
 
 # Company data text files
 backend/watchlist_companies.txt
@@ -209,43 +186,13 @@ current_companies.txt
 companies_list.txt
 tickers.txt
 
-# ESLint config (if auto-generated)
-frontend/.eslintrc.cjs
+# Assets
+assets/
 
-# Temporary fix/check scripts (one-time use)
-backend/fix_*.py
-backend/check_*.py
-backend/test_*.py
-backend/run_tests*.py
-
-# Clerk vendored JS bundles (loaded from CDN instead)
-frontend/public/*clerk*.js
-
-# Frontend Images
-frontend/public/images/
-
-# Additional Test/Config files
-*.bat
-.flake8
-backend/.flake8
-celerybeat.pid
-celerydb
-worker.pid
-docker-compose.override.yml
-
-# Markdown files (root folder only)
+# Markdown files (root only, keep README)
 *.md
 !/README.md
 
-# Specific PDFs
-TradeSignal Business Viability Analysis.pdf
-Understanding Morningstar’s Research Model for Stocks.pdf
-backend/scripts/manual_scrape_test.py	
-backend/celerybeat-schedule.dir	
-backend/celerybeat-schedule.dat	
-backend/celerybeat-schedule.*
-backend/scripts/manual_scrape_test.py
-TradeSignal_deploy.md
-TradeSignal_deploy.md
-CHANGELOG.md
-!legacysystem.md
+# Docs and PDFs
+Docs/
+*.pdf

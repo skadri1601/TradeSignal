@@ -6,11 +6,13 @@ Provides endpoints for forum topics, posts, comments, votes, and moderation.
 from typing import List, Optional, Literal
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import db_manager
 from app.core.security import get_current_user
-from app.models.user import User
+from app.models.forum import ForumTopic, ForumPost, ForumVote, ForumComment, ForumModerationLog
+from app.models.user import User, User as UserModel
 from app.services.forum_service import ForumService
 from app.schemas.forum import (
     ForumTopicCreate,
@@ -48,8 +50,8 @@ async def get_topics(
     Public endpoint - no authentication required.
     """
     # Get all topics (ForumService doesn't have a get_all method, so we'll query directly)
-    from app.models.forum import ForumTopic
-    from sqlalchemy import select
+
+
 
     query = select(ForumTopic).order_by(ForumTopic.name)
 
@@ -117,8 +119,8 @@ async def get_posts(
     )
 
     # Count total posts
-    from app.models.forum import ForumPost
-    from sqlalchemy import select, func
+
+
 
     count_query = select(func.count(ForumPost.id))
     if topic_id:
@@ -133,7 +135,7 @@ async def get_posts(
         # Get user's vote if authenticated
         user_vote = None
         if current_user:
-            from app.models.forum import ForumVote
+
             vote_result = await db.execute(
                 select(ForumVote).where(
                     ForumVote.user_id == current_user.id,
@@ -145,7 +147,7 @@ async def get_posts(
                 user_vote = vote.vote_type
 
         # Get author name
-        from app.models.user import User as UserModel
+
         author_result = await db.execute(
             select(UserModel).where(UserModel.id == post.author_id)
         )
@@ -196,9 +198,9 @@ async def get_post(
 
     Public endpoint but returns user's vote status if authenticated.
     """
-    from app.models.forum import ForumPost, ForumVote
-    from app.models.user import User as UserModel
-    from sqlalchemy import select
+
+
+
 
     # Get post
     result = await db.execute(select(ForumPost).where(ForumPost.id == post_id))
@@ -276,8 +278,8 @@ async def create_post(
     )
 
     # Get author name
-    from app.models.user import User as UserModel
-    from sqlalchemy import select
+
+
 
     author_result = await db.execute(
         select(UserModel).where(UserModel.id == current_user.id)
@@ -320,10 +322,10 @@ async def update_post(
 
     Requires authentication. Only post owner can update.
     """
-    from app.models.forum import ForumPost
-    from app.models.user import User as UserModel
-    from sqlalchemy import select
-    from datetime import datetime
+
+
+
+
 
     # Get post
     result = await db.execute(select(ForumPost).where(ForumPost.id == post_id))
@@ -389,8 +391,8 @@ async def delete_post(
 
     Requires authentication. Only post owner or moderator can delete.
     """
-    from app.models.forum import ForumPost
-    from sqlalchemy import select
+
+
 
     # Get post
     result = await db.execute(select(ForumPost).where(ForumPost.id == post_id))
@@ -437,9 +439,9 @@ async def get_comments(
     comment_map = {}
     root_comments = []
 
-    from app.models.forum import ForumVote
-    from app.models.user import User as UserModel
-    from sqlalchemy import select
+
+
+
 
     for comment in comments:
         # Get user's vote if authenticated
@@ -515,8 +517,8 @@ async def create_comment(
     )
 
     # Get author name
-    from app.models.user import User as UserModel
-    from sqlalchemy import select
+
+
 
     author_result = await db.execute(
         select(UserModel).where(UserModel.id == current_user.id)
@@ -554,8 +556,8 @@ async def delete_comment(
 
     Requires authentication. Only comment owner or moderator can delete.
     """
-    from app.models.forum import ForumComment
-    from sqlalchemy import select
+
+
 
     # Get comment
     result = await db.execute(select(ForumComment).where(ForumComment.id == comment_id))
@@ -662,9 +664,9 @@ async def get_moderation_logs(
     if not is_moderator:
         raise HTTPException(status_code=403, detail="Not authorized to view moderation logs")
 
-    from app.models.forum import ForumModerationLog
-    from app.models.user import User as UserModel
-    from sqlalchemy import select
+
+
+
 
     # Get logs
     result = await db.execute(

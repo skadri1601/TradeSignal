@@ -46,19 +46,26 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const MAX_FETCH_RETRIES = 3;
 const RETRY_DELAY_MS = 1500;
 const CACHE_KEY_PREFIX = 'ts_user_cache_';
+const CACHE_TTL_MS = 10 * 60 * 1000;
 
 let cachedToken: string | null = null;
 
 function getCachedUser(clerkUserId: string): User | null {
   try {
     const raw = sessionStorage.getItem(`${CACHE_KEY_PREFIX}${clerkUserId}`);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const entry = JSON.parse(raw);
+    if (entry.timestamp && Date.now() - entry.timestamp > CACHE_TTL_MS) {
+      sessionStorage.removeItem(`${CACHE_KEY_PREFIX}${clerkUserId}`);
+      return null;
+    }
+    return entry.user ?? entry;
   } catch { return null; }
 }
 
 function setCachedUser(clerkUserId: string, user: User) {
   try {
-    sessionStorage.setItem(`${CACHE_KEY_PREFIX}${clerkUserId}`, JSON.stringify(user));
+    sessionStorage.setItem(`${CACHE_KEY_PREFIX}${clerkUserId}`, JSON.stringify({ user, timestamp: Date.now() }));
   } catch { /* quota exceeded */ }
 }
 
@@ -188,7 +195,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Auto-retry countdown when showing error
   useEffect(() => {
-    if (!syncError?.retryable) {
+    const autoRetryTypes: SyncErrorType[] = ['network', 'server'];
+    if (!syncError?.retryable || !autoRetryTypes.includes(syncError.type)) {
       setAutoRetryCountdown(0);
       return;
     }

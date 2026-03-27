@@ -7,6 +7,8 @@ Implements rate limiting and best practices per SEC guidelines.
 
 import asyncio
 import logging
+import re
+import xml.etree.ElementTree as ET
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from urllib.parse import urlencode
@@ -337,8 +339,6 @@ class SECClient:
         Returns:
             List of filing metadata
         """
-        import xml.etree.ElementTree as ET
-
         filings = []
 
         try:
@@ -390,8 +390,6 @@ class SECClient:
 
             # Parse HTML to find the primary Form 4 XML document
             html_content = response.text
-
-            import re
 
             # Pattern: find XML files in href attributes
             # The raw XML file is in the root directory (not in xslF345X05/ subfolder)
@@ -455,8 +453,6 @@ class SECClient:
 
         try:
             response = await self._request_with_retry("GET", url)
-
-            import xml.etree.ElementTree as ET
 
             root = ET.fromstring(response.text)
 

@@ -13,6 +13,23 @@ export function buildTradeStreamUrl(): string {
   return httpBase.replace(/^https?/, protocol) + '/api/v1/trades/stream';
 }
 
+function parseTradeMessage(raw: string): TradeStreamMessage | null {
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    console.error('Trade stream message parse error', error);
+    return null;
+  }
+}
+
+function sendHeartbeat(socket: WebSocket | null): void {
+  try {
+    socket?.send('ping');
+  } catch {
+    // Ignore send failures during heartbeat
+  }
+}
+
 export default function useTradeStream(
   onMessage: (payload: TradeStreamMessage) => void,
   enabled: boolean = true
@@ -48,22 +65,12 @@ export default function useTradeStream(
 
       socket.onopen = () => {
         setStatus('open');
-        heartbeatInterval = window.setInterval(() => {
-          try {
-            socket?.send('ping');
-          } catch (error) {
-            // Ignore send failures during heartbeat
-          }
-        }, 15000);
+        heartbeatInterval = window.setInterval(() => sendHeartbeat(socket), 15000);
       };
 
       socket.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          callbackRef.current?.(data);
-        } catch (error) {
-          console.error('Trade stream message parse error', error);
-        }
+        const data = parseTradeMessage(event.data);
+        if (data) callbackRef.current?.(data);
       };
 
       socket.onerror = () => {
@@ -99,4 +106,3 @@ export default function useTradeStream(
 
   return status;
 }
-

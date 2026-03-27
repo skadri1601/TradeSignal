@@ -63,7 +63,18 @@ apiClient.interceptors.response.use(
   async (error) => {
     const config = error.config;
 
-    // Retry on 5xx server errors (transient failures)
+    if (error.response?.status === 429 && config) {
+      config._rateLimitRetry = config._rateLimitRetry || 0;
+      if (config._rateLimitRetry < 1) {
+        config._rateLimitRetry++;
+        const retryAfter = parseInt(error.response.headers['retry-after'] || '5', 10);
+        await new Promise((r) => setTimeout(r, retryAfter * 1000));
+        return apiClient(config);
+      }
+      error.isRateLimited = true;
+      error.userMessage = 'Too many requests. Please wait a moment and try again.';
+    }
+
     if (error.response?.status >= 500 && config) {
       // Initialize retry count
       config._retryCount = config._retryCount || 0;

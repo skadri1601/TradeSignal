@@ -14,6 +14,9 @@ import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
+from app.models.intrinsic_value import IntrinsicValueTarget
 
 logger = logging.getLogger(__name__)
 
@@ -257,9 +260,6 @@ class DCFService:
 
     async def get_latest_ivt(self, ticker: str) -> Optional[Any]:
         """Get the latest IVT for a ticker."""
-        from app.models.intrinsic_value import IntrinsicValueTarget
-        from sqlalchemy import select
-
         result = await self.db.execute(
             select(IntrinsicValueTarget)
             .where(IntrinsicValueTarget.ticker == ticker.upper())

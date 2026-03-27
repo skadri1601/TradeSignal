@@ -5,6 +5,7 @@ Business logic for congressional trade operations.
 """
 
 import logging
+from collections import Counter
 from typing import Optional, List
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -12,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 from sqlalchemy.orm import selectinload
 
+from app.config import settings
 from app.models import CongressionalTrade, Congressperson
 from app.schemas.congressional_trade import (
     CongressionalTradeFilter,
@@ -123,8 +125,6 @@ class CongressionalTradeService:
             )
 
         if filters.significant_only:
-            from app.config import settings
-
             query = query.where(
                 CongressionalTrade.amount_estimated
                 > settings.significant_trade_threshold
@@ -203,8 +203,6 @@ class CongressionalTradeService:
         # Most active congressperson
         most_active = None
         if trades:
-            from collections import Counter
-
             congressperson_counts = Counter([t.congressperson_id for t in trades])
             if congressperson_counts:
                 most_active_id = congressperson_counts.most_common(1)[0][0]
@@ -217,8 +215,6 @@ class CongressionalTradeService:
         # Most active company
         most_active_company = None
         if trades:
-            from collections import Counter
-
             company_counts = Counter([t.ticker for t in trades if t.ticker])
             if company_counts:
                 most_active_company = company_counts.most_common(1)[0][0]

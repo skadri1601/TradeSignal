@@ -59,16 +59,6 @@ export default function ProfilePage() {
     avatar_url: user?.avatar_url || ''
   });
 
-  // Password change state
-  const [showPasswordChange, setShowPasswordChange] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-
-  // Email change state
-  const [showEmailChange, setShowEmailChange] = useState(false);
-  const [newEmail, setNewEmail] = useState('');
-  const [emailPassword, setEmailPassword] = useState('');
 
   // Subscription state
   const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null);
@@ -175,89 +165,6 @@ export default function ProfilePage() {
     }
   };
 
-  const handlePasswordChange = async (e: FormEvent) => {
-    e.preventDefault();
-
-    if (newPassword !== confirmPassword) {
-      setMessage({ type: 'error', text: 'Passwords do not match' });
-      return;
-    }
-
-    if (newPassword.length < 8) {
-      setMessage({ type: 'error', text: 'Password must be at least 8 characters' });
-      return;
-    }
-
-    setIsSaving(true);
-    setMessage(null);
-
-    try {
-      const response = await fetch(`${API_URL}/api/v1/auth/change-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAccessToken()}`
-        },
-        body: JSON.stringify({
-          current_password: currentPassword,
-          new_password: newPassword
-        })
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to change password');
-      }
-
-      setMessage({ type: 'success', text: 'Password changed successfully!' });
-      setShowPasswordChange(false);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleEmailChange = async (e: FormEvent) => {
-    e.preventDefault();
-    setIsSaving(true);
-    setMessage(null);
-
-    try {
-      const response = await fetch(`${API_URL}/api/v1/auth/email`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAccessToken()}`
-        },
-        body: JSON.stringify({
-          new_email: newEmail,
-          password: emailPassword
-        })
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to update email');
-      }
-
-      const result = await response.json();
-      setMessage({ type: 'success', text: result.message });
-      setShowEmailChange(false);
-      setNewEmail('');
-      setEmailPassword('');
-
-      // Refresh page after 2 seconds
-      setTimeout(() => window.location.reload(), 2000);
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message });
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   // Webhooks queries
   const { data: webhooks, isLoading: loadingWebhooks } = useQuery<Webhook[]>({
@@ -590,154 +497,13 @@ export default function ProfilePage() {
           </form>
         </div>
 
-        {/* Email Change Card */}
-        <div className="bg-gray-900/50 backdrop-blur-sm shadow-lg rounded-2xl border border-white/10">
-          <div className="px-6 py-4 border-b border-white/10 flex justify-between items-center">
-            <div>
-              <h2 className="text-lg font-semibold text-white">Email Address</h2>
-              <p className="text-sm text-gray-400 mt-1">{user.email}</p>
-            </div>
-            {!showEmailChange && (
-              <button
-                onClick={() => setShowEmailChange(true)}
-                className="text-sm text-blue-400 hover:text-blue-300 font-medium transition-colors"
-              >
-                Change Email
-              </button>
-            )}
-          </div>
-
-          {showEmailChange && (
-            <form onSubmit={handleEmailChange} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  New Email
-                </label>
-                <input
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 bg-black/50 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                  placeholder="new@example.com"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Confirm Password
-                </label>
-                <input
-                  type="password"
-                  value={emailPassword}
-                  onChange={(e) => setEmailPassword(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 bg-black/50 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                  placeholder="••••••••"
-                />
-              </div>
-              <div className="flex gap-3">
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors disabled:opacity-50 font-medium"
-                >
-                  {isSaving ? 'Updating...' : 'Update Email'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowEmailChange(false);
-                    setNewEmail('');
-                    setEmailPassword('');
-                  }}
-                  className="px-4 py-2 border border-white/20 text-gray-300 rounded-lg hover:bg-white/10 transition-colors font-medium"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-
-        {/* Password Change Card */}
-        <div className="bg-gray-900/50 backdrop-blur-sm shadow-lg rounded-2xl border border-white/10">
-          <div className="px-6 py-4 border-b border-white/10 flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-white">Password</h2>
-            {!showPasswordChange && (
-              <button
-                onClick={() => setShowPasswordChange(true)}
-                className="text-sm text-blue-400 hover:text-blue-300 font-medium transition-colors"
-              >
-                Change Password
-              </button>
-            )}
-          </div>
-
-          {showPasswordChange && (
-            <form onSubmit={handlePasswordChange} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Current Password
-                </label>
-                <input
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 bg-black/50 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                  placeholder="••••••••"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  New Password
-                </label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                  minLength={8}
-                  className="w-full px-3 py-2 bg-black/50 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                  placeholder="••••••••"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Confirm New Password
-                </label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 bg-black/50 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                  placeholder="••••••••"
-                />
-              </div>
-              <div className="flex gap-3">
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors disabled:opacity-50 font-medium"
-                >
-                  {isSaving ? 'Changing...' : 'Change Password'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowPasswordChange(false);
-                    setCurrentPassword('');
-                    setNewPassword('');
-                    setConfirmPassword('');
-                  }}
-                  className="px-4 py-2 border border-white/20 text-gray-300 rounded-lg hover:bg-white/10 transition-colors font-medium"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          )}
+        {/* Email & Security Card */}
+        <div className="bg-gray-900/50 backdrop-blur-sm shadow-lg rounded-2xl border border-white/10 p-6">
+          <h2 className="text-lg font-semibold text-white mb-2">Email & Security</h2>
+          <p className="text-sm text-gray-400 mb-1">Email: {user.email}</p>
+          <p className="text-sm text-gray-500">
+            To change your email, password, or security settings, use your account provider's settings.
+          </p>
         </div>
 
         {/* Account Status */}

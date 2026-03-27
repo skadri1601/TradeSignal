@@ -15,6 +15,7 @@ from app.models.company import Company
 from app.models.trade import Trade
 from app.models.risk_level import RiskLevelAssessment
 from app.models.intrinsic_value import IntrinsicValueTarget
+from app.models.congressional_trade import CongressionalTrade
 from app.services.risk_level_service import RiskLevelService
 from app.services.dcf_service import DCFService
 
@@ -139,8 +140,6 @@ class TSScoreService:
 
         Returns 0-100 score.
         """
-        from app.models.congressional_trade import CongressionalTrade
-
         # Get recent politician trades (last 90 days)
         cutoff_date = datetime.utcnow() - timedelta(days=90)
 

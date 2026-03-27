@@ -15,6 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.company import Company
 from app.models.insider import Insider
 from app.models.trade import Trade
+from app.services.sec_client import SECClient
+from app.services.form4_parser import Form4Parser
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +37,6 @@ class ScraperService:
     def _get_sec_client(self):
         """Lazy-load SEC client to save memory."""
         if self._sec_client is None:
-            from app.services.sec_client import SECClient
             self._sec_client = SECClient()
         return self._sec_client
 
@@ -128,7 +129,6 @@ class ScraperService:
                         filing["filing_url"]
                     )
 
-                    from app.services.form4_parser import Form4Parser
                     parsed = Form4Parser.parse(xml_content)
 
                     # Process transactions

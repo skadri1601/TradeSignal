@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from fastapi import HTTPException, status
 
+from app.models.alert import Alert
 from app.models.subscription import Subscription, TIER_LIMITS, SubscriptionTier
 from app.models.usage import UsageTracking
 
@@ -151,8 +152,6 @@ class TierService:
         # PORTFOLIO MODE: Skip all limit checks
         if PORTFOLIO_MODE:
             return True
-
-        from app.models.alert import Alert
 
         tier = await TierService.get_user_tier(user_id, db)
         limits = await TierService.get_tier_limits(tier)

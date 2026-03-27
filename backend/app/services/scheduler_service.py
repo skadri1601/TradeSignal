@@ -5,6 +5,7 @@ Manages APScheduler for periodic SEC Form 4 scraping.
 """
 
 import logging
+import os
 from datetime import datetime, timedelta
 from typing import Optional, List
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -124,8 +125,6 @@ class SchedulerService:
         logger.info("=" * 80)
 
         # Try to load companies from watchlist file first
-        import os
-
         watchlist_path = os.path.join(
             os.path.dirname(os.path.dirname(__file__)), "watchlist_companies.txt"
         )

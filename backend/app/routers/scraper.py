@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.services.scraper_service import ScraperService
+from app.services.sec_client import SECClient
 
 logger = logging.getLogger(__name__)
 
@@ -132,8 +133,6 @@ async def test_sec_connection():
     - Status of SEC connection
     """
     try:
-        from app.services.sec_client import SECClient
-
         client = SECClient()
 
         return {

@@ -20,7 +20,8 @@ from app.services.alert_prioritization_service import AlertPrioritizationService
 from app.services.multi_channel_alert_service import MultiChannelAlertService
 from app.services.notification_storage_service import NotificationStorageService # New import
 from app.schemas.alert import AlertCreate, AlertUpdate
-from app.schemas.notification import NotificationCreate # New import
+from app.schemas.notification import NotificationCreate
+from app.services.push_subscription_service import PushSubscriptionService
 
 logger = logging.getLogger(__name__)
 
@@ -413,10 +414,6 @@ class AlertService:
 
             elif channel == "push":
                 # Send push notifications to all active subscriptions
-                from app.services.push_subscription_service import (
-                    PushSubscriptionService,
-                )
-
                 push_service = PushSubscriptionService(self.db)
                 subscriptions = await push_service.get_active_subscriptions()
 
@@ -517,8 +514,6 @@ class AlertService:
 
         # Send push test if configured
         if "push" in alert.notification_channels:
-            from app.services.push_subscription_service import PushSubscriptionService
-
             push_service = PushSubscriptionService(self.db)
             subscriptions = await push_service.get_active_subscriptions()
 

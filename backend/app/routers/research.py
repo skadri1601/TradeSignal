@@ -28,6 +28,9 @@ from app.models.management_score import ManagementScore
 from app.services.ts_score_service import TSScoreService
 from app.services.risk_level_service import RiskLevelService
 from app.services.dcf_service import DCFService
+from app.services.ivt_data_service import IVTDataService
+from app.services.competitive_strength_service import CompetitiveStrengthService
+from app.services.management_score_service import ManagementScoreService
 from app.services.cache_service import cache_service
 from app.config import settings
 
@@ -84,8 +87,6 @@ async def get_intrinsic_value(
             }
 
         # If not cached, calculate on-demand
-        from app.services.ivt_data_service import IVTDataService
-
         ivt_service = IVTDataService(db)
         ivt_data = await ivt_service.calculate_ivt_for_company(ticker)
 
@@ -298,10 +299,6 @@ async def get_competitive_strength(
     ticker = ticker.upper()
 
     try:
-        from app.services.competitive_strength_service import CompetitiveStrengthService
-        from app.models.competitive_strength import CompetitiveStrengthRating
-        from datetime import datetime
-
         # Check Redis cache first
         cache_key = f"competitive_strength:{ticker}:latest"
         cached_result = await cache_service.get(cache_key)
@@ -417,10 +414,6 @@ async def get_management_score(
     ticker = ticker.upper()
 
     try:
-        from app.services.management_score_service import ManagementScoreService
-        from app.models.management_score import ManagementScore
-        from datetime import datetime
-
         # Check Redis cache first
         cache_key = f"management_score:{ticker}:latest"
         cached_result = await cache_service.get(cache_key)

@@ -17,8 +17,8 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from app.models import Company
+from sqlalchemy import select, func
+from app.models import Company, Trade
 from app.config import settings
 from alpha_vantage.timeseries import TimeSeries
 import finnhub
@@ -595,9 +595,6 @@ class StockPriceService:
         """
         try:
             # Query database for companies with recent trades
-            from sqlalchemy import func
-            from app.models import Trade
-
             thirty_days_ago = datetime.utcnow() - timedelta(days=30)
 
             # Build query for companies with recent insider trades
