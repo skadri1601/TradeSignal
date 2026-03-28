@@ -39,13 +39,10 @@ const LiveTicker = () => {
   };
 
   return (
-    <div className="bg-[#0f0f1a]/80 backdrop-blur-xl border-y border-white/[0.06] py-4 overflow-hidden relative">
-      <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-3 z-20 bg-[#0f0f1a]/90 backdrop-blur-md pr-6 pl-2 py-1.5 rounded-full border border-white/[0.06]">
-        <span className="relative flex h-2.5 w-2.5">
-          <span className="ticker-pulse-ring absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]"></span>
-        </span>
-        <span className="ticker-badge-text text-xs font-semibold uppercase tracking-widest">Demo Trades</span>
+    <div className="bg-[#111] border-y border-white/[0.06] py-4 overflow-hidden relative">
+      <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-3 z-20 bg-[#111] pr-6 pl-2 py-1.5 rounded-full border border-white/[0.06]">
+        <span className="flex h-2.5 w-2.5 rounded-full bg-amber-400" />
+        <span className="text-xs font-semibold uppercase tracking-widest text-amber-400">Demo Trades</span>
       </div>
 
       <div className="ticker-fade-left absolute left-0 top-0 bottom-0 w-48 z-10 pointer-events-none" />
@@ -60,10 +57,10 @@ const LiveTicker = () => {
             return (
               <div
                 key={`${trade.id}-${index}`}
-                className={`ticker-item inline-flex items-center gap-3 px-5 py-2.5 rounded-full mx-2 border backdrop-blur-sm transition-all duration-300 ${
+                className={`ticker-item inline-flex items-center gap-3 px-5 py-2.5 rounded-full mx-2 border ${
                   isBuy
-                    ? 'bg-green-500/[0.04] border-green-500/[0.12] hover:border-green-400/30 hover:shadow-[0_0_20px_rgba(34,197,94,0.08)]'
-                    : 'bg-red-500/[0.04] border-red-500/[0.12] hover:border-red-400/30 hover:shadow-[0_0_20px_rgba(239,68,68,0.08)]'
+                    ? 'bg-green-500/[0.04] border-green-500/[0.12]'
+                    : 'bg-red-500/[0.04] border-red-500/[0.12]'
                 }`}
               >
                 <div className={`flex items-center gap-1.5 ${isBuy ? 'text-green-400' : 'text-red-400'}`}>
@@ -122,44 +119,11 @@ const LiveTicker = () => {
         }
 
         .ticker-fade-left {
-          background: linear-gradient(to right, #0f0f1a 0%, #0f0f1acc 40%, transparent 100%);
+          background: linear-gradient(to right, #111 0%, rgba(17,17,17,0.8) 40%, transparent 100%);
         }
 
         .ticker-fade-right {
-          background: linear-gradient(to left, #0f0f1a 0%, #0f0f1acc 40%, transparent 100%);
-        }
-
-        .ticker-pulse-ring {
-          animation: ticker-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-
-        @keyframes ticker-pulse {
-          0%, 100% {
-            transform: scale(1);
-            opacity: 0.75;
-          }
-          50% {
-            transform: scale(1.8);
-            opacity: 0;
-          }
-        }
-
-        .ticker-badge-text {
-          background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
-          background-size: 200% 100%;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          animation: ticker-shimmer 3s ease-in-out infinite;
-        }
-
-        @keyframes ticker-shimmer {
-          0%, 100% {
-            background-position: 0% 50%;
-          }
-          50% {
-            background-position: 100% 50%;
-          }
+          background: linear-gradient(to left, #111 0%, rgba(17,17,17,0.8) 40%, transparent 100%);
         }
       `}</style>
     </div>
