@@ -1,4 +1,5 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState, lazy, Suspense, useEffect } from 'react';
+import { TrendingUp } from 'lucide-react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import { NotificationProvider } from './contexts/NotificationContext';
@@ -65,20 +66,77 @@ const RoadmapPage = lazy(() => import('./pages/RoadmapPage'));
 const PublicNewsPage = lazy(() => import('./pages/public/PublicNewsPage'));
 const PublicSupportPage = lazy(() => import('./pages/public/PublicSupportPage'));
 
-// Loading skeleton component
-const PageLoader = () => (
-  <div className="min-h-screen flex items-center justify-center bg-black">
-    <div className="space-y-4 w-full max-w-4xl px-4">
-      {[...Array(5)].map((_, i) => (
-        <div key={i} className="animate-pulse flex space-x-4 p-4 bg-white/5 border border-white/5 rounded-lg">
-          <div className="h-4 bg-white/10 rounded w-1/4"></div>
-          <div className="h-4 bg-white/10 rounded w-1/2"></div>
-          <div className="h-4 bg-white/10 rounded w-1/4"></div>
+const PageLoader = () => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-black relative overflow-hidden">
+      <style>{`
+        @keyframes pl-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes pl-shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+        @keyframes pl-blob1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(30px,-20px) scale(1.1); } }
+        @keyframes pl-blob2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-20px,30px) scale(1.15); } }
+        .pl-ring { animation: pl-spin 2.5s linear infinite; }
+        .pl-shimmer::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(90deg, transparent, rgba(139,92,246,0.08), rgba(59,130,246,0.08), transparent);
+          animation: pl-shimmer 2s ease-in-out infinite;
+        }
+        .pl-blob1 { animation: pl-blob1 8s ease-in-out infinite; }
+        .pl-blob2 { animation: pl-blob2 10s ease-in-out infinite; }
+      `}</style>
+
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="pl-blob1 absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl" />
+        <div className="pl-blob2 absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl" />
+      </div>
+
+      <div className={`relative flex flex-col items-center transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+        <div className="relative mb-6">
+          <div className="absolute -inset-4 rounded-full bg-gradient-to-r from-purple-500/20 via-blue-500/20 to-purple-500/20 blur-xl animate-pulse" />
+          <div className="relative">
+            <svg className="pl-ring w-20 h-20" viewBox="0 0 80 80" fill="none">
+              <defs>
+                <linearGradient id="pl-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#a855f7" />
+                  <stop offset="50%" stopColor="#3b82f6" />
+                  <stop offset="100%" stopColor="#a855f7" />
+                </linearGradient>
+              </defs>
+              <circle cx="40" cy="40" r="36" stroke="url(#pl-grad)" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="160 66" />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center shadow-lg shadow-purple-500/25">
+                <TrendingUp className="w-6 h-6 text-white" />
+              </div>
+            </div>
+          </div>
         </div>
-      ))}
+
+        <span className="text-xl font-bold bg-gradient-to-r from-purple-400 via-blue-400 to-purple-400 bg-clip-text text-transparent mb-10">
+          TradeSignal
+        </span>
+
+        <div className="w-full max-w-md space-y-3 px-4">
+          {[0.7, 1, 0.5, 0.85, 0.6].map((w, i) => (
+            <div
+              key={i}
+              className="pl-shimmer relative overflow-hidden rounded-xl border border-white/5 bg-white/[0.03] backdrop-blur-sm p-4"
+              style={{ opacity: 1 - i * 0.12 }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-3 rounded-full bg-gradient-to-r from-purple-500/15 to-blue-500/15" style={{ width: `${w * 100}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 function AppContent() {
   return (
